@@ -45,6 +45,12 @@ export interface CaveNode {
   id: string;
   pos: [number, number, number];
   radius: number;
+  /** Per-axis multipliers of radius — rooms are ellipsoids, not spheres. */
+  stretch?: [number, number, number];
+  /** Rock columns floor-to-ceiling inside the chamber (count). */
+  pillars?: number;
+  /** Air pocket with a walkable dry floor and its own local water line. */
+  dry?: boolean;
   zone: Zone;
   tags: NodeTag[];
   contents?: {
@@ -66,18 +72,18 @@ export interface CaveEdge {
   width: 'open' | 'normal' | 'squeeze';
   waypoints?: [number, number, number][];
   tilt?: { maxDeg: number };
-  door?: { cost: number; kind: 'debris' | 'grate' | 'hatch' };
+  door?: { cost: number; kind: 'debris' | 'grate' | 'hatch'; at?: number }; // at: arc fraction along the passage (default 0.5)
   powerGate?: boolean; // PaP grate: opens with power, not points
 }
 
 export const NODES: CaveNode[] = [
   // ── SINKHOLE (0 … −10 m) — daylight, Lowe's camp, the 1968 winch head ──
-  { id: 'sink-platform', pos: [0, 0, 0], radius: 4, zone: 'sinkhole',
+  { id: 'sink-platform', pos: [0, 0.7, 0], radius: 4, stretch: [1.6, 0.4, 1.2], zone: 'sinkhole',
     tags: ['surface', 'tieOff', 'tape', 'poster'],
     contents: { tape: 'T1', poster: 'G11' } },
-  { id: 'sink-blueprint', pos: [3, 0, -2], radius: 1.5, zone: 'sinkhole',
+  { id: 'sink-blueprint', pos: [3, 0.7, -2], radius: 1.5, zone: 'sinkhole',
     tags: ['surface', 'poster'], contents: { poster: 'G10' } },
-  { id: 'sink-pool', pos: [0, -5, 0], radius: 6, zone: 'sinkhole', tags: ['surface', 'tieOff'] },
+  { id: 'sink-pool', pos: [0, -5, 0], radius: 6, stretch: [1.4, 0.9, 1.2], zone: 'sinkhole', tags: ['surface', 'tieOff'] },
   { id: 'sink-wall-e', pos: [6, -7, 3], radius: 2.5, zone: 'sinkhole',
     tags: ['wallBuy'], contents: { wallBuy: 'speargun' } },
   { id: 'sink-wall-w', pos: [-5, -7, -3], radius: 2.5, zone: 'sinkhole',
@@ -95,16 +101,16 @@ export const NODES: CaveNode[] = [
   { id: 'gal-entry', pos: [0, -14, -8], radius: 3, zone: 'galleries', tags: ['tieOff'] },
   { id: 'gal-ring-w', pos: [-8, -16, -10], radius: 2.5, zone: 'galleries',
     tags: ['wallBuy', 'siltyFloor'], contents: { wallBuy: 'flechette' } },
-  { id: 'gal-air1', pos: [-8, -12.5, -10], radius: 1.5, zone: 'galleries', tags: ['airPocket'] },
-  { id: 'gal-berthing', pos: [-14, -18, -4], radius: 3.5, zone: 'galleries',
+  { id: 'gal-air1', pos: [-8, -12.5, -10], radius: 2.6, stretch: [1.3, 0.85, 1.3], dry: true, zone: 'galleries', tags: ['airPocket'] },
+  { id: 'gal-berthing', pos: [-14, -18, -4], radius: 3.5, stretch: [1.6, 0.55, 0.9], zone: 'galleries',
     tags: ['perk', 'wallBuy', 'poster', 'tieOff'],
     contents: { perk: 'secondWind', vendor: 'reel', poster: 'G3' } },
-  { id: 'gal-rec', pos: [-16, -19, 4], radius: 4, zone: 'galleries',
+  { id: 'gal-rec', pos: [-16, -19, 4], radius: 4, stretch: [1.5, 0.55, 1.2], pillars: 2, zone: 'galleries',
     tags: ['landmark', 'jukebox', 'tape', 'poster'],
     contents: { landmarkName: 'Rec Room', tape: 'T2', poster: 'G12' } },
-  { id: 'gal-mess', pos: [-10, -21, 10], radius: 3, zone: 'galleries',
+  { id: 'gal-mess', pos: [-10, -21, 10], radius: 3, stretch: [1.3, 0.6, 1.1], zone: 'galleries',
     tags: ['wallBuy', 'siltyFloor'], contents: { vendor: 'chemlights' } },
-  { id: 'gal-pile', pos: [0, -23, 14], radius: 4, zone: 'galleries',
+  { id: 'gal-pile', pos: [0, -23, 14], radius: 4, stretch: [1.3, 0.75, 1.3], pillars: 1, zone: 'galleries',
     tags: ['power', 'landmark', 'tape', 'poster', 'tieOff'],
     contents: { landmarkName: 'The Pile', tape: 'T3', poster: 'G5' } },
   { id: 'gal-air2', pos: [0, -19.5, 14], radius: 1.5, zone: 'galleries',
@@ -135,7 +141,7 @@ export const NODES: CaveNode[] = [
   { id: 'mz-b', pos: [2, -31, 20], radius: 2, zone: 'maze', tags: ['siltyFloor'] },
   { id: 'mz-c', pos: [9, -32, 22], radius: 2, zone: 'maze', tags: [] },
   { id: 'mz-air1', pos: [2, -27.5, 20], radius: 1.5, zone: 'maze', tags: ['airPocket'] },
-  { id: 'mz-organ', pos: [-10, -34, 24], radius: 3.5, zone: 'maze',
+  { id: 'mz-organ', pos: [-10, -34, 24], radius: 3.5, stretch: [0.9, 1.6, 0.9], pillars: 5, zone: 'maze',
     tags: ['landmark', 'perk', 'wallBuy'],
     contents: { landmarkName: 'The Organ Pipes', perk: 'greasedGears', wallBuy: 'harpoon' } },
   { id: 'mz-e', pos: [0, -35, 26], radius: 2, zone: 'maze', tags: ['chalkMound'] },
@@ -143,11 +149,11 @@ export const NODES: CaveNode[] = [
   { id: 'mz-infirm', pos: [-6, -38, 30], radius: 3, zone: 'maze',
     tags: ['perk', 'wallBuy', 'tape', 'poster'],
     contents: { perk: 'ironLungs', vendor: 'chemlights', tape: 'T4', poster: 'G6' } },
-  { id: 'mz-air2', pos: [-6, -34.5, 30], radius: 1.5, zone: 'maze', tags: ['airPocket', 'ambushPocket'] },
-  { id: 'mz-stores', pos: [4, -39, 33], radius: 3.5, zone: 'maze',
+  { id: 'mz-air2', pos: [-6, -34.5, 30], radius: 2.6, stretch: [1.3, 0.85, 1.3], dry: true, zone: 'maze', tags: ['airPocket', 'ambushPocket'] },
+  { id: 'mz-stores', pos: [4, -39, 33], radius: 3.5, stretch: [1.4, 0.7, 1.2], pillars: 2, zone: 'maze',
     tags: ['boxSpot', 'perk', 'wallBuy', 'poster'],
     contents: { perk: 'steadyHands', vendor: 'battery', poster: 'G4' } },
-  { id: 'mz-chapel', pos: [-3, -41, 36], radius: 4, zone: 'maze',
+  { id: 'mz-chapel', pos: [-3, -41, 36], radius: 4, stretch: [1.25, 1.3, 1.1], pillars: 3, zone: 'maze',
     tags: ['landmark', 'chalkMound', 'siltyFloor'],
     contents: { landmarkName: 'The White Chapel' } },
   { id: 'mz-coil', pos: [10, -42, 36], radius: 3, zone: 'maze',
@@ -174,26 +180,26 @@ export const NODES: CaveNode[] = [
   { id: 'throat-rim', pos: [5, -45, 40], radius: 3.5, zone: 'throat',
     tags: ['perk', 'tape', 'chalkMound', 'tieOff'],
     contents: { perk: 'finKick', tape: 'T5' } },
-  { id: 'throat-rim-air', pos: [5, -42, 40], radius: 1.3, zone: 'throat', tags: ['airPocket'] },
+  { id: 'throat-rim-air', pos: [5, -42, 40], radius: 2.6, stretch: [1.3, 0.85, 1.3], dry: true, zone: 'throat', tags: ['airPocket'] },
   { id: 'throat-mid', pos: [5, -58, 40], radius: 2, zone: 'throat', tags: [] },
   { id: 'throat-bottom', pos: [5, -70, 40], radius: 2.5, zone: 'throat', tags: ['tieOff'] },
 
   // ── ABYSS (−70 … −80 m) — the Cathedral, the Bench, the Heart ──
-  { id: 'abyss-hall', pos: [5, -73, 46], radius: 3, zone: 'abyss',
+  { id: 'abyss-hall', pos: [5, -73, 46], radius: 3, stretch: [1.3, 0.8, 1.1], zone: 'abyss',
     tags: ['wallBuy'], contents: { vendor: 'battery' } },
   { id: 'abyss-box', pos: [10, -74, 48], radius: 2.5, zone: 'abyss', tags: ['boxSpot'] },
   { id: 'abyss-toy', pos: [12, -71, 44], radius: 1.8, zone: 'abyss',
     tags: ['toy'], contents: { toyColor: 'yellow' } },
-  { id: 'cathedral', pos: [0, -76, 52], radius: 8, zone: 'abyss',
+  { id: 'cathedral', pos: [0, -76, 52], radius: 10, stretch: [1.5, 2.1, 1.3], pillars: 6, zone: 'abyss',
     tags: ['landmark', 'perk', 'guardianPost', 'tieOff'],
     contents: { landmarkName: 'The Cathedral', perk: 'catEyes' } },
   { id: 'abyss-air', pos: [-6, -72, 55], radius: 1.5, zone: 'abyss', tags: ['airPocket'] },
   { id: 'pap-chamber', pos: [-7, -75, 48], radius: 3, zone: 'abyss',
     tags: ['pap', 'perk'], contents: { perk: 'deepPockets' } },
-  { id: 'drill-head', pos: [2, -79, 57], radius: 3, zone: 'abyss',
+  { id: 'drill-head', pos: [2, -79, 57], radius: 3, stretch: [1.3, 0.7, 1.3], zone: 'abyss',
     tags: ['guardianPost', 'tape', 'poster'], contents: { tape: 'T6', poster: 'G13' } },
-  { id: 'heart-apse', pos: [7, -79, 59], radius: 2.5, zone: 'abyss', tags: ['heart'] },
-  { id: 'abyss-b1', pos: [-3, -74, 50], radius: 1.2, zone: 'abyss',
+  { id: 'heart-apse', pos: [7, -79, 59], radius: 2.5, stretch: [1.1, 1.3, 1.0], zone: 'abyss', tags: ['heart'] },
+  { id: 'abyss-b1', pos: [-8, -82, 54], radius: 1.2, zone: 'abyss',
     tags: ['burrow'], contents: { burrowActiveFromRound: 10 } },
   { id: 'abyss-b2', pos: [6, -77, 54], radius: 1.2, zone: 'abyss',
     tags: ['burrow'], contents: { burrowActiveFromRound: 12 } },
@@ -209,9 +215,9 @@ export const EDGES: CaveEdge[] = [
   { a: 'sink-platform', b: 'sink-blueprint', width: 'open' },
   { a: 'sink-pool', b: 'sink-wall-e', width: 'open' },
   { a: 'sink-pool', b: 'sink-wall-w', width: 'open' },
-  { a: 'sink-pool', b: 'sink-b1', width: 'normal' },
-  { a: 'sink-pool', b: 'sink-b2', width: 'normal' },
-  { a: 'sink-pool', b: 'sink-b3', width: 'normal' },
+  { a: 'sink-pool', b: 'sink-b1', width: 'squeeze' },
+  { a: 'sink-pool', b: 'sink-b2', width: 'squeeze' },
+  { a: 'sink-pool', b: 'sink-b3', width: 'squeeze' },
   { a: 'sink-pool', b: 'sink-shaft', width: 'normal' },
   { a: 'sink-pool', b: 'sink-crack', width: 'normal' },
   // Two ways into the Galleries: main artery door vs free squeeze crack
@@ -240,9 +246,9 @@ export const EDGES: CaveEdge[] = [
   { a: 'gal-mess', b: 'gal-spur-empty1', width: 'normal' },
   { a: 'gal-ring-ne', b: 'gal-spur-empty2', width: 'normal' },
   // Burrow stubs
-  { a: 'gal-ring-w', b: 'gal-b1', width: 'normal' },
-  { a: 'gal-pile', b: 'gal-b2', width: 'normal' },
-  { a: 'gal-box', b: 'gal-b3', width: 'normal' },
+  { a: 'gal-ring-w', b: 'gal-b1', width: 'squeeze' },
+  { a: 'gal-pile', b: 'gal-b2', width: 'squeeze' },
+  { a: 'gal-box', b: 'gal-b3', width: 'squeeze' },
 
   // Two ways into the Maze: main door (near box) vs long dark free route (from mess)
   { a: 'gal-box', b: 'mz-gate', width: 'normal', door: { cost: 1250, kind: 'debris' }, tilt: { maxDeg: 90 } },
@@ -269,7 +275,8 @@ export const EDGES: CaveEdge[] = [
   { a: 'mz-chapel', b: 'mz-coil', width: 'squeeze', waypoints: [[3, -42, 37]] },
   { a: 'mz-coil', b: 'mz-air3', width: 'open' },
   // Maze shortcut grate: gate straight to stores
-  { a: 'mz-gate', b: 'mz-stores', width: 'normal', door: { cost: 1250, kind: 'grate' }, waypoints: [[8, -33, 26]] },
+  // Eastern bypass arc: swings wide of the lattice so its door plug can't graze free routes
+  { a: 'mz-gate', b: 'mz-stores', width: 'normal', door: { cost: 1250, kind: 'grate' }, waypoints: [[15, -31, 17], [16, -36, 29]] },
   // Dead ends
   { a: 'mz-organ', b: 'mz-d1', width: 'normal' },
   { a: 'mz-c', b: 'mz-d2', width: 'normal' },
@@ -277,9 +284,9 @@ export const EDGES: CaveEdge[] = [
   { a: 'mz-d4', b: 'mz-stores', width: 'squeeze' },
   { a: 'mz-chapel', b: 'mz-d5', width: 'normal' },
   // Burrow stubs
-  { a: 'mz-b', b: 'mz-b1', width: 'normal' },
-  { a: 'mz-f', b: 'mz-b2', width: 'normal' },
-  { a: 'mz-chapel', b: 'mz-b3', width: 'normal' },
+  { a: 'mz-b', b: 'mz-b1', width: 'squeeze' },
+  { a: 'mz-f', b: 'mz-b2', width: 'squeeze' },
+  { a: 'mz-chapel', b: 'mz-b3', width: 'squeeze' },
 
   // Two ways to the Throat rim
   { a: 'mz-coil', b: 'throat-rim', width: 'normal', door: { cost: 1500, kind: 'debris' } },
@@ -307,9 +314,24 @@ export const EDGES: CaveEdge[] = [
   { a: 'cathedral', b: 'pap-chamber', width: 'normal', powerGate: true },
   { a: 'cathedral', b: 'drill-head', width: 'open' },
   { a: 'drill-head', b: 'heart-apse', width: 'normal' },
-  { a: 'cathedral', b: 'abyss-b1', width: 'normal' },
-  { a: 'drill-head', b: 'abyss-b2', width: 'normal' },
+  { a: 'cathedral', b: 'abyss-b1', width: 'squeeze' },
+  { a: 'drill-head', b: 'abyss-b2', width: 'squeeze' },
 ];
+
+// ── World scale ──
+// Authored coordinates above are compact for readability; the built world is
+// larger (user playtest 2026-07-18: cave felt too small, rooms too divot-like).
+// Positions scale uniformly; radii scale progressively (big rooms grow more);
+// burrows shrink to cracks.
+const S = 1.7;
+for (const n of NODES) {
+  n.pos = [n.pos[0] * S, n.pos[1] * S, n.pos[2] * S];
+  n.radius *= n.radius >= 3 ? 1.35 : n.radius >= 1.8 ? 1.15 : 1;
+  if (n.tags.includes('burrow')) n.radius = 1.0;
+}
+for (const e of EDGES) {
+  if (e.waypoints) e.waypoints = e.waypoints.map((w) => [w[0] * S, w[1] * S, w[2] * S] as [number, number, number]);
+}
 
 // ── Helpers (graph utilities shared by all systems) ──
 
@@ -350,7 +372,8 @@ export function buildAdjacency(edges: CaveEdge[] = EDGES): Adjacency {
 
 // The cenote mouth: an open shaft of sky above the platform. Part of the map
 // (the sinkhole is open-air, LORE §3); carved by the SDF like everything else.
-export const SKY_SHAFT = { a: [0, 0, 0] as [number, number, number], b: [0, 14, 0] as [number, number, number], r: 7 };
+// Post-scale coordinates.
+export const SKY_SHAFT = { a: [0, 1, 0] as [number, number, number], b: [0, 26, 0] as [number, number, number], r: 10 };
 
 export const ZONE_HUBS: Record<Zone, string> = {
   sinkhole: 'sink-pool',

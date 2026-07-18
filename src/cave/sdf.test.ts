@@ -3,32 +3,45 @@ import { EDGES, getNode, NODES } from './data';
 import { initSdf, sdf, setDoorBlocks } from './sdf';
 import { computeDoorBlocks, doorEdges, doorPlacement } from './doors';
 
+// Sample points every ~1 m along an edge's full polyline.
+function samplePolyline(e: (typeof EDGES)[number]): [number, number, number][] {
+  const pts = [getNode(e.a).pos, ...(e.waypoints ?? []), getNode(e.b).pos];
+  const out: [number, number, number][] = [];
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, ay, az] = pts[i - 1];
+    const [bx, by, bz] = pts[i];
+    const len = Math.hypot(bx - ax, by - ay, bz - az);
+    const steps = Math.max(2, Math.ceil(len));
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      out.push([ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t]);
+    }
+  }
+  return out;
+}
+
 describe('cave SDF traversability', () => {
   beforeAll(() => {
     initSdf();
     setDoorBlocks([]);
   });
 
-  it('every node center is inside passable space', () => {
+  it('every node center is inside passable space (pillars keep clear of centers)', () => {
     for (const n of NODES) {
       const [x, y, z] = n.pos;
       expect(sdf(x, y, z, false), n.id).toBeLessThan(-0.4);
     }
   });
 
-  it('every edge segment midpoint is passable', () => {
+  it('every edge is passable along its FULL polyline (no doors)', () => {
     for (const e of EDGES) {
-      const pts = [getNode(e.a).pos, ...(e.waypoints ?? []), getNode(e.b).pos];
-      for (let i = 1; i < pts.length; i++) {
-        const mx = (pts[i - 1][0] + pts[i][0]) / 2;
-        const my = (pts[i - 1][1] + pts[i][1]) / 2;
-        const mz = (pts[i - 1][2] + pts[i][2]) / 2;
-        expect(sdf(mx, my, mz, false), `${e.a}~${e.b} seg ${i}`).toBeLessThan(-0.2);
+      for (const [x, y, z] of samplePolyline(e)) {
+        expect(sdf(x, y, z, false), `${e.a}~${e.b} @ (${x.toFixed(1)},${y.toFixed(1)},${z.toFixed(1)})`).toBeLessThan(-0.2);
       }
     }
   });
 
-  it('closed doors block their passage', () => {
+  it('closed doors block their own passage', () => {
     const doors = doorEdges().map((edge) => ({ edge, open: false }));
     setDoorBlocks(computeDoorBlocks(doors));
     for (const e of doorEdges()) {
@@ -42,18 +55,28 @@ describe('cave SDF traversability', () => {
     }
   });
 
-  it('door plugs never choke a neighboring free route (alternate stays passable)', () => {
+  // The user-found bug (2026-07-18): a spherical door plug sealed the free
+  // squeeze NEXT to the hatch. Plugs are discs now — with ALL doors closed,
+  // every non-door passage must remain fully swimmable end to end.
+  it('with all doors closed, every non-door edge stays fully passable', () => {
     const doors = doorEdges().map((edge) => ({ edge, open: false }));
     setDoorBlocks(computeDoorBlocks(doors));
-    // With ALL doors closed, the free alternates must still be swimmable:
-    // squeeze crack into the galleries, and the abyss squeeze bypass.
-    const freeRoutes: [string, [number, number, number]][] = [
-      ['sink-crack squeeze wp', [7, -12, 0]],
-      ['abyss squeeze wp', [9, -72.5, 43.5]],
-    ];
-    for (const [name, p] of freeRoutes) {
-      expect(sdf(p[0], p[1], p[2], true), name).toBeLessThan(-0.45);
+    const doorSet = new Set(doorEdges());
+    for (const e of EDGES) {
+      if (doorSet.has(e)) continue;
+      for (const [x, y, z] of samplePolyline(e)) {
+        expect(sdf(x, y, z, true), `${e.a}~${e.b} choked near a door plug @ (${x.toFixed(1)},${y.toFixed(1)},${z.toFixed(1)})`).toBeLessThan(-0.2);
+      }
     }
     setDoorBlocks([]);
+  });
+
+  it('dry pockets have swimmable water below and air headroom above their water line', () => {
+    for (const n of NODES.filter((n) => n.dry)) {
+      const ry = n.radius * (n.stretch?.[1] ?? 1);
+      const level = n.pos[1] - ry * 0.35;
+      expect(sdf(n.pos[0], level - 0.5, n.pos[2], false), `${n.id} below line`).toBeLessThan(-0.3);
+      expect(sdf(n.pos[0], level + 0.6, n.pos[2], false), `${n.id} above line`).toBeLessThan(-0.2);
+    }
   });
 });

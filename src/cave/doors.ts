@@ -27,7 +27,7 @@ export function doorPlacement(e: CaveEdge): { pos: [number, number, number]; dir
     segLens.push(l);
     total += l;
   }
-  let half = total / 2;
+  let half = total * (e.door?.at ?? 0.5);
   let seg = 0;
   while (seg < segLens.length - 1 && half > segLens[seg]) {
     half -= segLens[seg];
@@ -57,7 +57,13 @@ export function computeDoorBlocks(doors: { edge: CaveEdge; open: boolean }[]): D
     .filter((d) => !d.open)
     .map((d) => {
       const p = doorPlacement(d.edge);
-      return { id: `${d.edge.a}→${d.edge.b}`, c: p.pos, r: p.blockR };
+      return {
+        id: `${d.edge.a}→${d.edge.b}`,
+        c: p.pos,
+        axis: p.dir,
+        r: p.blockR,
+        halfLen: TUNING.geometry.doorBlockHalfLen,
+      };
     });
 }
 
@@ -110,7 +116,7 @@ export function buildDoors(scene: THREE.Scene): Door[] {
   for (const e of doorEdges()) {
     const kind: Door['kind'] = e.powerGate ? 'powerGate' : e.door!.kind;
     const { pos, dir, blockR } = doorPlacement(e);
-    const visualR = blockR - 0.5;
+    const visualR = blockR - 0.6;
     const group = kind === 'debris' ? debrisMesh(visualR) : kind === 'hatch' ? hatchMesh(visualR) : grateMesh(visualR);
     group.position.set(...pos);
     group.quaternion.setFromUnitVectors(Z, new THREE.Vector3(...dir));

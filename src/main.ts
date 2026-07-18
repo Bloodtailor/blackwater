@@ -28,7 +28,7 @@ function initGame(): void {
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 300);
   scene.add(camera);
   // Spotlight headlamp — previews the real flashlight cone (M3 replaces this).
-  const headlamp = new THREE.SpotLight(0xcfe0d4, 70, 50, THREE.MathUtils.degToRad(42), 0.65, 2);
+  const headlamp = new THREE.SpotLight(0xcfe0d4, 90, 65, THREE.MathUtils.degToRad(42), 0.65, 2);
   headlamp.position.set(0, 0, 0);
   headlamp.target.position.set(0, 0, -1);
   camera.add(headlamp, headlamp.target);
@@ -43,23 +43,45 @@ function initGame(): void {
   const ambient = new THREE.AmbientLight(0x3a4a50, 0.5);
   scene.add(ambient);
   // Daylight down the cenote shaft: distance-limited so it can't leak deep.
-  const sun = new THREE.PointLight(0xfff2d6, 320, 48, 2);
-  sun.position.set(0, 11, 0);
+  const sun = new THREE.PointLight(0xfff2d6, 700, 85, 2);
+  sun.position.set(0, 18, 0);
   scene.add(sun);
-  const water = new THREE.Mesh(
-    new THREE.PlaneGeometry(36, 36),
-    new THREE.MeshStandardMaterial({
-      color: 0x2a5a66,
-      transparent: true,
-      opacity: 0.55,
-      side: THREE.DoubleSide,
-      roughness: 0.25,
-      metalness: 0.1,
-    }),
-  );
+  const waterMat = new THREE.MeshStandardMaterial({
+    color: 0x2a5a66,
+    transparent: true,
+    opacity: 0.55,
+    side: THREE.DoubleSide,
+    roughness: 0.25,
+    metalness: 0.1,
+  });
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(52, 52), waterMat);
   water.rotation.x = -Math.PI / 2;
   water.position.y = WATER_Y;
   scene.add(water);
+
+  // Dry air pockets: local water discs + their own water lines (data `dry`).
+  const dryPockets = NODES.filter((n) => n.dry).map((n) => {
+    const s = n.stretch ?? [1, 1, 1];
+    const rx = n.radius * s[0];
+    const ry = n.radius * s[1];
+    const rz = n.radius * s[2];
+    const level = n.pos[1] - ry * 0.35;
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(Math.max(rx, rz) * 0.95, 24), waterMat);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(n.pos[0], level, n.pos[2]);
+    scene.add(disc);
+    return { c: n.pos, rx: rx * 1.25, ry: ry * 1.25, rz: rz * 1.25, level };
+  });
+  const waterLevelAt = (x: number, y: number, z: number): number | null => {
+    if (Math.hypot(x, z) < 18 && y > -16) return WATER_Y; // open cenote water
+    for (const p of dryPockets) {
+      const dx = (x - p.c[0]) / p.rx;
+      const dy = (y - p.c[1]) / p.ry;
+      const dz = (z - p.c[2]) / p.rz;
+      if (dx * dx + dy * dy + dz * dz < 1) return p.level;
+    }
+    return null;
+  };
 
   const ENV = {
     under: { bg: 0x041418, fog: 0x062226, density: 0.035, ambient: 0.5 },
@@ -69,7 +91,8 @@ function initGame(): void {
   scene.fog = fog;
   let wasAbove: boolean | null = null;
   const applyEnv = () => {
-    const above = camera.position.y > WATER_Y;
+    const lvl = waterLevelAt(camera.position.x, camera.position.y, camera.position.z);
+    const above = lvl !== null && camera.position.y > lvl;
     if (above === wasAbove) return;
     wasAbove = above;
     const env = above ? ENV.above : ENV.under;
@@ -97,7 +120,7 @@ function initGame(): void {
     camera.position.set(n.pos[0], n.pos[1] + Math.min(1, n.radius * 0.25), n.pos[2]);
   };
   teleport('sink-platform');
-  camera.position.y = 1.2;
+  camera.position.y = 2.2;
   fly.look(180, -15);
 
   // ── debug UI ──
@@ -109,7 +132,7 @@ function initGame(): void {
   const view = debug.section('View');
   debug.button(view, 'Reset to spawn', () => {
     teleport('sink-platform');
-    camera.position.y = 1.2;
+    camera.position.y = 2.2;
   });
   debug.toggle(view, 'Collision', () => collide, (v) => (collide = v));
   debug.button(view, 'Open map viewer', () => {

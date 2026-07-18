@@ -60,7 +60,7 @@ The original asks are all in (see traceability table §18). These are the load-b
 
 | Zone | Depth | Role | Contents |
 |---|---|---|---|
-| **The Sinkhole** (surface) | 0–10 m | Spawn. Daylight shaft, dive platform, calm pool. Infinite air with head above water. | 2 wall buys (Speargun 500, Pneu-Driver 1000), 3 burrows. Burrows activate progressively; from round 5+ zombies climb into the pool itself — the surface stops being safe. |
+| **The Sinkhole** (surface) | 0–17 m | Spawn. Open cenote: daylight shaft, **dry rock shore with Lowe's camp**, calm pool. Infinite air with head above water. | 2 wall buys (Speargun 500, Pneu-Driver 1000), 3 burrows. Burrows activate progressively; from round 5+ zombies climb into the pool itself — the surface stops being safe. |
 | **The Galleries** | 10–25 m | First real diving. A ring loop + 4 dead-end spurs (2 cached, 2 empty). | Power generator room at the far side of the ring. 2 perk stations, box location A, 2 wall buys, 3 air pockets (1 ambush-capable), 1 squeeze shortcut across the ring. |
 | **The Maze** | 25–45 m | The disorientation zone. Lattice of look-alike junctions; landmarks: the Organ Pipes, the White Chapel (chalk-mound room), the Coil. | ≥5 dead ends, 3 squeezes, tilt zones at 2 thresholds, 3–4 chalk mounds, box location B, 3 perk stations, 2 wall buys, 3 air pockets. Two disjoint routes to Galleries and to the Throat rim. |
 | **The Throat** | 45–60 m | The vertical shaft. 25 m straight down. Max-strength tilt zone. Chalk mounds at the rim (a silt-out inside a vertical shaft is intended nightmare fuel). | One air-pocket niche at the top rim. Squeeze exit at the bottom. |
@@ -80,6 +80,7 @@ Diegetic dressing: the cave holds **Site BLACKWATER**, a drowned 1960s naval nuc
 ### 6.2 Air
 - Tank of **100 air**; drains 1/s calm, ×1.6 sprinting, zone multiplier (Surface/Galleries ×1.0, Maze ×1.1, Throat/Abyss ×1.25). A zombie grab rips the regulator: **−8 air** + brief tilt kick.
 - Refill at surface or any air pocket at 25/s (4 s full). Low-air state at ≤25: heartbeat, breath sounds shorten, screen-edge desaturation. At 0: **drowning** — 15 HP/s. (Grace, not instant death; reaching a pocket while drowning is a designed panic beat.)
+- **Three air pockets are dry rooms** (data `dry`): a walkable floor above a local water line (Galleries west dome, the infirmary airlock, the Throat rim niche). Standing room, not just a breathing gap — small islands of "land" in the deep (user, 2026-07-18).
 - Air pockets are open to zombies occasionally (ambush-capable pockets are tagged in data): surfacing into one is relief, not guaranteed safety.
 
 ### 6.3 Health
@@ -244,6 +245,9 @@ Menus: title (Dive / How to Dive / Settings), pause (incl. recovered-tapes list)
 ```ts
 type NodeId = string;
 interface CaveNode { id: NodeId; pos: [number, number, number]; radius: number;
+  stretch?: [number, number, number]; // rooms are ellipsoids, not spheres
+  pillars?: number;                   // solid rock columns (path-clearance guaranteed)
+  dry?: boolean;                      // air pocket with walkable dry floor + local water line
   zone: 'sinkhole'|'galleries'|'maze'|'throat'|'abyss';
   tags: ('airPocket'|'ambushPocket'|'burrow'|'landmark'|'siltyFloor'|'chalkMound'|'tiltZone'
         |'perk'|'wallBuy'|'boxSpot'|'power'|'pap'|'heart'|'tape'|'cache'|'tieOff'

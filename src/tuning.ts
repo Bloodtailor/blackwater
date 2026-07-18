@@ -13,14 +13,15 @@ export const TUNING = {
     radius: 0.45, // collision clearance from cave walls
   },
   geometry: {
-    cellSize: 0.6, // marching grid resolution (m)
+    cellSize: 0.7, // marching grid resolution (m)
     radiusOpen: 2.4, // tunnel radii by width class (m)
     radiusNormal: 1.6,
     radiusSqueeze: 0.75,
     noiseFreq: 0.35,
     noiseAmpFactor: 0.15, // wall noise amplitude = clamp(r * factor, 0.12, max)
     noiseAmpMax: 0.9,
-    doorBlockPad: 0.9, // door plug radius = tunnel radius + pad
+    doorBlockPad: 1.0, // door plug (disc) radius = tunnel radius + pad
+    doorBlockHalfLen: 0.5, // disc half-thickness along the tunnel axis
   },
   air: {
     capacity: 100,
