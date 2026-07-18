@@ -102,23 +102,50 @@ export const TUNING = {
     batterySeconds: 300,
     dimBelow: 0.5, // battery fraction where dimming starts
     flickerBelow: 0.2,
-    beamAngleDeg: 60,
-    siltBeamAngleDeg: 25,
+    beamAngleDeg: 84, // full cone; DESIGN said 60 but M3 shipped this look
+    siltBeamAngleDeg: 25, // full cone during a silt-out (backscatter)
+    siltThrowM: 22, // beam throw during a silt-out (vs 65 clear)
   },
   tilt: {
     driftDegPerSec: 15,
     decayDegPerSec: 2,
     relevelDegPerSec: 45,
+    wanderFreq: 0.07, // how fast the drift direction wanders (noise time scale)
     zoneMaxDeg: { galleries: 30, maze: 90, throat: 180 },
   },
   silt: {
     ambientVisM: 12,
     ambientSettleSec: 20,
+    stirSec: 2.5, // seconds of disturbance to fully stir a chamber
+    stirSpeed: 2.5, // swimming faster than this near a silty floor stirs
+    floorProximityM: 1.5, // "near the floor" for stirring
     siltoutVisM: 4,
     siltoutFadeSec: 75,
+    moundTouchM: 1.1, // touching within this of a mound detonates it
   },
   visibility: {
     clearVisM: { sinkhole: 35, galleries: 35, maze: 25, throat: 18, abyss: 18 },
+    fogK: 1.7, // fog density = fogK / visibility (FogExp2)
+    lerpPerSec: 1.2, // how fast fog chases its target (zone/silt transitions)
+  },
+  atmosphere: {
+    particulateCount: 700, // ambient motes drifting near the camera
+    particulateBoxM: 16, // they wrap inside a box this wide around the camera
+    siltParticleMax: 2600, // camera-local silt cloud budget
+    siltCloudRadiusM: 9,
+    depthDarkStart: 6, // ambient light starts fading below this depth (m)
+    depthDarkEnd: 45, // fully dark by this depth
+    depthDarkFloor: 0.12, // fraction of ambient that survives at full depth
+  },
+  chemlights: {
+    startCount: 0, // they're a wall buy; debug grants for testing
+    packSize: 10,
+    worldCap: 40, // oldest fade beyond this
+    throwSpeed: 5,
+    sinkAccel: 2.2, // they sink gently to the floor
+    waterDrag: 0.6, // fraction of velocity lost per second
+    lightRadiusM: 6, // pooled real lights on the nearest few
+    lightPool: 6,
   },
   rounds: {
     intermissionSec: 40,
@@ -155,5 +182,9 @@ export const TUNING = {
     maxDeployedM: 400,
     followSpeed: 3.5,
     grabRadiusM: 1.5,
+    pointSpacingM: 1.0, // line vertices laid this far apart while paying out
+    tieOffRadiusM: 2.0, // anchor/tie-off must be within this of a tie-off spot
+    reelInRadiusM: 2.2, // walking the line back re-reels points inside this
+    followPullPerSec: 3, // how hard follow mode pulls you onto the line
   },
 } as const;

@@ -2,6 +2,8 @@
 // + trend bottom-center, points/ammo placeholders. Minimal, monospace, dark.
 
 import type { Vitals } from '../player/vitals';
+import type { GuideLine } from '../player/line';
+import type { Chemlights } from '../player/chemlights';
 import { TUNING } from '../tuning';
 
 export class Hud {
@@ -13,6 +15,7 @@ export class Hud {
   private lightState: HTMLElement;
   private depthEl: HTMLElement;
   private pointsEl: HTMLElement;
+  private kitEl!: HTMLElement;
   private vignette: HTMLElement;
   private deathEl: HTMLElement;
   private lastDepth = 0;
@@ -45,6 +48,7 @@ export class Hud {
     this.pointsEl = pts;
     const ammo = make('hud-ammo');
     ammo.textContent = '—/—';
+    this.kitEl = make('hud-kit');
     this.deathEl = make('hud-death');
     this.deathEl.innerHTML = '<div class="big">RECOVERY INCOMPLETE</div><div class="small">the site keeps its complement</div><div class="small">press R to dive again</div>';
     this.deathEl.classList.add('hidden');
@@ -91,5 +95,15 @@ export class Hud {
 
   setPoints(p: number): void {
     this.pointsEl.textContent = String(p);
+  }
+
+  /** Guide line + chemlight readout (M4 kit). */
+  updateKit(line: GuideLine, chems: Chemlights, following: boolean): void {
+    const parts = [`REEL ${line.reelM.toFixed(0)}m`];
+    if (line.deployed) parts.push(`OUT ${line.deployedLengthM.toFixed(0)}m${line.reeling ? ' ⟲' : ''}`);
+    if (following) parts.push('ON LINE');
+    parts.push(`GLO ${chems.count}`);
+    this.kitEl.textContent = parts.join(' · ');
+    this.kitEl.classList.toggle('online', following);
   }
 }

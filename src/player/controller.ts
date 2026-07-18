@@ -17,6 +17,8 @@ export type MoveMode = 'swim' | 'walk' | 'noclip';
 export class PlayerController {
   mode: MoveMode = 'swim';
   readonly vel = new THREE.Vector3();
+  /** Camera roll in radians (tilt system, M4). Applied after yaw/pitch. */
+  roll = 0;
   /** Fired when a lunge triggers (main wires this to the HR spike). */
   onLunge?: () => void;
   private keys = new Set<string>();
@@ -61,8 +63,13 @@ export class PlayerController {
   }
 
   private applyLook(): void {
-    this.euler.set(this.pitch, this.yaw, 0);
+    this.euler.set(this.pitch, this.yaw, this.roll);
     this.camera.quaternion.setFromEuler(this.euler);
+  }
+
+  /** Is a key currently held? (tilt re-level, line follow — M4 systems.) */
+  keyDown(code: string): boolean {
+    return this.keys.has(code);
   }
 
   get sprinting(): boolean {
@@ -111,7 +118,9 @@ export class PlayerController {
     this.applyLook();
 
     this.camera.getWorldDirection(this.fwd);
-    this.right.crossVectors(this.fwd, WORLD_UP).normalize();
+    // camera-relative right: under tilt, strafe follows the rolled frame just
+    // like Space/C do — the disorientation carries into ALL the controls
+    this.right.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
     this.camUp.copy(WORLD_UP).applyQuaternion(this.camera.quaternion);
 
     // desired direction

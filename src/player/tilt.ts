@@ -1,0 +1,73 @@
+// Tilt — the disorientation system (DESIGN §6.5). Camera ROLL drifts while
+// inside tilt-tagged edge regions (thermocline currents, squeeze exits), up to
+// a per-zone max; decays slowly outside; X actively re-levels. The honest
+// tells (bubbles rise world-up, depth gauge) live elsewhere and never lie.
+// Pure logic — no three dependency (unit-testable).
+
+import { TUNING } from '../tuning';
+import { EDGES } from '../cave/data';
+import { SETTINGS } from '../ui/settings';
+
+// Region ref → max tilt (deg). Edge prims are ref'd `a~b`; junction nodes
+// INSIDE a tilt run (≥2 adjacent tilt edges, e.g. throat-mid) inherit it so
+// the drift doesn't stutter off passing through them.
+export function buildTiltRegions(): Map<string, number> {
+  const map = new Map<string, number>();
+  const nodeTilt = new Map<string, { count: number; max: number }>();
+  for (const e of EDGES) {
+    if (!e.tilt) continue;
+    map.set(`${e.a}~${e.b}`, e.tilt.maxDeg);
+    for (const id of [e.a, e.b]) {
+      const t = nodeTilt.get(id) ?? { count: 0, max: 0 };
+      t.count++;
+      t.max = Math.max(t.max, e.tilt.maxDeg);
+      nodeTilt.set(id, t);
+    }
+  }
+  for (const [id, t] of nodeTilt) if (t.count >= 2) map.set(id, t.max);
+  return map;
+}
+
+export class TiltSystem {
+  /** Current camera roll in degrees (+ = clockwise). */
+  rollDeg = 0;
+
+  constructor(
+    private regions: Map<string, number>,
+    private phase: number = Math.random() * 20,
+  ) {}
+
+  /** Max drift for a region ref (capped by the accessibility setting), or 0. */
+  maxFor(regionRef: string | null): number {
+    if (regionRef === null) return 0;
+    const zoneMax = this.regions.get(regionRef) ?? 0;
+    return Math.min(zoneMax, SETTINGS.maxTiltDeg);
+  }
+
+  update(dt: number, regionRef: string | null, relevelHeld: boolean, time: number): void {
+    const T = TUNING.tilt;
+    const max = this.maxFor(regionRef);
+    if (relevelHeld) {
+      // active re-level always wins — the player's counter-tool
+      this.rollDeg = approachZero(this.rollDeg, T.relevelDegPerSec * dt);
+    } else if (max > 0) {
+      // drift in a direction that holds for long stretches, then wanders
+      const s = Math.sin(time * T.wanderFreq * Math.PI * 2 + this.phase) + 0.35 * Math.sin(time * 0.73 + this.phase * 2);
+      this.rollDeg += (s >= 0 ? 1 : -1) * T.driftDegPerSec * dt;
+    } else {
+      // slow natural decay — you carry disorientation out of the zone
+      this.rollDeg = approachZero(this.rollDeg, T.decayDegPerSec * dt);
+    }
+    // clamp to the stronger of zone cap / accessibility cap; if the setting
+    // shrank mid-run, pull the roll back inside it
+    const cap = max > 0 ? max : SETTINGS.maxTiltDeg;
+    if (this.rollDeg > cap) this.rollDeg = cap;
+    if (this.rollDeg < -cap) this.rollDeg = -cap;
+  }
+}
+
+function approachZero(v: number, step: number): number {
+  if (v > step) return v - step;
+  if (v < -step) return v + step;
+  return 0;
+}
