@@ -7,8 +7,11 @@ export const TUNING = {
     sprintSpeed: 6.5,
     squeezeSpeed: 1.6,
     walkSpeed: 5.0,
-    accelTime: 0.55, // s to reach speed (silky/icy per user)
-    glideTime: 1.5, // s glide-out (long — icy)
+    // Heavy force-based swimming (user: “moving a 300 lb object”) — weak
+    // thrust, almost no drag: slow to start, hates stopping and turning.
+    swimThrust: 1.6, // m/s² of directional thrust
+    sprintThrust: 2.8,
+    waterDrag: 0.12, // fraction of velocity lost per second — barely any
     freeflySpeed: 8.0, // debug camera
     radius: 0.42, // collision clearance from cave walls
     eyeHeight: 1.05, // camera above the body point when walking
@@ -18,7 +21,7 @@ export const TUNING = {
     lungeImpulse: 3.5, // sprint-trigger lunge (m/s added)
     lungeSqueezeFactor: 0.7, // lunges still fire in squeezes, most of the punch
     lungeCooldown: 1.2, // s ("lunge protection")
-    currentSpeed: 1.2, // ambient wandering current peak (m/s) — fight it or ride it
+    currentSpeed: 2.0, // ambient wandering current peak (m/s) — a constant opponent
     currentFreq: 0.02, // spatial frequency of current wander
     currentTimeFreq: 0.12, // temporal drift — quick shifts, smooth transitions
     // Streamline momentum (user, 2026-07-18): holding one direction builds

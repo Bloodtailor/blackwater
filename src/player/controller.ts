@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { TUNING } from '../tuning';
-import { regionAt, resolveCollision, sdf } from '../cave/sdf';
+import { gradient, regionAt, resolveCollision, sdf } from '../cave/sdf';
 import { fbm } from '../util/noise';
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
@@ -26,6 +26,7 @@ export class PlayerController {
   private streamline = 0; // 0..1 built momentum (user streamline system)
   private coyote = 0;
   private velDir = new THREE.Vector3();
+  private grad: [number, number, number] = [0, 0, 0];
   private yaw = 0;
   private pitch = 0;
   private euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -89,7 +90,8 @@ export class PlayerController {
     const t = this.time * P.currentTimeFreq;
     const a = fbm(p.x * P.currentFreq + t, p.y * P.currentFreq, p.z * P.currentFreq + t * 0.7, 2) * Math.PI * 2;
     const b = fbm(p.x * P.currentFreq + 7.3, p.y * P.currentFreq + t, p.z * P.currentFreq, 2) * Math.PI * 0.45;
-    const mag = P.currentSpeed * (0.2 + 1.0 * Math.abs(fbm(p.x * P.currentFreq + t * 1.3, p.y * P.currentFreq + 13.7, p.z * P.currentFreq, 2)));
+    // strength floor: the current is a constant opponent, never a lull
+    const mag = P.currentSpeed * (0.45 + 0.75 * Math.abs(fbm(p.x * P.currentFreq + t * 1.3, p.y * P.currentFreq + 13.7, p.z * P.currentFreq, 2)));
     out.set(Math.cos(a) * Math.cos(b), Math.sin(b), Math.sin(a) * Math.cos(b)).multiplyScalar(mag);
   }
 
@@ -160,21 +162,39 @@ export class PlayerController {
       } else if (!this.sprinting) {
         this.streamline = Math.max(0, this.streamline - dt * S.idleDecayPerSec);
       }
-      let target: number = THREE.MathUtils.lerp(P.swimSpeed, P.sprintSpeed, this.streamline);
-      if (this.inSqueeze) target = P.squeezeSpeed;
-      // momentum: exponential approach + glide; almost no thrust in air
-      // (breaching = a momentum arc, not flight)
-      let k = this.wish.lengthSq() > 0 ? dt / P.accelTime : dt / P.glideTime;
-      if (headAbove) k *= 0.1;
-      this.vel.lerp(this.wish.clone().multiplyScalar(target), Math.min(1, k));
+      const targetCap: number = this.inSqueeze
+        ? P.squeezeSpeed
+        : THREE.MathUtils.lerp(P.swimSpeed, P.sprintSpeed, this.streamline);
+      // Heavy force-based swimming: weak thrust, near-zero drag. Slow to
+      // start, hates stopping, redirecting costs real time (user: 300 lb).
+      const thrust =
+        (this.sprinting ? P.sprintThrust : P.swimThrust) * (this.inSqueeze ? 0.7 : 1) * (headAbove ? 0.1 : 1);
+      if (this.wish.lengthSq() > 0) this.vel.addScaledVector(this.wish, thrust * dt);
+      this.vel.multiplyScalar(Math.max(0, 1 - P.waterDrag * dt));
+      // cap limits thrust-driven growth only — a coasting body keeps its
+      // momentum (drag is the only brake; squeezes still clamp hard)
+      const spd = this.vel.length();
+      if (spd > targetCap && (this.wish.lengthSq() > 0 || this.inSqueeze)) {
+        this.vel.multiplyScalar(Math.max(targetCap / spd, 1 - 1.5 * dt));
+      }
       if (headAbove) this.vel.y -= P.gravity * dt;
       pos.addScaledVector(this.vel, dt);
-      // ambient current pushes position only (never the camera view)
+      // ambient current pushes position only (never the camera view);
+      // damped in squeezes so peak current can never pin you in a crack
       if (!headAbove) {
         this.sampleCurrent(this.current);
-        pos.addScaledVector(this.current, dt);
+        pos.addScaledVector(this.current, this.inSqueeze ? dt * 0.3 : dt);
       }
-      resolveCollision(pos, P.radius);
+      if (resolveCollision(pos, P.radius)) {
+        // wall impact bleeds the velocity component into the wall
+        gradient(pos.x, pos.y, pos.z, this.grad);
+        const into = this.vel.x * this.grad[0] + this.vel.y * this.grad[1] + this.vel.z * this.grad[2];
+        if (into > 0) {
+          this.vel.x -= this.grad[0] * into * 0.9;
+          this.vel.y -= this.grad[1] * into * 0.9;
+          this.vel.z -= this.grad[2] * into * 0.9;
+        }
+      }
       // surface into walking: head above water and floor close underfoot
       if (headAbove) {
         const probe = { x: pos.x, y: pos.y - P.eyeHeight, z: pos.z };
