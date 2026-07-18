@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import './style.css';
 import { DebugPanel } from './debug/panel';
-import { Freefly } from './debug/freefly';
 import { NODES, getNode, type Zone } from './cave/data';
-import { initSdf, regionAt, resolveCollision, sdf } from './cave/sdf';
+import { initSdf, regionAt, sdf } from './cave/sdf';
 import { buildCaveMesh } from './cave/mesh';
 import { buildDoors, openAllDoors, openDoor } from './cave/doors';
-import { TUNING } from './tuning';
+import { PlayerController } from './player/controller';
+import { lightFactor, Vitals } from './player/vitals';
+import { Bubbles } from './player/bubbles';
+import { Hud } from './ui/hud';
 
 const params = new URLSearchParams(location.search);
 
@@ -27,8 +29,8 @@ function initGame(): void {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 300);
   scene.add(camera);
-  // Spotlight headlamp — previews the real flashlight cone (M3 replaces this).
-  const headlamp = new THREE.SpotLight(0xcfe0d4, 90, 65, THREE.MathUtils.degToRad(42), 0.65, 2);
+  const headlampBase = 90;
+  const headlamp = new THREE.SpotLight(0xcfe0d4, headlampBase, 65, THREE.MathUtils.degToRad(42), 0.65, 2);
   headlamp.position.set(0, 0, 0);
   headlamp.target.position.set(0, 0, -1);
   camera.add(headlamp, headlamp.target);
@@ -42,7 +44,6 @@ function initGame(): void {
   // ── lights & water ──
   const ambient = new THREE.AmbientLight(0x3a4a50, 0.5);
   scene.add(ambient);
-  // Daylight down the cenote shaft: distance-limited so it can't leak deep.
   const sun = new THREE.PointLight(0xfff2d6, 700, 85, 2);
   sun.position.set(0, 18, 0);
   scene.add(sun);
@@ -59,7 +60,6 @@ function initGame(): void {
   water.position.y = WATER_Y;
   scene.add(water);
 
-  // Dry air pockets: local water discs + their own water lines (data `dry`).
   const dryPockets = NODES.filter((n) => n.dry).map((n) => {
     const s = n.stretch ?? [1, 1, 1];
     const rx = n.radius * s[0];
@@ -90,51 +90,55 @@ function initGame(): void {
   const fog = new THREE.FogExp2(ENV.under.fog, ENV.under.density);
   scene.fog = fog;
   let wasAbove: boolean | null = null;
-  const applyEnv = () => {
-    const lvl = waterLevelAt(camera.position.x, camera.position.y, camera.position.z);
-    const above = lvl !== null && camera.position.y > lvl;
-    if (above === wasAbove) return;
-    wasAbove = above;
-    const env = above ? ENV.above : ENV.under;
+  const applyEnv = (headAbove: boolean) => {
+    if (headAbove === wasAbove) return;
+    wasAbove = headAbove;
+    const env = headAbove ? ENV.above : ENV.under;
     scene.background = new THREE.Color(env.bg);
     fog.color.setHex(env.fog);
     fog.density = env.density;
     ambient.intensity = env.ambient;
   };
 
-  // ── movement (freefly + SDF collision until M3's swim controller) ──
+  // ── player ──
   const debug = new DebugPanel(params.has('debug'));
-  const fly = new Freefly(camera, renderer.domElement);
-  let collide = true;
-  fly.resolve = (p) => {
-    if (collide) resolveCollision(p, TUNING.player.radius);
-  };
-  fly.speedFactor = () => {
-    if (!collide) return 1;
-    const r = regionAt(camera.position.x, camera.position.y, camera.position.z);
-    return r?.width === 'squeeze' ? 0.3 : 1;
-  };
+  const player = new PlayerController(camera, renderer.domElement);
+  const vitals = new Vitals();
+  const bubbles = new Bubbles();
+  scene.add(bubbles.points);
+  const ui = document.getElementById('ui');
+  if (!ui) throw new Error('#ui missing');
+  const hud = new Hud(ui);
 
   const teleport = (nodeId: string): void => {
     const n = getNode(nodeId);
     camera.position.set(n.pos[0], n.pos[1] + Math.min(1, n.radius * 0.25), n.pos[2]);
+    player.vel.set(0, 0, 0);
+    if (player.mode === 'walk') player.mode = 'swim';
   };
-  teleport('sink-platform');
-  camera.position.y = 2.2;
-  fly.look(180, -15);
+  const spawn = (): void => {
+    // The camp: on the dry shore shelf east of the pool mouth.
+    camera.position.set(12, 2.2, 3.5);
+    player.vel.set(0, 0, 0);
+    player.mode = 'swim'; // falls and lands -> walk
+    player.look(80, -10);
+  };
+  spawn();
 
-  // ── debug UI ──
-  const ui = document.getElementById('ui');
-  if (!ui) throw new Error('#ui missing');
+  // ── hotkeys & debug ──
   debug.hotkey('KeyH', 'Hide UI (screenshot mode)', () => ui.classList.toggle('hidden'));
-  debug.hotkey('KeyN', 'Toggle collision (noclip)', () => (collide = !collide));
+  debug.hotkey('KeyF', 'Flashlight', () => {
+    if (vitals.battery > 0) vitals.flashlightOn = !vitals.flashlightOn;
+  });
+  debug.hotkey('KeyN', 'Noclip (debug)', () => {
+    player.mode = player.mode === 'noclip' ? 'swim' : 'noclip';
+  });
+  debug.hotkey('KeyR', 'Restart (when dead)', () => {
+    if (vitals.dead) location.reload();
+  });
 
   const view = debug.section('View');
-  debug.button(view, 'Reset to spawn', () => {
-    teleport('sink-platform');
-    camera.position.y = 2.2;
-  });
-  debug.toggle(view, 'Collision', () => collide, (v) => (collide = v));
+  debug.button(view, 'Reset to spawn', spawn);
   debug.button(view, 'Open map viewer', () => {
     location.search = '?view=map&debug=1';
   });
@@ -157,6 +161,14 @@ function initGame(): void {
   tp.appendChild(select);
   debug.button(tp, 'Teleport', () => teleport(select.value));
 
+  const vit = debug.section('Vitals');
+  debug.toggle(vit, 'God', () => vitals.god, (v) => (vitals.god = v));
+  debug.toggle(vit, 'Infinite air', () => vitals.infiniteAir, (v) => (vitals.infiniteAir = v));
+  debug.toggle(vit, 'Infinite battery', () => vitals.infiniteBattery, (v) => (vitals.infiniteBattery = v));
+  debug.slider(vit, 'Air', 0, 100, 1, () => vitals.air, (v) => (vitals.air = v));
+  debug.slider(vit, 'Battery', 0, 1, 0.01, () => vitals.battery, (v) => (vitals.battery = v));
+  debug.button(vit, 'Damage 40', () => vitals.damage(40));
+
   const doorSec = debug.section('Doors');
   debug.button(doorSec, 'Open ALL doors', () => openAllDoors(doors));
   for (const d of doors) {
@@ -176,12 +188,41 @@ function initGame(): void {
   if (!fpsEl) throw new Error('#fps missing');
   let frames = 0;
   let fpsTime = 0;
+  let time = 0;
+  const exhaleOrigin = new THREE.Vector3();
   const clock = new THREE.Clock();
+
+  const tick = (dt: number): void => {
+    time += dt;
+    const p = camera.position;
+    const lvl = waterLevelAt(p.x, p.y, p.z);
+    const headAbove = lvl !== null && p.y > lvl;
+    if (!vitals.dead) player.update(dt, headAbove);
+    const zone: Zone = regionAt(p.x, p.y, p.z)?.zone ?? 'sinkhole';
+    vitals.update(dt, {
+      headAbove,
+      sprinting: player.sprinting,
+      moving: player.moving,
+      zone,
+    });
+    headlamp.intensity = vitals.flashlightOn ? headlampBase * lightFactor(vitals.battery, Math.random()) : 0;
+    // squeeze claustrophobia: modest FOV pull-in
+    const targetFov = player.mode !== 'noclip' && player.inSqueeze ? 64 : 75;
+    if (Math.abs(camera.fov - targetFov) > 0.1) {
+      camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, Math.min(1, dt * 4));
+      camera.updateProjectionMatrix();
+    }
+    // exhale from the mouth, in front of and below the lens
+    exhaleOrigin.set(0, 0, -1).applyQuaternion(camera.quaternion).multiplyScalar(0.4).add(p);
+    exhaleOrigin.y -= 0.18;
+    bubbles.update(dt, exhaleOrigin, !headAbove && player.mode !== 'noclip', time);
+    applyEnv(headAbove);
+    hud.update(dt, vitals, -p.y);
+  };
 
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1);
-    fly.update(dt);
-    applyEnv();
+    tick(dt);
     renderer.render(scene, camera);
     frames++;
     fpsTime += dt;
@@ -189,7 +230,7 @@ function initGame(): void {
       fpsEl.textContent = `${Math.round(frames / fpsTime)} FPS`;
       const p = camera.position;
       const r = regionAt(p.x, p.y, p.z);
-      status.textContent = `depth ${(-p.y).toFixed(1)} m | ${r ? `${r.zone} / ${r.width} / ${r.ref}` : 'outside graph'} | d ${sdf(p.x, p.y, p.z).toFixed(2)}`;
+      status.textContent = `${player.mode} | depth ${(-p.y).toFixed(1)} m | ${r ? `${r.zone}/${r.width}` : 'off-graph'} | air ${vitals.air.toFixed(0)} hp ${vitals.hp.toFixed(0)} bat ${(vitals.battery * 100).toFixed(0)}%`;
       frames = 0;
       fpsTime = 0;
     }
@@ -204,22 +245,25 @@ function initGame(): void {
   // Harness hook (M0 worklog): drives the game while the pane is hidden.
   const harness = {
     camera,
+    player,
+    vitals,
     teleport,
+    spawn,
     doorOpen: (id: string) => openDoor(doors, id),
     doorsOpenAll: () => openAllDoors(doors),
-    setCollide: (v: boolean) => (collide = v),
+    setAir: (v: number) => (vitals.air = v),
+    setBattery: (v: number) => (vitals.battery = v),
     sdfAt: (x: number, y: number, z: number) => sdf(x, y, z),
     region: (x: number, y: number, z: number) => regionAt(x, y, z),
+    waterLevelAt,
     stats: { tris, genMs },
     renderOnce: (): void => renderer.render(scene, camera),
     step: (frames = 1, dt = 1 / 60): void => {
-      for (let i = 0; i < frames; i++) fly.update(dt);
-      applyEnv();
+      for (let i = 0; i < frames; i++) tick(dt);
       renderer.render(scene, camera);
     },
-    look: (yawDeg: number, pitchDeg: number): void => fly.look(yawDeg, pitchDeg),
+    look: (yawDeg: number, pitchDeg: number): void => player.look(yawDeg, pitchDeg),
     shot: async (name: string): Promise<string> => {
-      applyEnv();
       renderer.render(scene, camera);
       const data = renderer.domElement.toDataURL('image/png');
       const res = await fetch(`/__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: data });

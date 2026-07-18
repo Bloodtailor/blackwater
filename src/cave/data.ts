@@ -78,10 +78,10 @@ export interface CaveEdge {
 
 export const NODES: CaveNode[] = [
   // ── SINKHOLE (0 … −10 m) — daylight, Lowe's camp, the 1968 winch head ──
-  { id: 'sink-platform', pos: [0, 0.7, 0], radius: 4, stretch: [1.6, 0.4, 1.2], zone: 'sinkhole',
+  { id: 'sink-platform', pos: [6, 0.7, 2], radius: 4, stretch: [1.6, 0.4, 1.2], zone: 'sinkhole',
     tags: ['surface', 'tieOff', 'tape', 'poster'],
     contents: { tape: 'T1', poster: 'G11' } },
-  { id: 'sink-blueprint', pos: [3, 0.7, -2], radius: 1.5, zone: 'sinkhole',
+  { id: 'sink-blueprint', pos: [8, 0.7, 0], radius: 1.5, zone: 'sinkhole',
     tags: ['surface', 'poster'], contents: { poster: 'G10' } },
   { id: 'sink-pool', pos: [0, -5, 0], radius: 6, stretch: [1.4, 0.9, 1.2], zone: 'sinkhole', tags: ['surface', 'tieOff'] },
   { id: 'sink-wall-e', pos: [6, -7, 3], radius: 2.5, zone: 'sinkhole',

@@ -1,0 +1,76 @@
+// HUD v1 (DESIGN §12): O2 bottom-left, battery pips bottom-right, depth gauge
+// + trend bottom-center, points/ammo placeholders. Minimal, monospace, dark.
+
+import type { Vitals } from '../player/vitals';
+import { TUNING } from '../tuning';
+
+export class Hud {
+  private o2Fill: HTMLElement;
+  private o2Num: HTMLElement;
+  private pips: HTMLElement[];
+  private lightState: HTMLElement;
+  private depthEl: HTMLElement;
+  private pointsEl: HTMLElement;
+  private vignette: HTMLElement;
+  private deathEl: HTMLElement;
+  private lastDepth = 0;
+  private trendTimer = 0;
+  private trend = '─';
+
+  constructor(ui: HTMLElement) {
+    const make = (id: string, parent: HTMLElement = ui): HTMLElement => {
+      const d = document.createElement('div');
+      d.id = id;
+      parent.appendChild(d);
+      return d;
+    };
+    this.vignette = make('hud-vignette');
+    const o2 = make('hud-o2');
+    o2.innerHTML = '<span class="label">O2</span><div class="bar"><div class="fill"></div></div><span class="num"></span>';
+    this.o2Fill = o2.querySelector('.fill') as HTMLElement;
+    this.o2Num = o2.querySelector('.num') as HTMLElement;
+    const bat = make('hud-battery');
+    bat.innerHTML = '<span class="label">LAMP</span>' + '<span class="pip"></span>'.repeat(5) + '<span class="state"></span>';
+    this.pips = Array.from(bat.querySelectorAll('.pip'));
+    this.lightState = bat.querySelector('.state') as HTMLElement;
+    this.depthEl = make('hud-depth');
+    const pts = make('hud-points');
+    pts.textContent = String(TUNING.economy.startPoints);
+    this.pointsEl = pts;
+    const ammo = make('hud-ammo');
+    ammo.textContent = '—/—';
+    this.deathEl = make('hud-death');
+    this.deathEl.innerHTML = '<div class="big">RECOVERY INCOMPLETE</div><div class="small">the site keeps its complement</div><div class="small">press R to dive again</div>';
+    this.deathEl.classList.add('hidden');
+  }
+
+  update(dt: number, v: Vitals, depth: number): void {
+    const frac = v.air / TUNING.air.capacity;
+    this.o2Fill.style.width = `${(frac * 100).toFixed(0)}%`;
+    this.o2Fill.classList.toggle('low', v.lowAir);
+    this.o2Num.textContent = v.air.toFixed(0);
+
+    this.pips.forEach((p, i) => {
+      p.classList.toggle('on', v.battery > i / 5 + 0.01);
+    });
+    this.lightState.textContent = v.flashlightOn ? '' : 'OFF';
+
+    this.trendTimer += dt;
+    if (this.trendTimer >= 0.5) {
+      this.trend = depth > this.lastDepth + 0.1 ? '▼' : depth < this.lastDepth - 0.1 ? '▲' : '─';
+      this.lastDepth = depth;
+      this.trendTimer = 0;
+    }
+    this.depthEl.textContent = `${Math.max(0, depth).toFixed(1)} m ${this.trend}`;
+
+    // low-air / drowning vignette
+    const danger = v.air <= 0 ? 1 : v.lowAir ? 1 - v.air / TUNING.air.lowThreshold : 0;
+    this.vignette.style.opacity = String(danger * 0.65);
+
+    this.deathEl.classList.toggle('hidden', !v.dead);
+  }
+
+  setPoints(p: number): void {
+    this.pointsEl.textContent = String(p);
+  }
+}

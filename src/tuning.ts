@@ -11,6 +11,11 @@ export const TUNING = {
     glideTime: 0.6, // s to stop
     freeflySpeed: 8.0, // debug camera
     radius: 0.45, // collision clearance from cave walls
+    eyeHeight: 1.05, // camera above the body point when walking
+    gravity: 14, // walk-mode gravity (m/s²) — snappy, game-feel not physics
+    currentSpeed: 0.35, // ambient wandering current (m/s, position push only)
+    currentFreq: 0.02, // spatial frequency of current wander
+    currentTimeFreq: 0.01, // temporal drift of current wander
   },
   geometry: {
     cellSize: 0.7, // marching grid resolution (m)

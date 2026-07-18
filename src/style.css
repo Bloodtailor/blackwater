@@ -142,3 +142,99 @@ canvas {
   color: #ff7a7a;
   font-weight: bold;
 }
+#hud-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(120, 10, 10, 0.75) 100%);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+#hud-o2 {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+#hud-o2 .bar {
+  width: 140px;
+  height: 10px;
+  border: 1px solid #2a5a52;
+  background: rgba(4, 16, 18, 0.7);
+}
+#hud-o2 .fill {
+  height: 100%;
+  background: #57c9b8;
+  transition: width 0.2s linear;
+}
+#hud-o2 .fill.low {
+  background: #e05545;
+}
+#hud-o2 .num {
+  min-width: 28px;
+}
+#hud-battery {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+#hud-battery .pip {
+  width: 10px;
+  height: 14px;
+  border: 1px solid #2a5a52;
+  background: rgba(4, 16, 18, 0.7);
+}
+#hud-battery .pip.on {
+  background: #b8d477;
+}
+#hud-battery .state {
+  color: #e0a545;
+  margin-left: 4px;
+}
+#hud-depth {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+#hud-points {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 15px;
+}
+#hud-ammo {
+  position: absolute;
+  bottom: 38px;
+  right: 14px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+#hud-death {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(2, 5, 7, 0.88);
+  pointer-events: auto;
+}
+#hud-death .big {
+  font-size: 28px;
+  letter-spacing: 6px;
+  color: #d94f3f;
+}
+#hud-death .small {
+  font-size: 13px;
+  opacity: 0.75;
+}
