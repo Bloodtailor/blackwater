@@ -2,6 +2,8 @@
 
 Working title: **BLACKWATER** (Black Ops 1 zombies × cave diving). Solo-only, single-run, browser game.
 
+> **DESIGN LOCKED 2026-07-18.** Systems, lore, and mechanics are final per the user ("set in stone"). Build sessions implement, tune numbers (`tuning.ts`), and fix — they do not redesign. Deviations only when implementation physically forces one; log any such deviation loudly in PLAN.md's worklog.
+
 > **How to use this document (note to future me):** This file is the source of truth for *what the game is*. PLAN.md is the source of truth for *what to do next*. LORE.md is the source of truth for *why the world looks and sounds the way it does* — setting, player character, VO, every asset's in-world identity and appearance, tape scripts, the easter egg song, and the Gemini image manifest. Build nothing player-visible without checking LORE.md. When implementation reality diverges from this doc, update the doc in the same session — never let the code become the only record of a decision. Once `src/cave/data.ts` exists, it is the source of truth for the *layout itself*; this doc only states layout *requirements* the data must satisfy. All gameplay numbers below are v1 guesses — they live in `src/tuning.ts` once coded, and Milestone 9 (balance) owns changing them. When tuning changes a number, update it here only if the *design intent* changed, not for every nudge.
 
 ---
@@ -108,11 +110,12 @@ Diegetic dressing: the cave holds **Site BLACKWATER**, a drowned 1960s naval nuc
 
 ## 8. Enemies
 
-All enemies swim; all path on the cave graph + local steering (§16). Spawn from **burrows** (tagged nodes — cracks/vents) near the player's current zone, ≥12 m away, out of sight preferred.
+All enemies swim; all path on the cave graph + local steering (§16). Spawn from **burrows** (tagged nodes — cracks/vents) near the player's current zone, ≥12 m away, out of sight preferred. (In-fiction: the site keeping its complement — LORE.md §1.1; endless round spawning is the central wrongness made load-bearing, not a hole.)
 
 ### 8.1 The Drowned (base)
-- Site personnel, 60 years drowned. Speed 2.8 m/s at round 1, +0.12/round, cap 5.5 (player sprint 6.5: always escapable — for air). HP 150 at round 1, ×1.12/round through 20, ×1.18 after (the wall). Grab: 35 dmg, −8 air, tilt kick.
+- Site personnel, 40 years drowned. Speed 2.8 m/s at round 1, +0.12/round, cap 5.5 (player sprint 6.5: always escapable — for air). HP 150 at round 1, ×1.12/round through 20, ×1.18 after (the wall). Grab: 35 dmg, −8 air, tilt kick (grabs read as *procedural handling*, not mauling — LORE.md §2).
 - Death animation: go limp and *drift* — corpses hang in the water briefly. Free atmosphere.
+- Variants deliberately few; the same men recur and the player is meant to notice (LORE.md §4 directive — our small procedural model count is canon). Idle behavior near facility props: pause mid-pursuit as if remembering a task.
 
 ### 8.2 The Angler (round 8+)
 - Ambusher that hangs in dark side passages showing only a **dim warm lure light** — deliberately mimics distant string lights/chemlights at a glance (subtly wrong color temperature: learnable). Within ~10 m: 8 m/s lunge. 1 per round +1 per 5 rounds, max 3 alive. Always drops a battery.
@@ -202,7 +205,7 @@ Minimal, diegetic-leaning: O2 bar + number (bottom-left), ammo + battery pips (b
 
 Run intro: **the job sheet** (LORE.md §2.3) as a skippable styled text card — it is how the player learns the objective (bottom of the bore, carry the Heart to daylight) plus two tutorial seeds, delivered in-world as a clinical recovery contract with one impossible detail. Posters/blueprint/photos support **inspect** (look + E → fullscreen overlay; LORE.md §7 readability rules). Tapes: collected on pickup, auto-play at the next safe surfacing (no enemy within ~20 m), replayable from pause (LORE.md §5).
 
-Menus: title (Dive / How to Dive / Settings), pause (incl. recovered-tapes list), death screen with stats, win screen with stats. Settings: mouse sensitivity, invert Y, FOV, **max-tilt slider**, brightness, master/music/SFX/VO volume, subtitles (radio logs).
+Menus: title (Dive / How to Dive / Settings), pause (incl. recovered-tapes list), death screen with stats, win screen with stats. **Stats screens are written as Lowe's ledger** (LORE.md §2): e.g. `RECOVERED: 214 / ROSTER: 41 / DISCREPANCY: noted` — kills, tapes, toys, rounds, time framed as recovery paperwork; the win screen ends on the forty-two beat (LORE.md §2.2 final lines). Settings: mouse sensitivity, invert Y, FOV, **max-tilt slider**, brightness, master/music/SFX/VO volume, subtitles (radio logs).
 
 "How to Dive" teaches in ≤10 lines: air, line, chemlights, bubbles rise, mounds detonate, lights attract.
 
