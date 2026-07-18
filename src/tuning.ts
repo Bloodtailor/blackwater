@@ -2,30 +2,47 @@
 // v1 values are DESIGN.md guesses; Milestone 9 owns changing them.
 
 export const TUNING = {
+  // ═══════════════════════════════════════════════════════════════════
+  // MOVEMENT — the feel numbers. Edit while the game runs; it hot-reloads.
+  // ═══════════════════════════════════════════════════════════════════
   player: {
-    swimSpeed: 4.0, // m/s
-    sprintSpeed: 6.5,
-    squeezeSpeed: 1.6,
-    walkSpeed: 5.0,
-    // Heavy force-based swimming (user: “moving a 300 lb object”) — weak
-    // thrust, almost no drag: slow to start, hates stopping and turning.
-    swimThrust: 1.6, // m/s² of directional thrust
-    sprintThrust: 2.8,
-    waterDrag: 0.12, // fraction of velocity lost per second — barely any
-    freeflySpeed: 8.0, // debug camera
-    radius: 0.42, // collision clearance from cave walls
-    eyeHeight: 1.05, // camera above the body point when walking
-    gravity: 14, // walk-mode gravity (m/s²) — snappy, game-feel not physics
-    jumpSpeed: 7.0, // walk-mode jump — high + snappy (dolphin dive)
-    coyoteTime: 0.12, // s of jump grace after leaving the ground
-    lungeImpulse: 3.5, // sprint-trigger lunge (m/s added)
-    lungeSqueezeFactor: 0.7, // lunges still fire in squeezes, most of the punch
+    // ── speeds (m/s) ──
+    swimSpeed: 4.0, // top speed without built momentum
+    sprintSpeed: 6.5, // top speed at full streamline momentum
+    squeezeSpeed: 1.6, // forced crawl inside squeezes
+    walkSpeed: 5.0, // on dry land
+
+    // ── heaviness: how hard it is to get moving / stop / turn ──
+    // Higher thrust = lighter feel. Lower drag = coasts longer.
+    swimThrust: 3.2, // m/s² of swim thrust ("300 lb" was 1.6; half as heavy now)
+    sprintThrust: 5.6, // m/s² while sprinting
+    waterDrag: 0.12, // fraction of speed lost per second while coasting
+
+    // ── lunge (sprint-trigger burst) ──
+    lungeImpulse: 6.5, // max Δv a lunge can apply (fully cancels opposing top speed)
+    lungeMaxBoost: 3.0, // a lunge never pushes your speed ABOVE this in its direction
+    lungeSqueezeFactor: 0.7, // squeezes keep most of the punch
     lungeCooldown: 1.2, // s ("lunge protection")
-    currentSpeed: 2.0, // ambient wandering current peak (m/s) — a constant opponent
-    currentFreq: 0.02, // spatial frequency of current wander
-    currentTimeFreq: 0.12, // temporal drift — quick shifts, smooth transitions
-    // Streamline momentum (user, 2026-07-18): holding one direction builds
-    // speed toward sprintSpeed even without sprint; direction changes dump it.
+
+    // ── surface: floating, breaching, diving back in ──
+    floatHeight: 0.35, // buoyancy holds your head about this far above the line
+    buoyancy: 18, // upward spring strength near the surface
+    surfaceDamp: 2, // vertical damping near the line (stops pogo-bobbing)
+    splashDampY: 0.4, // entering water scales falling speed by this (dive brake)
+    splashDampXZ: 0.7, // ...and horizontal speed by this
+    breachThrustCut: 0.1, // thrust multiplier once you're clear of the water
+
+    // ── walking & jumping ──
+    gravity: 14, // m/s² on land (game-feel, not physics)
+    jumpSpeed: 7.0, // jump takeoff — high + snappy (dolphin dives)
+    coyoteTime: 0.12, // s of jump grace after leaving the ground
+
+    // ── ambient current ──
+    currentSpeed: 2.0, // peak push (m/s); no floor — real lulls happen
+    currentFreq: 0.02, // spatial wander scale
+    currentTimeFreq: 0.03, // how fast it shifts over time (higher = twitchier)
+
+    // ── streamline momentum ──
     streamline: {
       buildPerSec: 0.45, // no-sprint build rate (~2.2 s to full)
       sprintBuildPerSec: 1.4, // sprint builds much faster and maintains
@@ -33,6 +50,11 @@ export const TUNING = {
       breakDot: 0.6, // wish·vel below this = direction change, dump speed
       breakDecayPerSec: 3,
     },
+
+    // ── misc ──
+    freeflySpeed: 8.0, // debug noclip camera
+    radius: 0.42, // collision clearance from cave walls
+    eyeHeight: 1.05, // camera above the body point when walking
   },
   hr: {
     rest: 60, // bpm

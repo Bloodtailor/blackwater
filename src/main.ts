@@ -198,7 +198,7 @@ function initGame(): void {
     const p = camera.position;
     const lvl = waterLevelAt(p.x, p.y, p.z);
     const headAbove = lvl !== null && p.y > lvl;
-    if (!vitals.dead) player.update(dt, headAbove);
+    if (!vitals.dead) player.update(dt, lvl);
     const zone: Zone = regionAt(p.x, p.y, p.z)?.zone ?? 'sinkhole';
     vitals.update(dt, {
       headAbove,

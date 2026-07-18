@@ -25,6 +25,7 @@ export class PlayerController {
   private lungeCooldown = 0;
   private streamline = 0; // 0..1 built momentum (user streamline system)
   private coyote = 0;
+  private prevSubmerged = true;
   private velDir = new THREE.Vector3();
   private grad: [number, number, number] = [0, 0, 0];
   private yaw = 0;
@@ -90,14 +91,18 @@ export class PlayerController {
     const t = this.time * P.currentTimeFreq;
     const a = fbm(p.x * P.currentFreq + t, p.y * P.currentFreq, p.z * P.currentFreq + t * 0.7, 2) * Math.PI * 2;
     const b = fbm(p.x * P.currentFreq + 7.3, p.y * P.currentFreq + t, p.z * P.currentFreq, 2) * Math.PI * 0.45;
-    // strength floor: the current is a constant opponent, never a lull
-    const mag = P.currentSpeed * (0.45 + 0.75 * Math.abs(fbm(p.x * P.currentFreq + t * 1.3, p.y * P.currentFreq + 13.7, p.z * P.currentFreq, 2)));
+    // no strength floor — real lulls and real surges (user, round 4)
+    const mag = P.currentSpeed * 1.1 * Math.abs(fbm(p.x * P.currentFreq + t * 1.3, p.y * P.currentFreq + 13.7, p.z * P.currentFreq, 2));
     out.set(Math.cos(a) * Math.cos(b), Math.sin(b), Math.sin(a) * Math.cos(b)).multiplyScalar(mag);
   }
 
-  update(dt: number, headAbove: boolean): void {
+  update(dt: number, waterLevel: number | null): void {
     this.time += dt;
     const P = TUNING.player;
+    // h: head height above the local water line (negative = submerged;
+    // -1 stands in for "no surface anywhere near")
+    const h = waterLevel !== null ? this.camera.position.y - waterLevel : -1;
+    const headAbove = h > 0;
     const look = 1.6 * dt;
     if (this.keys.has('ArrowLeft')) this.yaw += look;
     if (this.keys.has('ArrowRight')) this.yaw -= look;
@@ -135,11 +140,21 @@ export class PlayerController {
       if (this.keys.has('Space')) this.wish.add(this.camUp);
       if (this.keys.has('KeyC')) this.wish.sub(this.camUp);
       if (this.wish.lengthSq() > 0) this.wish.normalize();
-      // lunge on sprint trigger (edge), with cooldown; small inside squeezes
+      // Lunge on sprint trigger (edge), with cooldown. Bounded boost: a lunge
+      // can fully cancel opposing momentum (impulse ≈ top speed) but never
+      // pushes you above lungeMaxBoost in its own direction — so from rest
+      // it's a moderate kick, against full speed it zeroes you out (user).
       if (this.sprinting && !this.prevSprint && this.lungeCooldown <= 0) {
         const dir = this.wish.lengthSq() > 0 ? this.wish : this.fwd;
         const impulse = P.lungeImpulse * (this.inSqueeze ? P.lungeSqueezeFactor : 1);
-        this.vel.addScaledVector(dir, impulse);
+        const vAlong = this.vel.dot(dir);
+        // opposing momentum: cancel it (stop near zero, don't shoot through);
+        // otherwise: boost, but never above lungeMaxBoost
+        const targetAlong =
+          vAlong < -0.5
+            ? Math.min(vAlong + impulse, 0.5)
+            : Math.min(vAlong + impulse, Math.max(vAlong, P.lungeMaxBoost));
+        this.vel.addScaledVector(dir, targetAlong - vAlong);
         this.lungeCooldown = P.lungeCooldown;
         this.onLunge?.();
       }
@@ -165,10 +180,13 @@ export class PlayerController {
       const targetCap: number = this.inSqueeze
         ? P.squeezeSpeed
         : THREE.MathUtils.lerp(P.swimSpeed, P.sprintSpeed, this.streamline);
-      // Heavy force-based swimming: weak thrust, near-zero drag. Slow to
-      // start, hates stopping, redirecting costs real time (user: 300 lb).
+      // Heavy force-based swimming: bounded thrust, low drag. Slow to start,
+      // hates stopping, redirecting costs real time. Thrust only cuts out
+      // once you're properly clear of the water (breach), not while treading.
       const thrust =
-        (this.sprinting ? P.sprintThrust : P.swimThrust) * (this.inSqueeze ? 0.7 : 1) * (headAbove ? 0.1 : 1);
+        (this.sprinting ? P.sprintThrust : P.swimThrust) *
+        (this.inSqueeze ? 0.7 : 1) *
+        (h > 0.5 ? P.breachThrustCut : 1);
       if (this.wish.lengthSq() > 0) this.vel.addScaledVector(this.wish, thrust * dt);
       this.vel.multiplyScalar(Math.max(0, 1 - P.waterDrag * dt));
       // cap limits thrust-driven growth only — a coasting body keeps its
@@ -177,8 +195,24 @@ export class PlayerController {
       if (spd > targetCap && (this.wish.lengthSq() > 0 || this.inSqueeze)) {
         this.vel.multiplyScalar(Math.max(targetCap / spd, 1 - 1.5 * dt));
       }
-      if (headAbove) this.vel.y -= P.gravity * dt;
+      // Surface physics: gravity ramps in as you rise clear of the line, but
+      // a buoyancy spring holds your head comfortably out of the water, and
+      // damping near the line stops pogo-bobbing.
+      if (h > 0) {
+        this.vel.y -= P.gravity * Math.min(1, h / 0.8) * dt;
+        if (h < P.floatHeight) this.vel.y += (P.floatHeight - h) * P.buoyancy * dt;
+        if (h < 0.6) this.vel.y *= Math.max(0, 1 - P.surfaceDamp * dt);
+      }
       pos.addScaledVector(this.vel, dt);
+      // splash brake: diving back in kills most of the plunge so momentum
+      // doesn't carry you to the floor
+      const submerged = !(waterLevel !== null && pos.y > waterLevel);
+      if (submerged && !this.prevSubmerged && this.vel.y < -2) {
+        this.vel.y *= P.splashDampY;
+        this.vel.x *= P.splashDampXZ;
+        this.vel.z *= P.splashDampXZ;
+      }
+      this.prevSubmerged = submerged;
       // ambient current pushes position only (never the camera view);
       // damped in squeezes so peak current can never pin you in a crack
       if (!headAbove) {
