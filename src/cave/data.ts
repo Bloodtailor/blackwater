@@ -292,7 +292,7 @@ export const EDGES: CaveEdge[] = [
 
   // Two ways into the Abyss hall: pressure hatch vs nasty squeeze
   { a: 'throat-bottom', b: 'abyss-hall', width: 'normal', door: { cost: 2000, kind: 'hatch' } },
-  { a: 'throat-bottom', b: 'abyss-hall', width: 'squeeze', waypoints: [[8, -72, 43]] },
+  { a: 'throat-bottom', b: 'abyss-hall', width: 'squeeze', waypoints: [[9, -72.5, 43.5]] },
 
   // The Chimney: free, horrendous second route down (Maze → Cathedral)
   { a: 'mz-chapel', b: 'chim-1', width: 'squeeze', waypoints: [[-6, -46, 38]] },
@@ -347,6 +347,10 @@ export function buildAdjacency(edges: CaveEdge[] = EDGES): Adjacency {
   }
   return adj;
 }
+
+// The cenote mouth: an open shaft of sky above the platform. Part of the map
+// (the sinkhole is open-air, LORE §3); carved by the SDF like everything else.
+export const SKY_SHAFT = { a: [0, 0, 0] as [number, number, number], b: [0, 14, 0] as [number, number, number], r: 7 };
 
 export const ZONE_HUBS: Record<Zone, string> = {
   sinkhole: 'sink-pool',

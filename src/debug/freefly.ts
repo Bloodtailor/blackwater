@@ -7,6 +7,9 @@ const UP = new THREE.Vector3(0, 1, 0);
 // keyboard-look so the harness can drive the camera without pointer lock.
 export class Freefly {
   enabled = true;
+  // Optional hooks wired by the host: collision resolve + speed modifier.
+  resolve?: (pos: THREE.Vector3) => void;
+  speedFactor?: () => number;
   private keys = new Set<string>();
   private yaw = 0;
   private pitch = 0;
@@ -49,7 +52,7 @@ export class Freefly {
     this.camera.quaternion.setFromEuler(this.euler);
 
     const sprint = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
-    const speed = TUNING.player.freeflySpeed * (sprint ? 3 : 1);
+    const speed = TUNING.player.freeflySpeed * (sprint ? 3 : 1) * (this.speedFactor?.() ?? 1);
     this.camera.getWorldDirection(this.dir);
     this.right.crossVectors(this.dir, UP).normalize();
     this.move.set(0, 0, 0);
@@ -63,5 +66,6 @@ export class Freefly {
       this.move.normalize();
       this.camera.position.addScaledVector(this.move, speed * dt);
     }
+    this.resolve?.(this.camera.position);
   }
 }

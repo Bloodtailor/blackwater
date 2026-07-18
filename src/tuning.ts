@@ -10,6 +10,17 @@ export const TUNING = {
     accelTime: 0.4, // s to reach speed
     glideTime: 0.6, // s to stop
     freeflySpeed: 8.0, // debug camera
+    radius: 0.45, // collision clearance from cave walls
+  },
+  geometry: {
+    cellSize: 0.6, // marching grid resolution (m)
+    radiusOpen: 2.4, // tunnel radii by width class (m)
+    radiusNormal: 1.6,
+    radiusSqueeze: 0.75,
+    noiseFreq: 0.35,
+    noiseAmpFactor: 0.15, // wall noise amplitude = clamp(r * factor, 0.12, max)
+    noiseAmpMax: 0.9,
+    doorBlockPad: 0.9, // door plug radius = tunnel radius + pad
   },
   air: {
     capacity: 100,
