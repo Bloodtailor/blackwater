@@ -23,6 +23,7 @@
 ### 2.1 VO rules
 - **Dutch NEVER speaks underwater.** Regulator in, mouth shut — his silence below is the horror discipline, and it makes every surface line land. Below, he is breath, heartbeat, and bubbles only.
 - Lines trigger at: the platform, any air pocket (head above water), and menus. Tape reactions queue until he next surfaces.
+- **Anti-spam (silence is the default):** the player visits air constantly — Dutch must not narrate every breath. Global ambient-line cooldown ≥ 120 s; each line plays at most once per run (no-repeat memory); priority queue = tape reactions > event reactions (power, close call, toys) > ambient, and ambient lines roll a ~40% chance even when off cooldown. If in doubt, he says nothing.
 - Delivery: ElevenLabs at M8, one consistent voice, close-mic, slight room echo topside / tight wet echo in pockets.
 
 ### 2.2 Voice lines v1 (trim/extend at M8; categories are load-bearing, exact lines aren't)
@@ -39,6 +40,12 @@
 **Second Wind wake:** "—Up. Up. Not like this. Not where he is."
 **Idle (platform, rare):** "Truck's a hundred feet up. Feels like a different country." · "Nobody knows I'm here. That was smarter yesterday."
 **Win (Ascent complete, final lines):** "Shift's over. All of you — go home." · *(quiet)* "Got your tags, Chief. Let's get some sun."
+
+### 2.3 The letter (run intro — this is how the player learns the objective)
+Shown as a skippable styled text card at run start (plain UI over black, typewriter + handwriting; no image dependency). It delivers the win condition, the stakes, and two tutorial seeds (lay your own line; don't trust the old ones) in-world, in under 30 seconds:
+
+> *Voss — Your father's site is real. Coordinates on the back. I ran the winch topside on the day, which is why I'm alive to write this and why I never slept right after. Listen once: the thing they were drilling for is still down there, at the bottom of the bore, and it's why none of them ever came up — and why they're not done coming up. If you go — you're his son, so you'll go — cut it out of that rock and carry it to daylight. It's the only way any of them clock out. Don't trust the old lines down there. Lay your own.*
+> *— C. Boone, winch operator, BLACKWATER '64–'68*
 
 ## 3. The setting — a facility fused through a cave
 
@@ -70,7 +77,7 @@ The user asked: cave, or flooded nuclear facility? **Answer: both, deliberately.
 | String lights | Site utility lighting off the Pile | Caged bulbs on cable, cherenkov-tinted, gentle sway |
 | Chalk mounds | Natural silt-laden flowstone the crew flagged and feared | Pale bulbous stacks + faint shimmer; some wear 1968 warning tags ("DO NOT TOUCH — SILT") — the crew teaches the player |
 | Air pockets | Natural domes; a few are site airlocks holding a bubble | Mirror-silver ceiling from below; airlock ones add gauges and a bench |
-| Guide line / reels | Dutch's own kit (2008 nylon, white) vs. the crew's old hemp lines (brown, rotten, *don't trust them* — decor only) | Clean white vs. fuzzed brown; the contrast is a silent tutorial |
+| Guide line / reels | Dutch's own kit (2008 nylon, white) vs. the crew's old hemp lines (brown, rotten, *don't trust them* — decor, not followable) | Clean white vs. fuzzed brown; the contrast is a silent tutorial (seeded by Boone's letter). 2–3 hemp lines lead somewhere (a body, a cache, a tape) so curiosity pays |
 | Chemlights | Dutch's marker sticks | Green, cold, modern |
 | Batteries | Site dry-cells in wax paper, still good ("the program overbuilt everything") | Wax-paper brick, stencil font |
 | Tapes | Waterproof log recorders, crew personal effects | Olive-drab reel-to-reel bricks, red REC dot |
@@ -81,9 +88,11 @@ The user asked: cave, or flooded nuclear facility? **Answer: both, deliberately.
 | Abyss Guardians | **Castor & Pollux** — two Mark V atmospheric-suit divers, still on post at the drill head | Big brass hard-hat silhouettes, hose stubs, name stenciled on the bell; slow, inevitable |
 | Posters | Program safety/propaganda print | See Gemini manifest §7 |
 | Jukebox | Rec-room morale unit, 1966 | Chrome-and-walnut box, bubble arch, dead until the toys wake it |
-| Toy divers ×3 | The machinist's wind-up gifts for his three sons — never delivered | Painted tin (red/blue/yellow), crank key, tiny helmet |
+| Toy divers ×3 | The machinist's wind-up gifts for his three sons — never delivered | Painted tin (red/blue/yellow), crank key, tiny helmet; faint music-box shimmer audible ≤8 m so a searching player finds them without pixel-hunting |
 
 ## 5. Tapes — full scripts (6; VO at M8; subtitled; 20–40 s each)
+
+**Playback (important):** tapes do NOT play where they're found — nobody listens to a 30-second log while being hunted at depth, so depth-playback would just train players to skip story. Pickup is a one-second interaction (click + "TAPE RECOVERED — T3" toast); the tape **auto-plays the next time Dutch has his head above water and it's safe** (no enemy within ~20 m), followed by his queued reaction line; all recovered tapes are replayable from the pause menu. This makes the surface/pocket rhythm the story rhythm: dive = tension, breathe = story.
 
 - **T1 — Sinkhole, camp locker. Quartermaster, 12 MAR 68.** "Supply log, March twelve. Forty-one souls, coffee for sixty, complaints for a hundred. New man asked why the pay's double. Told him: the commute. Pile's humming pretty, drill's ahead of schedule. Easiest hard duty in the Navy."
 - **T2 — Galleries rec room. Morale officer.** "Rec room's done. Jukebox came down the shaft wrapped like a church bell. Machinist's been turning little wind-up divers on the lathe for his boys — three of them, red, blue, yellow. Says the youngest thinks his old man lives in the ocean. Kid's not wrong."
@@ -164,6 +173,8 @@ From the dark below
 
 Global style suffix for every prompt: *"1960s US Navy print ephemera, offset-print grain, aged and water-stained, muted period palette, worn edges, no modern typography, no watermarks."*
 
+**Readability rules:** every poster is designed **bold-headline-first** (large type, high contrast, minimal body text) because it will be read by flashlight in murk — and every poster/blueprint/photo supports **inspect** (look + E → fullscreen overlay of the texture). In-world legibility sells atmosphere; the overlay carries the actual reading. Text in generated images is decorative; any text the player must *understand* is rendered as a real subtitle/caption in the overlay, so garbled AI lettering can never break comprehension.
+
 | ID | Image | Used | Aspect |
 |---|---|---|---|
 | G1 | Site BLACKWATER patch: anglerfish curled around a trident, ring text "NAVSITE BLACKWATER — CORMORANT" | Menus, hatches, HUD corner | 1:1 |
@@ -174,9 +185,9 @@ Global style suffix for every prompt: *"1960s US Navy print ephemera, offset-pri
 | G6 | Poster "DRAUGHT RATION IS NOT OPTIONAL" cheerful sailor + canister | dispensaries | 2:3 |
 | G7 | Poster "REQUISITION ROULETTE — ONE PULL PER MAN PER BELL" crate + dice | box spots | 2:3 |
 | G8 | Notice "MISSING: E. HALVERSEN, LAMP-MAN — LAST SEEN BELOW" small photo, curling | Maze, late-game dread | 3:4 |
-| G9 | Perk label sheet: 9 canister labels (name, icon, color cap) per DESIGN §10.5 | perk stations | grid |
-| G10 | Site schematic blueprint, pre-flood, subtly *wrong* vs. the real cave (period-inaccurate on purpose — flavor, not a nav crutch) | spawn platform + menu | 3:2 |
-| G11 | Crew photo: 41 men on the dive platform, 1966, one face circled in grease pencil (Marcus) | camp + ending | 3:2 |
+| G9 | Perk canister labels ×9 — generated **individually** (one prompt per perk from DESIGN §10.5: name, icon motif, color cap), not as a sheet to slice | perk stations | 1:1 ×9 |
+| G10 | Site schematic blueprint, pre-flood: **accurate for the built facility portions, hand-sketched and openly uncertain for natural cave** (dotted lines, "?", grease-pencil crew annotations like "COLLAPSED", "DO NOT USE") — honest about what it doesn't know, so players can trust it exactly as far as the crew did; the confusing natural passages stay unmapped | spawn platform + menu | 3:2 |
+| G11 | Crew photo: a large group of men in dive/work gear on the platform, 1966, one face circled in grease pencil (Marcus) — prompt says "a few dozen", never an exact count (generators can't count and nobody will) | camp + ending | 3:2 |
 | G12 | Jukebox faceplate + "REC ROOM — 1900–2100 — BE A GENTLEMAN" sign | rec room | 1:1, 3:1 |
 
 ## 8. Naming & stencil glossary
