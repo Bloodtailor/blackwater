@@ -1,6 +1,6 @@
 # BLACKWATER — Build Plan
 
-> **STATUS — NEXT UP: M0 (Scaffold).** Update this line every session.
+> **STATUS — NEXT UP: M1 (Cave data & map viewer).** Update this line every session.
 > **DESIGN LOCKED 2026-07-18:** implement, tune, and fix — do not redesign systems or lore. If implementation physically forces a deviation, log it loudly in the worklog.
 
 ## Session protocol (follow this every prompt)
@@ -16,13 +16,13 @@
 
 ## Milestones
 
-### M0 — Scaffold & harness
-- [ ] Vite + TypeScript (strict) + Three.js; `npm run dev`; `.gitignore` covers `node_modules`, `dist`, `.env`
-- [ ] `.claude/launch.json` so the preview pane can start the dev server
-- [ ] Render a placeholder chamber (displaced-noise sphere), water fog, FPS counter
-- [ ] Freefly noclip camera; `?debug=1` panel skeleton + hotkey framework; screenshot-friendly (HUD-less) mode
-- [ ] `src/tuning.ts` created; Vitest wired with one trivial test
-- **DoD:** preview shows a foggy rock chamber I can fly through at 60 fps; debug panel opens; committed.
+### M0 — Scaffold & harness ✅ 2026-07-18
+- [x] Vite + TypeScript (strict) + Three.js; `npm run dev`; `.gitignore` covers `node_modules`, `dist`, `.env`
+- [x] `.claude/launch.json` so the preview pane can start the dev server
+- [x] Render a placeholder chamber (displaced-noise sphere), water fog, FPS counter
+- [x] Freefly noclip camera; `?debug=1` panel skeleton + hotkey framework; screenshot-friendly (HUD-less) mode
+- [x] `src/tuning.ts` created; Vitest wired with one trivial test (3 invariant tests)
+- **DoD met:** chamber renders at 0.03 ms/frame (≫60 fps); WASD/vertical movement verified to exact spec (8.00 m/s) via harness-stepped frames; debug panel + F1/H hotkeys verified; screenshots in `docs/screens/m0-*.png`; tsc clean, tests pass.
 
 ### M1 — Cave data & map viewer
 - [ ] Schema from DESIGN §16; author the full layout in `src/cave/data.ts` (all 5 zones, every tag: burrows, pockets, mounds, tilt edges, squeezes, doors, buys, perks, box spots, power, PaP, Heart, tapes, caches, tie-offs, posters, toys ×3, jukebox) — placements follow LORE.md §3–§4 (facility intrusion gradient; toys in dead ends)
@@ -130,3 +130,4 @@ Multiplayer/co-op · saves mid-run · difficulty modes (the tilt slider is acces
 - **2026-07-18 — Lore v2: mystery-first rewrite (user request).** User verdict on v1: too solved, too cliché (dead-father/dog-tags motivation, noble final tape, explained zombies). Full rewrite. Structural change: LORE §1 no longer contains "the truth" — it contains established facts + **eight voids that must never be answered, even internally** (what the Heart is, why the crew moves, the client, the 1971 photograph, the count that comes out 42, the empty condemned suits, disagreeing measurements, the site's purpose), plus the horror-engine rules: mundane voice, exactly one wrongness per artifact, evidence must disagree, the flood is never depicted, and fiction-unreliability never touches gameplay tells (pillar 3 guard). New character: Vernon Lowe, soft-spoken body-recovery diver — motivations are the fee, professional completion of the trade's biggest unfinished job, and being chosen by name (unexplained); he talks to the dead as clients and counts compulsively; fear registers as politeness. Objective delivery is now a clinical job sheet with Lowe's pencil note. Tapes rewritten: six mundane logs, one impossibility each, no flood narrative, T6 is a roster read three weeks after the flood by a voice not in the crew book. Song lyrics rewritten cryptic (no exposition, roster outro). All v1 gameplay-review mechanics kept unchanged (tape playback at safe surfacing, VO anti-spam, intro card slot, manifest hardening, toy shimmer).
 - **2026-07-18 — Lore gameplay review (user request).** Reviewed LORE.md as a game system, not fiction. Fixes: tape playback moved out of depth (collect on pickup → auto-play at next safe surfacing; depth playback would train players to skip story); Dutch VO anti-spam spec (120 s cooldown, no-repeat, priority queue — silence is default); added Boone's letter as run-intro card because nothing previously told the player the objective; toys got an ≤8 m music-box shimmer (findability without pixel-hunting); blueprint G10 changed from "subtly wrong" to "honest about its blind spots" (a secretly wrong map violates the honest-tools pillar); G11 prompt de-counted (generators can't count); G9 perk labels generated individually, not as a sheet to slice; posters get bold-headline design + fullscreen inspect overlay with real-text captions so garbled AI lettering can't break comprehension; geiger crackle near the Pile as flavor (explicitly no radiation mechanic).
 - **2026-07-18 — Design revision (user feedback).** Door buys restored (DESIGN §10.3: progression + shortcut doors, buy-open/never-close, ~5500 mandatory) — consistent with "passages never close" since doors only ever add passage. Frenzy rule replaced by the user's mechanic, the Cave Stirs countdown (§9): near-empty rounds auto-advance after 45 s, survivors carry over; pillar 2 reworded — I had oversold breath as the anti-crawler mechanic (it taxes chores; only a rule stops round-freezing). M9 rebuilt around headless balance simulation + in-game scripted pilot mode after honestly assessing that I can't twitch-play long real-time runs; manual play is for feel only. Geometry method pinned: SDF + marching cubes for organic/layered passages.
+- **2026-07-18 — M0 complete (scaffold & harness).** Vite 6 + TS strict + three r170 + Vitest; placeholder chamber; freefly; debug panel; tuning.ts. **Critical harness learning: the Browser pane can be hidden (`document.hidden`), which throttles rAF to ZERO — screenshots time out and the game loop never ticks.** Solution now standard: `window.__bw` harness (renderOnce / shot / bench / step / look) + a vite middleware `/__shot` that saves canvas PNGs to `docs/screens/` — ALL future visual verification goes through `__bw.shot()` + reading the PNG, and `__bw.step(frames)` drives real update ticks with synthetic keydowns. `__bw` is the seed of pilot mode (M9). Other learnings: vite must be fully restarted (preview_stop/start) if vite.config.ts appears after server start; flat-color procedural rock under fog reads as featureless mush — vertex-color noise + flatShading fixed it (carry into M2's shader thinking); placeholder renders at 0.03 ms/frame. PowerShell note: never put double quotes inside git commit messages (PS 5.1 arg-passing mangles them).
