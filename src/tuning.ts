@@ -41,6 +41,14 @@ export const TUNING = {
     currentSpeed: 2.0, // peak push (m/s); no floor — real lulls happen
     currentFreq: 0.02, // spatial wander scale
     currentTimeFreq: 0.03, // how fast it shifts over time (higher = twitchier)
+    currentDepthFactorMin: 0.45, // × current strength at the surface
+    currentDepthFactorMax: 1.5, // × at/below currentDepthRangeM (user: stronger deeper)
+    currentDepthRangeM: 70,
+
+    // ── the wet slide (one-way chute; user 2026-07-18) ──
+    slideAccel: 9, // m/s² downhill — you do not climb this
+    slideMaxSpeed: 8,
+    slideControl: 2.0, // tiny lateral nudge while sliding
 
     // ── streamline momentum ──
     streamline: {
@@ -129,7 +137,9 @@ export const TUNING = {
     lerpPerSec: 1.2, // how fast fog chases its target (zone/silt transitions)
   },
   atmosphere: {
-    particulateCount: 700, // ambient motes drifting near the camera
+    particulateCount: 1500, // ambient motes riding the current near the camera
+    particulateDepthMinFrac: 0.3, // fraction of motes rendered at the surface
+    particulateFullDepthM: 55, // full mote density at/below this depth
     particulateBoxM: 16, // they wrap inside a box this wide around the camera
     siltParticleMax: 2600, // camera-local silt cloud budget
     siltCloudRadiusM: 9,

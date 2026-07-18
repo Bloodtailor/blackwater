@@ -118,8 +118,9 @@ The user asked: cave, or flooded nuclear facility? **Answer: both, deliberately.
 | Doors — grate | Site security grates | Riveted lattice, padlock chain, stencil |
 | Doors — hatch | Bulkhead pressure hatches | Crank-wheel navy hatch, gasket weeping rust |
 | String lights | Site utility lighting off the Pile | Caged bulbs on cable, cherenkov-tinted, gentle sway |
-| Chalk mounds | Natural silt-laden flowstone the crew flagged and feared | Pale bulbous stacks + faint shimmer; some wear 1968 warning tags ("DO NOT TOUCH — SILT") — the crew teaches the player |
-| Air pockets | Natural domes; a few are site airlocks holding a bubble | Mirror-silver ceiling from below; airlock ones add gauges and a bench |
+| Chalk columns (silt trap) | Natural silt-laden flowstone columns the crew flagged and feared | Pale bulbous floor-to-ceiling columns + faint shimmer (user rework 2026-07-18: columns, not stacks — no up/down tell); some wear 1968 warning tags ("DO NOT TOUCH — SILT") — the crew teaches the player |
+| Air bells & pockets | Natural trapped-air chambers; a few are site airlocks holding a bubble | Bells: flat dry rock floor with a black pool hole where the shaft comes up; small pockets: mirror-silver ceiling domes. Coherent air per DESIGN §5 (user rework 2026-07-18) |
+| The Dry Reach | Natural air-filled galleries above the west water line; the crew's hemp lines stop at the pool edge | Walkable stone floors, stalactite fringes, unreachable dark mouths high in the walls, and the wet chute — nothing man-made intrudes here |
 | Guide line / reels | Lowe's kit (2008 nylon, white) vs. the crew's hemp lines (brown, rotten, *condemned per the job sheet* — decor, not followable) | Clean white vs. fuzzed brown; the contrast is a silent tutorial. 2–3 hemp lines lead somewhere (a body at a workstation, a cache, a tape) so curiosity pays |
 | Chemlights | Lowe's marker sticks | Green, cold, modern |
 | Batteries | Site dry-cells in wax paper, still good | Wax-paper brick, stencil font |

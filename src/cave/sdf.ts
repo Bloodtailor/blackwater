@@ -21,11 +21,15 @@ export interface PrimRegion {
 interface Prim extends PrimRegion {
   ax: number; ay: number; az: number;
   bx: number; by: number; bz: number;
-  r: number; // capsule radius (segments) / nominal radius (chambers)
+  r: number; // capsule radius at the a end / nominal radius (chambers)
+  rb: number; // capsule radius at the b end (≠ r → tapered cone: stalactites)
   rx: number; ry: number; rz: number; // ellipsoid radii (chambers)
   ellipsoid: boolean;
-  solid: boolean; // pillars: subtract from passable space
+  solid: boolean; // pillars, spikes: subtract from passable space
   broad: number; // large-scale wall-warp amplitude (big chambers)
+  /** Flat floor: soft-intersect the chamber with the half-space above this y
+   *  (user 2026-07-18: rooms — especially air rooms — must not read as spheres). */
+  floorY?: number;
   noiseAmp: number;
 }
 
@@ -46,18 +50,6 @@ let hash = new Map<number, number[]>();
 let doorBlocks: DoorBlock[] = [];
 export let bounds = { min: [0, 0, 0] as [number, number, number], max: [0, 0, 0] as [number, number, number] };
 
-// Dry-pocket benches: solid ledges that give each dry pocket real walkable
-// floor above its water line (exported so main/tests know where they are).
-export interface DryBench {
-  nodeId: string;
-  c: [number, number, number];
-  rx: number;
-  ry: number;
-  rz: number;
-  topY: number;
-}
-export let dryBenches: DryBench[] = [];
-
 function widthRadius(w: CaveEdge['width']): number {
   return w === 'open' ? G.radiusOpen : w === 'squeeze' ? G.radiusSqueeze : G.radiusNormal;
 }
@@ -70,8 +62,14 @@ function hashKey(ix: number, iy: number, iz: number): number {
   return (ix + 128) + (iy + 128) * 512 + (iz + 128) * 262144;
 }
 
-function segPrim(base: Omit<Prim, 'rx' | 'ry' | 'rz' | 'ellipsoid' | 'solid' | 'broad'>, solid = false): Prim {
-  return { ...base, rx: base.r, ry: base.r, rz: base.r, ellipsoid: false, solid, broad: 0 };
+function segPrim(base: Omit<Prim, 'rb' | 'rx' | 'ry' | 'rz' | 'ellipsoid' | 'solid' | 'broad'> & { rb?: number }, solid = false): Prim {
+  return { ...base, rb: base.rb ?? base.r, rx: base.r, ry: base.r, rz: base.r, ellipsoid: false, solid, broad: 0 };
+}
+
+// Polynomial smooth max — soft intersection (curved, soft floor edges).
+function smax(a: number, b: number, k: number): number {
+  const h = Math.max(k - Math.abs(a - b), 0) / k;
+  return Math.max(a, b) + h * h * k * 0.25;
 }
 
 export function initSdf(): void {
@@ -109,16 +107,49 @@ export function initSdf(): void {
     const ry = n.radius * s[1];
     const rz = n.radius * s[2];
     const maxR = Math.max(rx, ry, rz);
+    const floorY = n.floor !== undefined ? n.pos[1] - ry * n.floor : undefined;
     prims.push({
       ax: n.pos[0], ay: n.pos[1], az: n.pos[2],
       bx: n.pos[0], by: n.pos[1], bz: n.pos[2],
-      r: n.radius, rx, ry, rz,
+      r: n.radius, rb: n.radius, rx, ry, rz,
       ellipsoid: true,
       solid: false,
       broad: n.radius >= 4 ? Math.min(maxR * 0.15, 3.5) : 0,
+      floorY,
       noiseAmp: noiseAmpFor(Math.min(rx, ry, rz)),
       zone: n.zone, width: 'chamber', ref: n.id,
     });
+    // Stalactites & stalagmites (user 2026-07-18): tapered solid spikes in air
+    // rooms — ceiling estimated analytically against the ellipsoid, floor from
+    // the flat-floor plane; kept clear of every authored path like pillars.
+    if (n.spikes) {
+      for (let i = 0; i < n.spikes; i++) {
+        const ang = i * 2.399 + n.pos[2] * 0.31;
+        const rr = 0.15 + 0.6 * Math.abs(Math.sin(i * 12.99 + n.pos[0]));
+        const px = n.pos[0] + Math.cos(ang) * rx * rr;
+        const pz = n.pos[2] + Math.sin(ang) * rz * rr;
+        const frac = ((px - n.pos[0]) / rx) ** 2 + ((pz - n.pos[2]) / rz) ** 2;
+        if (frac > 0.72) continue;
+        if (horizClearanceTo(px, pz, n.pos[1] - ry, n.pos[1] + ry) < 1.0) continue;
+        const vary = Math.abs(Math.sin(i * 3.37 + n.pos[2]));
+        if (i % 2 === 0) {
+          const ceilY = n.pos[1] + ry * Math.sqrt(1 - frac);
+          const len = 0.7 + 1.2 * vary;
+          prims.push(segPrim({
+            ax: px, ay: ceilY + 0.8, az: pz,
+            bx: px, by: ceilY - len, bz: pz,
+            r: 0.42, rb: 0.12, noiseAmp: 0.1, zone: n.zone, width: 'chamber', ref: `${n.id}-tite${i}`,
+          }, true));
+        } else if (floorY !== undefined) {
+          const len = 0.4 + 0.7 * vary;
+          prims.push(segPrim({
+            ax: px, ay: floorY - 0.6, az: pz,
+            bx: px, by: floorY + len, bz: pz,
+            r: 0.5, rb: 0.14, noiseAmp: 0.1, zone: n.zone, width: 'chamber', ref: `${n.id}-mite${i}`,
+          }, true));
+        }
+      }
+    }
     // pillars: deterministic solid columns, mid-band of the room only, shrunk
     // or skipped so they always clear every authored path by ≥1.1 m.
     if (n.pillars) {
@@ -140,42 +171,7 @@ export function initSdf(): void {
       }
     }
   }
-  // Dry-pocket benches: a solid ledge on one side of each dry room, its top
-  // just above the pocket's water line — real walkable floor (user, ×2).
-  // Side chosen (or shrunk) to keep clear of authored paths.
-  dryBenches = [];
-  for (const n of NODES.filter((n) => n.dry)) {
-    const s = n.stretch ?? [1, 1, 1];
-    const rx = n.radius * s[0];
-    const ry = n.radius * s[1];
-    const rz = n.radius * s[2];
-    const level = n.pos[1] - ry * 0.35;
-    const benchRy = 1.6;
-    const topY = level + 0.3;
-    // pick the side (±x, ±z) with the most clearance from authored paths
-    let best: { cx: number; cz: number; clear: number } | null = null;
-    for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-      const cx = n.pos[0] + sx * rx * 0.5;
-      const cz = n.pos[2] + sz * rz * 0.5;
-      const clear = horizClearanceTo(cx, cz, n.pos[1] - ry, n.pos[1] + ry);
-      if (!best || clear > best.clear) best = { cx, cz, clear };
-    }
-    const brx = best ? Math.min(rx * 0.75, best.clear - 0.9) : 0;
-    if (best && brx >= 1.2) {
-      // radius ≤ clearance margin in EVERY horizontal direction
-      const bench: DryBench = { nodeId: n.id, c: [best.cx, topY - benchRy, best.cz], rx: brx, ry: benchRy, rz: Math.min(rz * 0.75, brx), topY };
-      dryBenches.push(bench);
-      prims.push({
-        ax: bench.c[0], ay: bench.c[1], az: bench.c[2],
-        bx: bench.c[0], by: bench.c[1], bz: bench.c[2],
-        r: brx, rx: bench.rx, ry: bench.ry, rz: bench.rz,
-        ellipsoid: true, solid: true, broad: 0, noiseAmp: 0.2,
-        zone: n.zone, width: 'chamber', ref: `${n.id}-bench`,
-      });
-    } else {
-      console.warn(`no bench fits in dry pocket ${n.id}`);
-    }
-  }
+  // (M4.5: dry-pocket benches removed — flat floors via `floor` replace them.)
 
   prims.push(segPrim({
     ax: SKY_SHAFT.a[0], ay: SKY_SHAFT.a[1], az: SKY_SHAFT.a[2],
@@ -228,14 +224,16 @@ export function getDoorBlocks(): DoorBlock[] {
   return doorBlocks;
 }
 
-function segDist(px: number, py: number, pz: number, p: Prim): number {
+// Signed distance to a capsule with linearly tapered radius (r at a → rb at
+// b) — constant-radius capsules when r === rb, round cones for spikes.
+function capsuleDist(px: number, py: number, pz: number, p: Prim): number {
   const abx = p.bx - p.ax, aby = p.by - p.ay, abz = p.bz - p.az;
   const apx = px - p.ax, apy = py - p.ay, apz = pz - p.az;
   const len2 = abx * abx + aby * aby + abz * abz;
   let t = len2 > 0 ? (apx * abx + apy * aby + apz * abz) / len2 : 0;
   t = t < 0 ? 0 : t > 1 ? 1 : t;
   const dx = apx - abx * t, dy = apy - aby * t, dz = apz - abz * t;
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz) - (p.r + (p.rb - p.r) * t);
 }
 
 // Ellipsoid SDF approximation (good near the surface, exact at center line).
@@ -258,19 +256,24 @@ export function sdf(x: number, y: number, z: number, withDoors = true): number {
     for (const idx of list) {
       const p = prims[idx];
       if (p.solid) continue;
-      const base = p.ellipsoid ? ellipsoidDist(x, y, z, p) : segDist(x, y, z, p) - p.r;
+      const base = p.ellipsoid ? ellipsoidDist(x, y, z, p) : capsuleDist(x, y, z, p);
       let di = base - noise * p.noiseAmp;
       if (p.broad > 0) {
         if (broadNoise === null) broadNoise = fbm(x * 0.06 + 31.7, y * 0.06, z * 0.06, 2);
         di -= broadNoise * p.broad;
       }
+      // flat floor: soft intersection with the half-space above floorY —
+      // mostly level, a quarter of the wall noise, curved soft edges
+      if (p.floorY !== undefined) {
+        di = smax(di, p.floorY - y - noise * p.noiseAmp * 0.25, 1.2);
+      }
       if (di < d) d = di;
     }
-    // pass 2: subtract solids (pillars, dry-pocket benches)
+    // pass 2: subtract solids (pillars, stalactites/stalagmites)
     for (const idx of list) {
       const p = prims[idx];
       if (!p.solid) continue;
-      const base = p.ellipsoid ? ellipsoidDist(x, y, z, p) : segDist(x, y, z, p) - p.r;
+      const base = p.ellipsoid ? ellipsoidDist(x, y, z, p) : capsuleDist(x, y, z, p);
       const ds = base - noise * p.noiseAmp;
       if (-ds > d) d = -ds;
     }
@@ -296,7 +299,7 @@ export function regionAt(x: number, y: number, z: number): PrimRegion | null {
   for (const idx of list) {
     const p = prims[idx];
     if (p.solid) continue;
-    const di = p.ellipsoid ? ellipsoidDist(x, y, z, p) : segDist(x, y, z, p) - p.r;
+    const di = p.ellipsoid ? ellipsoidDist(x, y, z, p) : capsuleDist(x, y, z, p);
     if (di < best) {
       best = di;
       bestPrim = p;

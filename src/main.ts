@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import './style.css';
 import { DebugPanel } from './debug/panel';
-import { NODES, getNode, type Zone } from './cave/data';
+import { EDGES, NODES, buildAirWaterMap, getNode, type Zone } from './cave/data';
 import { initSdf, regionAt, resolveCollision, sdf } from './cave/sdf';
 import { buildCaveMesh } from './cave/mesh';
 import { buildDoors, openAllDoors, openDoor } from './cave/doors';
-import { buildMounds, placeMounds, syncMounds } from './cave/mounds';
+import { buildMounds, columnDistSq, placeMounds, syncMounds } from './cave/mounds';
 import { PlayerController } from './player/controller';
+import { sampleCurrent } from './player/current';
 import { lightFactor, Vitals } from './player/vitals';
 import { Bubbles } from './player/bubbles';
 import { TiltSystem, buildTiltRegions } from './player/tilt';
@@ -80,28 +81,47 @@ function initGame(): void {
   water.position.y = WATER_Y;
   scene.add(water);
 
-  const dryPockets = NODES.filter((n) => n.dry).map((n) => {
-    const s = n.stretch ?? [1, 1, 1];
-    const rx = n.radius * s[0];
-    const ry = n.radius * s[1];
-    const rz = n.radius * s[2];
-    const level = n.pos[1] - ry * 0.35;
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(Math.max(rx, rz) * 0.8, 24), waterMat);
-    disc.rotation.x = -Math.PI / 2;
-    disc.position.set(n.pos[0], level, n.pos[2]);
-    scene.add(disc);
-    return { c: n.pos, rx: rx * 1.25, ry: ry * 1.25, rz: rz * 1.25, level };
-  });
+  // Air/water model (user rework 2026-07-18): every air region carries its own
+  // local water surface in data; the lookup is by SDF region, so air exists
+  // only where the geometry actually traps a bubble — no more water floating
+  // beside air with nothing in between.
+  const airWater = buildAirWaterMap();
   const waterLevelAt = (x: number, y: number, z: number): number | null => {
     if (Math.hypot(x, z) < 18 && y > -16) return WATER_Y; // open cenote water
-    for (const p of dryPockets) {
-      const dx = (x - p.c[0]) / p.rx;
-      const dy = (y - p.c[1]) / p.ry;
-      const dz = (z - p.c[2]) / p.rz;
-      if (dx * dx + dy * dy + dz * dz < 1) return p.level;
-    }
-    return null;
+    const ref = regionAt(x, y, z)?.ref;
+    const lvl = ref !== undefined ? airWater.get(ref) : undefined;
+    return lvl ?? null;
   };
+  // pool surfaces: drawn only where a region's water line actually cuts its
+  // cavity (flat-floored bells occlude theirs except down the entrance hole)
+  for (const n of NODES) {
+    if (!n.dry || n.waterY === undefined) continue;
+    const s = n.stretch ?? [1, 1, 1];
+    const ry = n.radius * s[1];
+    const rel = (n.waterY - n.pos[1]) / ry;
+    if (rel <= -1 || rel >= 1) continue; // line misses this room entirely
+    const rAt = Math.sqrt(1 - rel * rel) * Math.max(n.radius * s[0], n.radius * s[2]);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(rAt * 1.15, 24), waterMat);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(n.pos[0], n.waterY, n.pos[2]);
+    scene.add(disc);
+  }
+  // the slide's plunge surface: a disc where the chute meets its pool
+  for (const e of EDGES.filter((e) => e.slide && e.waterY !== undefined)) {
+    const pts: [number, number, number][] = [getNode(e.a).pos, ...(e.waypoints ?? []), getNode(e.b).pos];
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay, az] = pts[i - 1];
+      const [bx, by, bz] = pts[i];
+      const w = e.waterY!;
+      if ((ay - w) * (by - w) > 0) continue;
+      const t = (w - ay) / (by - ay || 1);
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(2.8, 20), waterMat);
+      disc.rotation.x = -Math.PI / 2;
+      disc.position.set(ax + (bx - ax) * t, w, az + (bz - az) * t);
+      scene.add(disc);
+      break;
+    }
+  }
 
   // ── atmosphere & silt (M4) ──
   const fog = new THREE.FogExp2(0x062226, 0.035);
@@ -318,6 +338,7 @@ function initGame(): void {
   const beamDir = new THREE.Vector3();
   const beamRight = new THREE.Vector3();
   const beamUp = new THREE.Vector3();
+  const currentVec = new THREE.Vector3();
   const clock = new THREE.Clock();
 
   const tick = (dt: number): void => {
@@ -328,10 +349,13 @@ function initGame(): void {
     const region = regionAt(p.x, p.y, p.z);
     const zone: Zone = region?.zone ?? 'sinkhole';
 
-    // tilt drifts only while swimming below the surface; X re-levels
+    // tilt drifts only while swimming below the surface; X re-levels, and
+    // breaking into air auto-levels you (user 2026-07-18: hitting an air
+    // pocket fixes your roll — the surface hands you your orientation back)
     const tiltRef = player.mode === 'swim' && !headAbove ? (region?.ref ?? null) : null;
-    tilt.update(dt, tiltRef, player.keyDown('KeyX'), time);
+    tilt.update(dt, tiltRef, player.keyDown('KeyX') || headAbove, time);
     player.roll = THREE.MathUtils.degToRad(tilt.rollDeg);
+    sampleCurrent(p.x, p.y, p.z, time, currentVec);
 
     // follow mode (hold T near the line): hand-over-hand glide — works blind
     let following = false;
@@ -370,11 +394,8 @@ function initGame(): void {
     }
     if (player.mode !== 'noclip' && !vitals.dead) {
       for (const m of moundSpots) {
-        const dx = p.x - m.center[0];
-        const dy = p.y - m.center[1];
-        const dz = p.z - m.center[2];
-        if (dx * dx + dy * dy + dz * dz < TUNING.silt.moundTouchM ** 2 && silt.detonate(m.nodeId)) {
-          flashStatus(`chalk mound detonated — ${m.nodeId}`);
+        if (columnDistSq(m, p.x, p.y, p.z) < TUNING.silt.moundTouchM ** 2 && silt.detonate(m.nodeId)) {
+          flashStatus(`chalk column detonated — ${m.nodeId}`);
         }
       }
     }
@@ -418,8 +439,9 @@ function initGame(): void {
     headlamp.intensity = vitals.flashlightOn ? headlampBase * exposure * lightFactor(vitals.battery, Math.random()) : 0;
     const clearVis = TUNING.visibility.clearVisM[zone];
     const siltout = silt.siltoutAt(chamber);
-    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis), siltout);
-    siltFx.update(dt, p, silt.thicknessAt(chamber), !headAbove);
+    const daylight = headAbove && Math.hypot(p.x, p.z) < 18 && p.y > -16; // open cenote only
+    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis), siltout, currentVec, daylight);
+    siltFx.update(dt, p, silt.thicknessAt(chamber), !headAbove, currentVec);
     // squeeze claustrophobia: modest FOV pull-in
     const targetFov = player.mode !== 'noclip' && player.inSqueeze ? 64 : 75;
     if (Math.abs(camera.fov - targetFov) > 0.1) {
@@ -479,6 +501,11 @@ function initGame(): void {
     sdfAt: (x: number, y: number, z: number) => sdf(x, y, z),
     region: (x: number, y: number, z: number) => regionAt(x, y, z),
     waterLevelAt,
+    currentAt: (x: number, y: number, z: number): [number, number, number] => {
+      const v = new THREE.Vector3();
+      sampleCurrent(x, y, z, time, v);
+      return [v.x, v.y, v.z];
+    },
     stats: { tris, genMs },
     caveMesh,
     THREE,

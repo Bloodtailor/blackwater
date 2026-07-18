@@ -8,7 +8,8 @@
 import * as THREE from 'three';
 import { TUNING } from '../tuning';
 import { gradient, regionAt, resolveCollision, sdf } from '../cave/sdf';
-import { fbm } from '../util/noise';
+import { buildSlideRegions } from '../cave/data';
+import { sampleCurrent } from './current';
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
@@ -38,6 +39,7 @@ export class PlayerController {
   private camUp = new THREE.Vector3();
   private wish = new THREE.Vector3();
   private current = new THREE.Vector3();
+  private slides = buildSlideRegions();
   private grounded = false;
   private time = 0;
 
@@ -90,17 +92,10 @@ export class PlayerController {
     return this.streamline;
   }
 
-  // Ambient current: direction AND strength wander with position and time —
-  // transitions smooth but quick (user, 2026-07-18).
-  private sampleCurrent(out: THREE.Vector3): void {
-    const P = TUNING.player;
-    const p = this.camera.position;
-    const t = this.time * P.currentTimeFreq;
-    const a = fbm(p.x * P.currentFreq + t, p.y * P.currentFreq, p.z * P.currentFreq + t * 0.7, 2) * Math.PI * 2;
-    const b = fbm(p.x * P.currentFreq + 7.3, p.y * P.currentFreq + t, p.z * P.currentFreq, 2) * Math.PI * 0.45;
-    // no strength floor — real lulls and real surges (user, round 4)
-    const mag = P.currentSpeed * 1.1 * Math.abs(fbm(p.x * P.currentFreq + t * 1.3, p.y * P.currentFreq + 13.7, p.z * P.currentFreq, 2));
-    out.set(Math.cos(a) * Math.cos(b), Math.sin(b), Math.sin(a) * Math.cos(b)).multiplyScalar(mag);
+  /** Is this walk-region a wet slide chute? Downhill unit vector if so. */
+  private slideDirAt(x: number, y: number, z: number): [number, number, number] | undefined {
+    const ref = regionAt(x, y, z)?.ref;
+    return ref ? this.slides.get(ref) : undefined;
   }
 
   update(dt: number, waterLevel: number | null): void {
@@ -223,9 +218,10 @@ export class PlayerController {
       }
       this.prevSubmerged = submerged;
       // ambient current pushes position only (never the camera view);
-      // damped in squeezes so peak current can never pin you in a crack
+      // damped in squeezes so peak current can never pin you in a crack;
+      // shared sampler — the same current the particles ride (current.ts)
       if (!headAbove) {
-        this.sampleCurrent(this.current);
+        sampleCurrent(pos.x, pos.y, pos.z, this.time, this.current);
         pos.addScaledVector(this.current, this.inSqueeze ? dt * 0.3 : dt);
       }
       if (resolveCollision(pos, P.radius)) {
@@ -248,6 +244,27 @@ export class PlayerController {
         }
       }
     } else {
+      // wet slide chute (user 2026-07-18): zero traction — gravity hauls you
+      // down the shaft, a tiny lateral nudge is all the control you get, and
+      // nothing you do climbs back up. One-way by physics, not by flag.
+      const slideDir = this.slideDirAt(pos.x, pos.y - P.eyeHeight * 0.5, pos.z);
+      if (slideDir) {
+        this.wish.y = 0;
+        if (this.wish.lengthSq() > 0) this.wish.normalize();
+        this.vel.x += this.wish.x * P.slideControl * dt + slideDir[0] * P.slideAccel * dt;
+        this.vel.y += slideDir[1] * P.slideAccel * dt;
+        this.vel.z += this.wish.z * P.slideControl * dt + slideDir[2] * P.slideAccel * dt;
+        const spd = this.vel.length();
+        if (spd > P.slideMaxSpeed) this.vel.multiplyScalar(P.slideMaxSpeed / spd);
+        pos.addScaledVector(this.vel, dt);
+        const body = { x: pos.x, y: pos.y - P.eyeHeight, z: pos.z };
+        resolveCollision(body, P.radius);
+        pos.set(body.x, body.y + P.eyeHeight, body.z);
+        this.grounded = true;
+        this.prevSprint = this.sprinting;
+        this.prevSpace = this.keys.has('Space');
+        return;
+      }
       // walk: horizontal wish, gravity, SDF ground with snap (no jitter),
       // snappy jump with coyote time (dolphin dives off the shore)
       this.wish.y = 0;

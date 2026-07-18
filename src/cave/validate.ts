@@ -19,8 +19,8 @@ const AIR_ALLOWANCE_SEC: Record<Zone, number> = {
 };
 
 function isAirSource(id: string): boolean {
-  const t = getNode(id).tags;
-  return t.includes('airPocket') || t.includes('surface');
+  const n = getNode(id);
+  return n.tags.includes('airPocket') || n.tags.includes('surface') || !!n.dry;
 }
 
 function connectedComponent(start: string, edges: CaveEdge[]): Set<string> {

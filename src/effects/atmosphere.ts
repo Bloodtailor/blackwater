@@ -25,6 +25,9 @@ const ZONE_ENV: Record<Zone, ZoneEnv> = {
 };
 
 const ABOVE = { bg: 0x8fb6c4, fog: 0x9fc3cf, density: 0.012, ambient: 0.65 };
+// Head above water but underground (air bells, dry passages, the slide):
+// lightless cave air — your lamp is the only reason you see anything.
+const CAVE_AIR = { bg: 0x04080a, fog: 0x04080a, density: 0.006, ambient: 0.3 };
 
 export class Atmosphere {
   /** Current effective visibility in metres (smoothed; harness/debug). */
@@ -56,7 +59,9 @@ export class Atmosphere {
     this.rays = buildGodRays();
     scene.add(this.rays);
 
-    // ambient particulate: motes drifting in a box that follows the camera
+    // ambient particulate: motes riding the CURRENT (user 2026-07-18 — the
+    // current is visible now) in a box that follows the camera; per-mote
+    // velocity is only a small individual jitter on top
     const A = TUNING.atmosphere;
     const n = A.particulateCount;
     this.motePos = new Float32Array(n * 3);
@@ -65,9 +70,9 @@ export class Atmosphere {
       this.motePos[i * 3] = (Math.random() - 0.5) * A.particulateBoxM;
       this.motePos[i * 3 + 1] = (Math.random() - 0.5) * A.particulateBoxM;
       this.motePos[i * 3 + 2] = (Math.random() - 0.5) * A.particulateBoxM;
-      this.moteVel[i * 3] = (Math.random() - 0.5) * 0.08;
-      this.moteVel[i * 3 + 1] = -0.02 - Math.random() * 0.05; // gentle sink
-      this.moteVel[i * 3 + 2] = (Math.random() - 0.5) * 0.08;
+      this.moteVel[i * 3] = (Math.random() - 0.5) * 0.07;
+      this.moteVel[i * 3 + 1] = (Math.random() - 0.5) * 0.05;
+      this.moteVel[i * 3 + 2] = (Math.random() - 0.5) * 0.07;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(this.motePos, 3));
@@ -88,6 +93,9 @@ export class Atmosphere {
    * @param visTargetM effective visibility at the camera (zone clear vis,
    *   possibly reduced by the silt system)
    * @param siltout true while the camera is inside an active silt-out
+   * @param current ambient current at the camera — the motes ride it
+   * @param daylight head above water AND under the open cenote sky (false in
+   *   underground air: bells, dry passages, the slide)
    */
   update(
     dt: number,
@@ -96,18 +104,21 @@ export class Atmosphere {
     zone: Zone,
     visTargetM: number,
     siltout: boolean,
+    current: THREE.Vector3,
+    daylight: boolean,
   ): void {
     const V = TUNING.visibility;
     const A = TUNING.atmosphere;
     const k = Math.min(1, dt * V.lerpPerSec);
 
     if (headAbove) {
+      const env = daylight ? ABOVE : CAVE_AIR;
       if (!(this.scene.background instanceof THREE.Color)) this.scene.background = new THREE.Color();
-      (this.scene.background as THREE.Color).setHex(ABOVE.bg);
-      this.fog.color.setHex(ABOVE.fog);
-      this.fog.density = this.fogOff ? 0 : ABOVE.density;
+      (this.scene.background as THREE.Color).setHex(env.bg);
+      this.fog.color.setHex(env.fog);
+      this.fog.density = this.fogOff ? 0 : env.density;
       this.ambient.color.setHex(0x3a4a50);
-      this.ambient.intensity = ABOVE.ambient;
+      this.ambient.intensity = env.ambient;
     } else {
       const env = ZONE_ENV[zone];
       this.targetFog.setHex(env.fog);
@@ -136,20 +147,23 @@ export class Atmosphere {
     this.headlamp.distance = this.beamThrow;
     this.headlamp.penumbra = siltout ? 0.95 : 0.65;
 
-    // particulate: drift, then wrap into the camera box
+    // particulate: ride the current + tiny jitter, wrap into the camera box;
+    // more motes the deeper you go (user 2026-07-18)
     this.motes.visible = !headAbove;
     if (this.motes.visible) {
       const env = ZONE_ENV[zone];
       this.targetMote.setHex(env.mote);
       this.moteColor.lerp(this.targetMote, k);
       this.moteMat.color.copy(this.moteColor);
+      const depthFrac = THREE.MathUtils.clamp(-cam.y / A.particulateFullDepthM, 0, 1);
+      const density = THREE.MathUtils.lerp(A.particulateDepthMinFrac, 1, depthFrac);
       const half = A.particulateBoxM / 2;
       const size = A.particulateBoxM;
       const n = A.particulateCount;
       for (let i = 0; i < n; i++) {
-        let x = this.motePos[i * 3] + this.moteVel[i * 3] * dt;
-        let y = this.motePos[i * 3 + 1] + this.moteVel[i * 3 + 1] * dt;
-        let z = this.motePos[i * 3 + 2] + this.moteVel[i * 3 + 2] * dt;
+        let x = this.motePos[i * 3] + (current.x + this.moteVel[i * 3]) * dt;
+        let y = this.motePos[i * 3 + 1] + (current.y + this.moteVel[i * 3 + 1]) * dt;
+        let z = this.motePos[i * 3 + 2] + (current.z + this.moteVel[i * 3 + 2]) * dt;
         // wrap relative to the camera so the cloud follows without popping
         x = wrap(x, cam.x, half, size);
         y = wrap(y, cam.y, half, size);
@@ -158,6 +172,7 @@ export class Atmosphere {
         this.motePos[i * 3 + 1] = y;
         this.motePos[i * 3 + 2] = z;
       }
+      this.motes.geometry.setDrawRange(0, Math.floor(n * density));
       (this.motes.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
     }
 

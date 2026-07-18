@@ -44,8 +44,9 @@ export class SiltParticles {
     scene.add(this.points);
   }
 
-  /** thickness: 0..1 silt at the camera's chamber (SiltSystem.thicknessAt). */
-  update(dt: number, cam: THREE.Vector3, thickness: number, underwater: boolean): void {
+  /** thickness: 0..1 silt at the camera's chamber (SiltSystem.thicknessAt);
+   *  the cloud drifts with the ambient current like everything suspended. */
+  update(dt: number, cam: THREE.Vector3, thickness: number, underwater: boolean, current: THREE.Vector3): void {
     this.density += (thickness - this.density) * Math.min(1, dt * 1.5);
     const visible = underwater && this.density > 0.02;
     this.points.visible = visible;
@@ -54,9 +55,9 @@ export class SiltParticles {
     const r = TUNING.atmosphere.siltCloudRadiusM;
     const size = r * 2;
     for (let i = 0; i < n; i++) {
-      let x = this.pos[i * 3] + this.drift[i * 3] * dt;
-      let y = this.pos[i * 3 + 1] + this.drift[i * 3 + 1] * dt;
-      let z = this.pos[i * 3 + 2] + this.drift[i * 3 + 2] * dt;
+      let x = this.pos[i * 3] + (this.drift[i * 3] + current.x * 0.8) * dt;
+      let y = this.pos[i * 3 + 1] + (this.drift[i * 3 + 1] + current.y * 0.8) * dt;
+      let z = this.pos[i * 3 + 2] + (this.drift[i * 3 + 2] + current.z * 0.8) * dt;
       // wrap around the camera (positions stored camera-relative-ish: world)
       if (x < cam.x - r) x += size;
       else if (x > cam.x + r) x -= size;

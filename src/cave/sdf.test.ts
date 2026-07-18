@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { EDGES, getNode, NODES } from './data';
-import { initSdf, sdf, setDoorBlocks } from './sdf';
+import { initSdf, regionAt, sdf, setDoorBlocks } from './sdf';
 import { computeDoorBlocks, doorEdges, doorPlacement } from './doors';
 
 // Sample points every ~1 m along an edge's full polyline.
@@ -71,12 +71,46 @@ describe('cave SDF traversability', () => {
     setDoorBlocks([]);
   });
 
-  it('dry pockets have swimmable water below and air headroom above their water line', () => {
+  // Air/water rework (user 2026-07-18): every air region declares waterY;
+  // there must be real air space above the line (or above the flat floor),
+  // and where the line cuts the cavity, swimmable water below it.
+  it('air regions hold air above their line and water below where it cuts', () => {
     for (const n of NODES.filter((n) => n.dry)) {
+      expect(n.waterY, `${n.id} declares waterY`).toBeDefined();
+      const w = n.waterY!;
       const ry = n.radius * (n.stretch?.[1] ?? 1);
-      const level = n.pos[1] - ry * 0.35;
-      expect(sdf(n.pos[0], level - 0.5, n.pos[2], false), `${n.id} below line`).toBeLessThan(-0.3);
-      expect(sdf(n.pos[0], level + 0.6, n.pos[2], false), `${n.id} above line`).toBeLessThan(-0.2);
+      const floorY = n.floor !== undefined ? n.pos[1] - ry * n.floor : undefined;
+      // effective cavity bottom: the flat floor if the room has one
+      const effBottom = floorY ?? n.pos[1] - ry;
+      const probeY = w > effBottom ? w + 0.5 : Math.max(effBottom + 0.6, Math.min(n.pos[1], effBottom + 2));
+      expect(sdf(n.pos[0], probeY, n.pos[2], false), `${n.id} air space @y=${probeY.toFixed(1)}`).toBeLessThan(-0.15);
+      // open-water pool only where the line sits above the effective bottom
+      // (bells keep their pool down the entrance shaft instead)
+      if (w > effBottom) {
+        expect(sdf(n.pos[0], w - 0.6, n.pos[2], false), `${n.id} pool below line`).toBeLessThan(-0.15);
+      }
+    }
+  });
+
+  it('flat-floored rooms really are flat: floor height varies little across the room', () => {
+    for (const n of NODES.filter((n) => n.floor !== undefined)) {
+      const s = n.stretch ?? [1, 1, 1];
+      const ry = n.radius * s[1];
+      const floorY = n.pos[1] - ry * n.floor!;
+      // sample the walkable disc at half radius in 4 directions: the surface
+      // must sit near floorY everywhere (soft edges allowed at the rim)
+      for (const [dx, dz] of [[0.45, 0], [-0.45, 0], [0, 0.45], [0, -0.45]] as const) {
+        const px = n.pos[0] + dx * n.radius * s[0];
+        const pz = n.pos[2] + dz * n.radius * s[2];
+        let y = n.pos[1];
+        while (y > floorY - 3 && sdf(px, y - 0.2, pz, false) < -0.25) y -= 0.2;
+        if (Math.abs(y - floorY) >= 1.1) {
+          // a deep spot is fine ONLY if it's a passage mouth (entrance shaft,
+          // slide chute) cutting through the floor
+          const reg = regionAt(px, y + 0.4, pz);
+          expect(reg?.ref.includes('~'), `${n.id} floor @(${dx},${dz}) found ${y.toFixed(1)} vs ${floorY.toFixed(1)} and not a passage mouth (${reg?.ref})`).toBe(true);
+        }
+      }
     }
   });
 });

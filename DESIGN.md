@@ -55,6 +55,10 @@ The original asks are all in (see traceability table §18). These are the load-b
 - **Squeezes:** ≥4 total. A squeeze is single-body-width: forced slow speed, no turning around mid-squeeze, no shooting while inside, zombies can enter behind you.
 - **Dead ends:** ≥8 total, some rewarded (caches), some empty. Empty dead ends are load-bearing: they teach that exploration costs air and might pay nothing.
 - **Look-alike junctions in the Maze, distinct landmarks at key decisions.** Landmark nodes get a tag and a bespoke visual treatment (named formations). Confusion comes from similarity between minor junctions, never from key routes being unreadable.
+- **Air is physically coherent (user rework 2026-07-18):** every air region (bell, dry passage) declares its own local water surface in data (`waterY`); water exists only below it, entrances to bells arrive from below the line, and a room's air is always held by rock — never water floating beside air. Walkable air rooms get flat(ter) floors (`floor`, soft smooth-max edges — rooms must not read as spheres) with the pool only where the entrance shaft pierces the floor. Implementation rule: a walkable room's floor sits ~one tunnel-radius below the arriving passage centerline so mouths meet floors flush.
+- **Open-air passages (user 2026-07-18):** ≥1 walkable dry section (the Dry Reach, off the Galleries west bell): stalactite/stalagmite formations (`spikes`), and visible teaser openings high in the walls that can never be reached — passages above you and to the side, out of reach.
+- **The slide (user 2026-07-18):** ≥1 slanted open-air shaft that is wet (`slide` edge): zero traction, gravity hauls you down, you cannot climb back — one-way passages are allowed exactly when an alternate route back exists (two-route rule still holds).
+- **Turnaround squeezes (user 2026-07-18):** ≥2 long dead-end squeezes that lead only to a small bulb chamber — big enough to turn around in, which the squeeze itself never is.
 
 ### 5.1 Zones
 
@@ -72,7 +76,8 @@ Diegetic dressing: the cave holds **Site BLACKWATER**, a drowned 1960s naval nuc
 
 ### 6.1 Movement (6DOF swim)
 - Mouse-look; WASD relative to look direction; **Space/C are CAMERA-relative up/down** (your head's up, not the world's — under tilt, the controls follow your disorientation and only bubbles/gauge tell world-truth; user decision 2026-07-18). Shift sprint. Full freedom to swim any direction, including inverted.
-- **Ambient current (user, 2026-07-18, raised twice — "a constant challenge"):** everywhere below the surface, a wandering current with a strength FLOOR (~0.9–2.4 m/s vs 4 m/s base swim) — never a lull, always fighting you or carrying you, strong enough to shove a heavy body into shaft walls. Damped ×0.3 inside squeezes so peak current can never pin you in a crack. It moves your *position*, never your camera. Honest-tells guard: bubbles and gauge stay truthful.
+- **Ambient current (user, 2026-07-18, raised twice — "a constant challenge"):** everywhere below the surface, a wandering current (real lulls allowed per the round-4 revision), strong enough to shove a heavy body into shaft walls. **Scales with depth (user, second rework): gentle near the surface, ~3× stronger at the bottom.** Damped ×0.3 inside squeezes so peak current can never pin you in a crack. It moves your *position*, never your camera. **The current is visible: all suspended particles ride it at its true direction and speed** — an honest tell. Honest-tells guard: bubbles and gauge stay truthful.
+- **The wet slide (user, 2026-07-18):** on `slide` edges in walk mode, traction is zero: gravity accelerates you down the chute (capped), steering is a tiny lateral nudge, and climbing back is physically impossible — you exit at the bottom and return another way.
 - **Heavy force-based swimming (user, 2026-07-18 ×2 — "moving a 300 lb object"):** weak directional thrust + near-zero water drag. From rest to top speed takes ~6 s of held input; a coasting body keeps ~70% of its speed over 3 s (drag is the only brake — the speed cap never brakes a coast); reversing direction takes seconds of fighting your own momentum; wall impacts bleed the velocity component into the wall. Streamline (holding one direction) raises the speed cap toward sprint speed without sprinting; direction changes dump it; sprint = faster thrust + faster streamline + the lunge burst. Enough momentum breaches the surface in a dolphin arc.
 - **Lunge (user, 2026-07-18):** triggering sprint fires a quick forward lunge impulse, on a short cooldown ("lunge protection"); in a squeeze the lunge still fires but much smaller. Lunging spikes heart rate — with the HR lag, the cost lands a beat later.
 - **Jump on land (user, 2026-07-18):** Space jumps while walking on dry ground — high and snappy (~1.7 m, coyote-time grace) so a running jump off the shore is a proper dolphin dive.
@@ -86,7 +91,8 @@ Diegetic dressing: the cave holds **Site BLACKWATER**, a drowned 1960s naval nuc
 - **The reserve breath:** when the tank hits 0, the bar refills once — flashing red — and drains fast (~8 s): your last breath, and the game's clearest "you are about to die" signal (the ambient pass hooks Lowe's genuine panic to this state). When it empties, drowning damage begins. The reserve re-arms only after refilling past 50 air.
 - Tank of **100 air**.
 - Refill at surface or any air pocket at 25/s (4 s full). Low-air state at ≤25: heartbeat, breath sounds shorten, screen-edge desaturation. At 0: **drowning** — 15 HP/s. (Grace, not instant death; reaching a pocket while drowning is a designed panic beat.)
-- **Three air pockets are dry rooms** (data `dry`): FULL rooms with real walkable floor above a local water line (Galleries west dome, the infirmary airlock, the Throat rim niche) — dry benches you climb out onto, not just breathing gaps (user, 2026-07-18 ×2: "they should be full rooms").
+- **Three air pockets are AIR BELLS** (data `dry` + `floor`): full rooms with a flat walkable floor and a pool hole where the entrance shaft pierces it — you surface in the pool and haul out onto dry rock (Galleries west bell, the infirmary airlock, the Throat rim niche). The smaller pockets are breathing domes: air trapped in the top of a shaft, water below. All of them physically coherent per the §5 air rule (user rework 2026-07-18; benches were replaced by real flat floors).
+- The Galleries west bell opens into **the Dry Reach** — a walkable open-air section (stalactite hall, tall gallery with unreachable teaser mouths, and the wet slide down to a flooded plunge pool).
 - Air pockets are open to zombies occasionally (ambush-capable pockets are tagged in data): surfacing into one is relief, not guaranteed safety.
 
 ### 6.3 Health
@@ -98,7 +104,7 @@ Diegetic dressing: the cave holds **Site BLACKWATER**, a drowned 1960s naval nuc
 
 ### 6.5 Tilt (disorientation)
 - Tilt zones (tagged edges: thermocline currents, squeeze exits) drift camera **roll** while inside at 15°/s, up to a per-zone max: 30° Galleries, 90° Maze, **180° Throat** (fully inverted is possible where the brief wanted it).
-- Outside a zone, roll decays 2°/s naturally. Hold X: actively re-level at 45°/s toward true-up. Honest tells: **exhaled bubbles always rise world-up** (player exhales a visible stream every few seconds), and the depth gauge trend arrow. Never fake these.
+- Outside a zone, roll decays 2°/s naturally. Hold X: actively re-level at 45°/s toward true-up. **Breaking the surface (any air) auto-re-levels at the same rate — the water line hands you your orientation back (user, 2026-07-18).** Honest tells: **exhaled bubbles always rise world-up** (player exhales a visible stream every few seconds), and the depth gauge trend arrow. Never fake these.
 - **Accessibility (required):** settings slider caps max tilt 0–180°. Default 180°. This is a motion-sickness issue, not a difficulty option; label it clearly.
 
 ### 6.6 Guide line & chemlights (player-authored navigation)
@@ -111,8 +117,8 @@ Diegetic dressing: the cave holds **Site BLACKWATER**, a drowned 1960s naval nuc
 - Silty-floored chambers (tagged): fast/low swimming stirs a local cloud — visibility in the patch drops ~35 m → ~12 m, settles over ~20 s. Teaches the movement discipline that the endgame demands, at low stakes.
 
 ### 7.2 Silt-out (the trap)
-- **Chalk mounds:** pale, bulbous stacked formations with a faint particle shimmer — visually learnable at a glance, distinct silhouette. Placed (in data) guarding valuables and key junctions, 6–10 total, Maze and deeper.
-- **Shooting one or touching one detonates it instantly:** chamber-wide visibility collapses to **4 m**, flashlight backscatters (beam auto-narrows 60°→25°, shorter throw), sound goes cottony. Fades over **75 s**; when fully cleared, the mound **re-arms** (per the brief).
+- **Chalk columns** (user rework 2026-07-18 — was "mounds"; floor-standing rock piles told you which way was down): pale, bulbous FLOOR-TO-CEILING columns with a faint particle shimmer — orientation-neutral like the rock pillars, visually learnable at a glance, distinct silhouette. Placed (in data) guarding valuables and key junctions, 6–10 total, Maze and deeper.
+- **Shooting one or touching one detonates it instantly:** chamber-wide visibility collapses to **4 m**, flashlight backscatters (beam auto-narrows 60°→25°, shorter throw), sound goes cottony. Fades over **75 s**; when fully cleared, the column **re-arms** (per the brief).
 - Fully avoidable with care: don't shoot near them, swim slow and wide. Fights near mounds are the game asking "discipline or firepower?"
 - Silt-outs never block a passage — they make it *unreadable*, forcing either line/chemlight skill or the two-route rule's alternate path.
 - **Silt Shades** (§8.3) spawn only during silt-outs from round 10+ — silt-outs escalate from navigation problem to hunt.
