@@ -66,7 +66,7 @@ function initGame(): void {
     const ry = n.radius * s[1];
     const rz = n.radius * s[2];
     const level = n.pos[1] - ry * 0.35;
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(Math.max(rx, rz) * 0.95, 24), waterMat);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(Math.max(rx, rz) * 0.8, 24), waterMat);
     disc.rotation.x = -Math.PI / 2;
     disc.position.set(n.pos[0], level, n.pos[2]);
     scene.add(disc);
@@ -104,6 +104,7 @@ function initGame(): void {
   const debug = new DebugPanel(params.has('debug'));
   const player = new PlayerController(camera, renderer.domElement);
   const vitals = new Vitals();
+  player.onLunge = () => vitals.onLunge();
   const bubbles = new Bubbles();
   scene.add(bubbles.points);
   const ui = document.getElementById('ui');
@@ -215,7 +216,7 @@ function initGame(): void {
     // exhale from the mouth, in front of and below the lens
     exhaleOrigin.set(0, 0, -1).applyQuaternion(camera.quaternion).multiplyScalar(0.4).add(p);
     exhaleOrigin.y -= 0.18;
-    bubbles.update(dt, exhaleOrigin, !headAbove && player.mode !== 'noclip', time);
+    bubbles.update(dt, exhaleOrigin, !headAbove && player.mode !== 'noclip', time, vitals.hr);
     applyEnv(headAbove);
     hud.update(dt, vitals, -p.y);
   };

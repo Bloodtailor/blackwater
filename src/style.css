@@ -149,6 +149,41 @@ canvas {
   opacity: 0;
   transition: opacity 0.4s;
 }
+#hud-hr {
+  position: absolute;
+  bottom: 40px;
+  left: 14px;
+  font-size: 14px;
+  color: #e88a8a;
+}
+#hud-hr .beat {
+  display: inline-block;
+  animation: bw-beat 1s infinite;
+}
+#hud-hr .beat.hard {
+  color: #ff5545;
+}
+@keyframes bw-beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  12% {
+    transform: scale(1.4);
+  }
+}
+#hud-o2 .fill.reserve {
+  animation: bw-flash 0.35s infinite;
+}
+@keyframes bw-flash {
+  0%,
+  100% {
+    background: #ff4535;
+  }
+  50% {
+    background: #6d0f08;
+  }
+}
 #hud-o2 {
   position: absolute;
   bottom: 14px;

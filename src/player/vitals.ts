@@ -1,5 +1,9 @@
-// Air, health, battery — pure logic, no three dependency (unit-testable).
-// Numbers all come from tuning.ts (DESIGN §6.2–§6.4).
+// Air, heart rate, health, battery — pure logic, no three dependency
+// (unit-testable). Numbers all come from tuning.ts (DESIGN §6.2–§6.4).
+//
+// Heart rate IS the oxygen clock (user redesign 2026-07-18): drain scales
+// with HR; sprint/lunge/damage raise HR with a couple seconds of lag; the
+// reserve breath is the flashing-red last tank.
 
 import { TUNING } from '../tuning';
 import type { Zone } from '../cave/data';
@@ -15,6 +19,9 @@ export class Vitals {
   air: number = TUNING.air.capacity;
   hp: number = TUNING.health.max;
   battery = 1; // 0..1 fraction
+  hr: number = TUNING.hr.rest;
+  reserve = 0; // 0..1 while the last breath is burning
+  inReserve = false;
   flashlightOn = true;
   dead = false;
   // debug flags
@@ -22,34 +29,73 @@ export class Vitals {
   infiniteAir = false;
   infiniteBattery = false;
 
+  private reserveArmed = true;
+  private spike = 0; // transient bpm added to the HR target (lunges, hits)
+  private sprintLoad = 0; // 0..1, builds over sustained sprint
   private sinceDamage = Infinity;
 
   update(dt: number, env: VitalsEnv): void {
     if (this.dead) return;
-    // air
+    const H = TUNING.hr;
+
+    // ── heart rate: target from load, approached with lag ──
+    const sprintingNow = env.sprinting && env.moving && !env.headAbove;
+    this.sprintLoad = Math.min(1, Math.max(0, this.sprintLoad + (sprintingNow ? dt : -dt) / H.sprintLoadTime));
+    this.spike = Math.max(0, this.spike - (this.spike * dt) / H.spikeDecayTau);
+    let target = H.rest + (H.sprintTarget - H.rest) * this.sprintLoad + this.spike;
+    if (this.inReserve) target = Math.max(target, H.panicTarget);
+    target = Math.min(target, H.max);
+    const tau = target > this.hr ? H.riseTau : H.fallTau;
+    this.hr += ((target - this.hr) * dt) / tau;
+
+    // ── air: two-stage tank, HR-scaled drain ──
+    const A = TUNING.air;
     if (env.headAbove) {
-      this.air = Math.min(TUNING.air.capacity, this.air + TUNING.air.refillPerSec * dt);
+      this.air = Math.min(A.capacity, this.air + A.refillPerSec * dt);
+      this.inReserve = false;
+      if (this.air >= A.reserveRearmAt) this.reserveArmed = true;
     } else if (!this.infiniteAir) {
-      const mult = (env.sprinting && env.moving ? TUNING.air.sprintMult : 1) * TUNING.air.zoneMult[env.zone];
-      this.air = Math.max(0, this.air - TUNING.air.drainPerSec * mult * dt);
-      if (this.air <= 0) this.damage(TUNING.air.drownHpPerSec * dt);
+      if (this.air > 0) {
+        const drain = A.drainPerSec * (this.hr / H.rest) * A.zoneMult[env.zone];
+        this.air = Math.max(0, this.air - drain * dt);
+        if (this.air <= 0 && this.reserveArmed) {
+          this.inReserve = true;
+          this.reserveArmed = false;
+          this.reserve = 1;
+        }
+      } else if (this.inReserve) {
+        this.reserve -= dt / A.reserveSeconds;
+        if (this.reserve <= 0) {
+          this.reserve = 0;
+          this.inReserve = false;
+        }
+      } else {
+        this.damage(A.drownHpPerSec * dt, false);
+      }
     }
-    // battery
+
+    // ── battery ──
     if (this.flashlightOn && !this.infiniteBattery) {
       this.battery = Math.max(0, this.battery - dt / TUNING.light.batterySeconds);
       if (this.battery <= 0) this.flashlightOn = false;
     }
-    // regen
+
+    // ── health regen ──
     this.sinceDamage += dt;
     if (this.hp < TUNING.health.max && this.sinceDamage >= TUNING.health.regenDelay) {
       this.hp = Math.min(TUNING.health.max, this.hp + (TUNING.health.max / TUNING.health.regenDuration) * dt);
     }
   }
 
-  damage(amount: number): void {
+  onLunge(): void {
+    this.spike = Math.min(this.spike + TUNING.hr.lungeSpike, TUNING.hr.spikeCap);
+  }
+
+  damage(amount: number, hrSpike = true): void {
     if (this.god || this.dead) return;
     this.hp -= amount;
     this.sinceDamage = 0;
+    if (hrSpike) this.spike = Math.min(this.spike + TUNING.hr.damageSpike, TUNING.hr.spikeCap);
     if (this.hp <= 0) {
       this.hp = 0;
       this.dead = true;
@@ -62,8 +108,6 @@ export class Vitals {
 }
 
 // Flashlight output as a fraction of full intensity. Pure — testable.
-// Full above dimBelow; linear dim to 45% down to flickerBelow; below that it
-// flickers (caller passes a random sample per frame).
 export function lightFactor(battery: number, rand: number): number {
   const L = TUNING.light;
   if (battery <= 0) return 0;

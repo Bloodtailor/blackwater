@@ -46,6 +46,18 @@ let hash = new Map<number, number[]>();
 let doorBlocks: DoorBlock[] = [];
 export let bounds = { min: [0, 0, 0] as [number, number, number], max: [0, 0, 0] as [number, number, number] };
 
+// Dry-pocket benches: solid ledges that give each dry pocket real walkable
+// floor above its water line (exported so main/tests know where they are).
+export interface DryBench {
+  nodeId: string;
+  c: [number, number, number];
+  rx: number;
+  ry: number;
+  rz: number;
+  topY: number;
+}
+export let dryBenches: DryBench[] = [];
+
 function widthRadius(w: CaveEdge['width']): number {
   return w === 'open' ? G.radiusOpen : w === 'squeeze' ? G.radiusSqueeze : G.radiusNormal;
 }
@@ -128,6 +140,43 @@ export function initSdf(): void {
       }
     }
   }
+  // Dry-pocket benches: a solid ledge on one side of each dry room, its top
+  // just above the pocket's water line — real walkable floor (user, ×2).
+  // Side chosen (or shrunk) to keep clear of authored paths.
+  dryBenches = [];
+  for (const n of NODES.filter((n) => n.dry)) {
+    const s = n.stretch ?? [1, 1, 1];
+    const rx = n.radius * s[0];
+    const ry = n.radius * s[1];
+    const rz = n.radius * s[2];
+    const level = n.pos[1] - ry * 0.35;
+    const benchRy = 1.6;
+    const topY = level + 0.3;
+    // pick the side (±x, ±z) with the most clearance from authored paths
+    let best: { cx: number; cz: number; clear: number } | null = null;
+    for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const cx = n.pos[0] + sx * rx * 0.5;
+      const cz = n.pos[2] + sz * rz * 0.5;
+      const clear = horizClearanceTo(cx, cz, n.pos[1] - ry, n.pos[1] + ry);
+      if (!best || clear > best.clear) best = { cx, cz, clear };
+    }
+    const brx = best ? Math.min(rx * 0.75, best.clear - 0.9) : 0;
+    if (best && brx >= 1.2) {
+      // radius ≤ clearance margin in EVERY horizontal direction
+      const bench: DryBench = { nodeId: n.id, c: [best.cx, topY - benchRy, best.cz], rx: brx, ry: benchRy, rz: Math.min(rz * 0.75, brx), topY };
+      dryBenches.push(bench);
+      prims.push({
+        ax: bench.c[0], ay: bench.c[1], az: bench.c[2],
+        bx: bench.c[0], by: bench.c[1], bz: bench.c[2],
+        r: brx, rx: bench.rx, ry: bench.ry, rz: bench.rz,
+        ellipsoid: true, solid: true, broad: 0, noiseAmp: 0.2,
+        zone: n.zone, width: 'chamber', ref: `${n.id}-bench`,
+      });
+    } else {
+      console.warn(`no bench fits in dry pocket ${n.id}`);
+    }
+  }
+
   prims.push(segPrim({
     ax: SKY_SHAFT.a[0], ay: SKY_SHAFT.a[1], az: SKY_SHAFT.a[2],
     bx: SKY_SHAFT.b[0], by: SKY_SHAFT.b[1], bz: SKY_SHAFT.b[2],
@@ -217,11 +266,12 @@ export function sdf(x: number, y: number, z: number, withDoors = true): number {
       }
       if (di < d) d = di;
     }
-    // pass 2: subtract solid pillars
+    // pass 2: subtract solids (pillars, dry-pocket benches)
     for (const idx of list) {
       const p = prims[idx];
       if (!p.solid) continue;
-      const ds = segDist(x, y, z, p) - p.r - noise * p.noiseAmp;
+      const base = p.ellipsoid ? ellipsoidDist(x, y, z, p) : segDist(x, y, z, p) - p.r;
+      const ds = base - noise * p.noiseAmp;
       if (-ds > d) d = -ds;
     }
   }

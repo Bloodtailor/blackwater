@@ -17,7 +17,12 @@ export type MoveMode = 'swim' | 'walk' | 'noclip';
 export class PlayerController {
   mode: MoveMode = 'swim';
   readonly vel = new THREE.Vector3();
+  /** Fired when a lunge triggers (main wires this to the HR spike). */
+  onLunge?: () => void;
   private keys = new Set<string>();
+  private prevSprint = false;
+  private prevSpace = false;
+  private lungeCooldown = 0;
   private yaw = 0;
   private pitch = 0;
   private euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -68,14 +73,15 @@ export class PlayerController {
     return regionAt(p.x, p.y, p.z)?.width === 'squeeze';
   }
 
-  // Ambient current: direction and strength wander with position and time.
+  // Ambient current: direction AND strength wander with position and time —
+  // transitions smooth but quick (user, 2026-07-18).
   private sampleCurrent(out: THREE.Vector3): void {
     const P = TUNING.player;
     const p = this.camera.position;
     const t = this.time * P.currentTimeFreq;
-    const a = fbm(p.x * P.currentFreq + t, p.y * P.currentFreq, p.z * P.currentFreq, 2) * Math.PI * 2;
-    const b = fbm(p.x * P.currentFreq + 7.3, p.y * P.currentFreq + t, p.z * P.currentFreq, 2) * Math.PI * 0.4;
-    const mag = P.currentSpeed * (0.7 + 0.6 * Math.abs(fbm(p.x * P.currentFreq, p.y * P.currentFreq + 13.7, p.z * P.currentFreq + t, 2)));
+    const a = fbm(p.x * P.currentFreq + t, p.y * P.currentFreq, p.z * P.currentFreq + t * 0.7, 2) * Math.PI * 2;
+    const b = fbm(p.x * P.currentFreq + 7.3, p.y * P.currentFreq + t, p.z * P.currentFreq, 2) * Math.PI * 0.45;
+    const mag = P.currentSpeed * (0.2 + 1.0 * Math.abs(fbm(p.x * P.currentFreq + t * 1.3, p.y * P.currentFreq + 13.7, p.z * P.currentFreq, 2)));
     out.set(Math.cos(a) * Math.cos(b), Math.sin(b), Math.sin(a) * Math.cos(b)).multiplyScalar(mag);
   }
 
@@ -113,11 +119,20 @@ export class PlayerController {
     const pos = this.camera.position;
     if (this.mode === 'walk' && !headAbove) this.mode = 'swim';
 
+    this.lungeCooldown = Math.max(0, this.lungeCooldown - dt);
     if (this.mode === 'swim') {
       // CAMERA-relative vertical (the disorientation carries into controls)
       if (this.keys.has('Space')) this.wish.add(this.camUp);
       if (this.keys.has('KeyC')) this.wish.sub(this.camUp);
       if (this.wish.lengthSq() > 0) this.wish.normalize();
+      // lunge on sprint trigger (edge), with cooldown; small inside squeezes
+      if (this.sprinting && !this.prevSprint && this.lungeCooldown <= 0) {
+        const dir = this.wish.lengthSq() > 0 ? this.wish : this.fwd;
+        const impulse = P.lungeImpulse * (this.inSqueeze ? P.lungeSqueezeFactor : 1);
+        this.vel.addScaledVector(dir, impulse);
+        this.lungeCooldown = P.lungeCooldown;
+        this.onLunge?.();
+      }
       let target: number = this.sprinting ? P.sprintSpeed : P.swimSpeed;
       if (this.inSqueeze) target = P.squeezeSpeed;
       // momentum: exponential approach + glide
@@ -138,9 +153,13 @@ export class PlayerController {
         if (resolveCollision(probe, P.radius)) this.mode = 'walk';
       }
     } else {
-      // walk: horizontal wish only, gravity, ground via SDF
+      // walk: horizontal wish only, gravity, ground via SDF, jump on Space
       this.wish.y = 0;
       if (this.wish.lengthSq() > 0) this.wish.normalize();
+      if (this.keys.has('Space') && !this.prevSpace && this.grounded) {
+        this.vel.y = P.jumpSpeed;
+        this.grounded = false;
+      }
       const target = this.wish.multiplyScalar(P.walkSpeed);
       this.vel.x = THREE.MathUtils.lerp(this.vel.x, target.x, Math.min(1, dt / 0.15));
       this.vel.z = THREE.MathUtils.lerp(this.vel.z, target.z, Math.min(1, dt / 0.15));
@@ -155,5 +174,7 @@ export class PlayerController {
       if (this.grounded && this.vel.y < 0) this.vel.y = 0;
       resolveCollision(pos, 0.3); // headroom
     }
+    this.prevSprint = this.sprinting;
+    this.prevSpace = this.keys.has('Space');
   }
 }

@@ -73,14 +73,20 @@ Diegetic dressing: the cave holds **Site BLACKWATER**, a drowned 1960s naval nuc
 ### 6.1 Movement (6DOF swim)
 - Mouse-look; WASD relative to look direction; **Space/C are CAMERA-relative up/down** (your head's up, not the world's — under tilt, the controls follow your disorientation and only bubbles/gauge tell world-truth; user decision 2026-07-18). Shift sprint. Full freedom to swim any direction, including inverted.
 - **Ambient current (user, 2026-07-18):** everywhere below the surface, a gentle wandering current pushes the player — direction/strength drift via low-frequency noise over position+time, magnitude ~0.35 m/s (tunable, always ≪ swim speed). It moves your *position*, never your camera; stop paying attention and you drift. Honest-tells guard: bubbles and gauge stay truthful.
-- **Momentum is the feel target:** acceleration/glide must read as *moving through water* — commit to drift, overshoot corners slightly, never twitch-stop. Numbers in `tuning.ts`; M3's DoD includes "feels like water."
+- **Momentum is the feel target:** acceleration/glide must read as *moving through water*, tuned toward silky/icy (user, 2026-07-18: long glide, soft acceleration) — commit to drift, overshoot corners, never twitch-stop.
+- **Lunge (user, 2026-07-18):** triggering sprint fires a quick forward lunge impulse, on a short cooldown ("lunge protection"); in a squeeze the lunge still fires but much smaller. Lunging spikes heart rate — with the HR lag, the cost lands a beat later.
+- **Jump on land (user, 2026-07-18):** Space jumps while walking on dry ground.
+- **Current is quick-shifting:** direction AND strength randomize over time — transitions smooth but fast (user revision of the ambient-current spec).
 - Base swim **4.0 m/s**, sprint **6.5 m/s** (air drain ×1.6), squeeze forced **1.6 m/s**. Momentum: ~0.4 s to reach speed, ~0.6 s glide to stop. On the platform: walk 5 m/s (trivial).
 - Swimming fast (< 1.5 m above a silty floor) or sprinting in silty chambers stirs ambient silt (§7.1). Slow swimming is clean. Careful movement is a real, always-available skill.
 
-### 6.2 Air
-- Tank of **100 air**; drains 1/s calm, ×1.6 sprinting, zone multiplier (Surface/Galleries ×1.0, Maze ×1.1, Throat/Abyss ×1.25). A zombie grab rips the regulator: **−8 air** + brief tilt kick.
+### 6.2 Air & heart rate (user redesign, 2026-07-18)
+- **Heart rate is the oxygen clock.** HR rests at 60 bpm and rises smoothly with a lag of a couple of seconds: sustained sprinting climbs it slowly toward ~150; a lunge spikes it; taking a hit spikes it; the reserve breath (below) pins it near max. Recovery is slower than the rise.
+- **Air drain scales with HR:** drain = 1/s × (HR/60) × zone multiplier (Surface/Galleries ×1.0, Maze ×1.1, Throat/Abyss ×1.25). Sprinting costs air *through your pulse* — the old flat sprint multiplier is gone. A zombie grab rips the regulator: **−8 air**, HR spike, brief tilt kick.
+- **The reserve breath:** when the tank hits 0, the bar refills once — flashing red — and drains fast (~8 s): your last breath, and the game's clearest "you are about to die" signal (the ambient pass hooks Lowe's genuine panic to this state). When it empties, drowning damage begins. The reserve re-arms only after refilling past 50 air.
+- Tank of **100 air**.
 - Refill at surface or any air pocket at 25/s (4 s full). Low-air state at ≤25: heartbeat, breath sounds shorten, screen-edge desaturation. At 0: **drowning** — 15 HP/s. (Grace, not instant death; reaching a pocket while drowning is a designed panic beat.)
-- **Three air pockets are dry rooms** (data `dry`): a walkable floor above a local water line (Galleries west dome, the infirmary airlock, the Throat rim niche). Standing room, not just a breathing gap — small islands of "land" in the deep (user, 2026-07-18).
+- **Three air pockets are dry rooms** (data `dry`): FULL rooms with real walkable floor above a local water line (Galleries west dome, the infirmary airlock, the Throat rim niche) — dry benches you climb out onto, not just breathing gaps (user, 2026-07-18 ×2: "they should be full rooms").
 - Air pockets are open to zombies occasionally (ambush-capable pockets are tagged in data): surfacing into one is relief, not guaranteed safety.
 
 ### 6.3 Health

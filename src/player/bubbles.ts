@@ -57,11 +57,13 @@ export class Bubbles {
     this.life[i] = 2.5 + Math.random() * 2;
   }
 
-  update(dt: number, head: THREE.Vector3, underwater: boolean, time: number): void {
+  update(dt: number, head: THREE.Vector3, underwater: boolean, time: number, hr = 60): void {
     if (underwater) {
       this.exhaleTimer -= dt;
       if (this.exhaleTimer <= 0) {
-        this.exhaleTimer = 3.2 + Math.random() * 0.8;
+        // breathe faster when the heart runs faster
+        const base = Math.min(4.2, Math.max(1.1, 3.4 * (60 / hr)));
+        this.exhaleTimer = base + Math.random() * 0.5;
         for (let n = 0; n < 10; n++) this.spawn(head, 0.25);
       }
     }

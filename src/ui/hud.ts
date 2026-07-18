@@ -5,6 +5,8 @@ import type { Vitals } from '../player/vitals';
 import { TUNING } from '../tuning';
 
 export class Hud {
+  private beatEl!: HTMLElement;
+  private bpmEl!: HTMLElement;
   private o2Fill: HTMLElement;
   private o2Num: HTMLElement;
   private pips: HTMLElement[];
@@ -25,6 +27,10 @@ export class Hud {
       return d;
     };
     this.vignette = make('hud-vignette');
+    const hr = make('hud-hr');
+    hr.innerHTML = '<span class="beat">♥</span><span class="bpm"></span>';
+    this.beatEl = hr.querySelector('.beat') as HTMLElement;
+    this.bpmEl = hr.querySelector('.bpm') as HTMLElement;
     const o2 = make('hud-o2');
     o2.innerHTML = '<span class="label">O2</span><div class="bar"><div class="fill"></div></div><span class="num"></span>';
     this.o2Fill = o2.querySelector('.fill') as HTMLElement;
@@ -45,10 +51,23 @@ export class Hud {
   }
 
   update(dt: number, v: Vitals, depth: number): void {
-    const frac = v.air / TUNING.air.capacity;
-    this.o2Fill.style.width = `${(frac * 100).toFixed(0)}%`;
-    this.o2Fill.classList.toggle('low', v.lowAir);
-    this.o2Num.textContent = v.air.toFixed(0);
+    // heart rate: number + a glyph that pulses at the actual bpm
+    this.bpmEl.textContent = ` ${v.hr.toFixed(0)}`;
+    this.beatEl.style.animationDuration = `${(60 / Math.max(40, v.hr)).toFixed(2)}s`;
+    this.beatEl.classList.toggle('hard', v.hr > 130);
+
+    // O2 bar — or the flashing-red reserve breath once the tank is empty
+    if (v.inReserve) {
+      this.o2Fill.style.width = `${(v.reserve * 100).toFixed(0)}%`;
+      this.o2Fill.classList.add('reserve');
+      this.o2Num.textContent = '!!';
+    } else {
+      const frac = v.air / TUNING.air.capacity;
+      this.o2Fill.style.width = `${(frac * 100).toFixed(0)}%`;
+      this.o2Fill.classList.remove('reserve');
+      this.o2Fill.classList.toggle('low', v.lowAir);
+      this.o2Num.textContent = v.air.toFixed(0);
+    }
 
     this.pips.forEach((p, i) => {
       p.classList.toggle('on', v.battery > i / 5 + 0.01);

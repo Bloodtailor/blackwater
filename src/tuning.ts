@@ -7,15 +7,32 @@ export const TUNING = {
     sprintSpeed: 6.5,
     squeezeSpeed: 1.6,
     walkSpeed: 5.0,
-    accelTime: 0.4, // s to reach speed
-    glideTime: 0.6, // s to stop
+    accelTime: 0.55, // s to reach speed (silky/icy per user)
+    glideTime: 1.5, // s glide-out (long — icy)
     freeflySpeed: 8.0, // debug camera
     radius: 0.45, // collision clearance from cave walls
     eyeHeight: 1.05, // camera above the body point when walking
     gravity: 14, // walk-mode gravity (m/s²) — snappy, game-feel not physics
-    currentSpeed: 0.35, // ambient wandering current (m/s, position push only)
+    jumpSpeed: 5.2, // walk-mode jump
+    lungeImpulse: 3.5, // sprint-trigger lunge (m/s added)
+    lungeSqueezeFactor: 0.4, // lunges still fire in squeezes, but small
+    lungeCooldown: 1.2, // s ("lunge protection")
+    currentSpeed: 0.4, // ambient wandering current peak (m/s, position push only)
     currentFreq: 0.02, // spatial frequency of current wander
-    currentTimeFreq: 0.01, // temporal drift of current wander
+    currentTimeFreq: 0.12, // temporal drift — quick shifts, smooth transitions
+  },
+  hr: {
+    rest: 60, // bpm
+    max: 180,
+    sprintTarget: 150, // sustained sprint climbs toward this
+    sprintLoadTime: 8, // s of sprinting to reach the full sprint HR target
+    riseTau: 2.0, // s lag — HR reflects effort a beat or two later
+    fallTau: 7.0, // recovery is slower than the rise
+    lungeSpike: 20, // bpm added to target per lunge
+    damageSpike: 30, // bpm added when hit
+    spikeCap: 70,
+    spikeDecayTau: 3.5,
+    panicTarget: 172, // reserve-breath HR floor
   },
   geometry: {
     cellSize: 0.7, // marching grid resolution (m)
@@ -30,11 +47,12 @@ export const TUNING = {
   },
   air: {
     capacity: 100,
-    drainPerSec: 1,
-    sprintMult: 1.6,
+    drainPerSec: 1, // at resting HR; actual drain scales ×(hr/rest)
     grabLoss: 8,
     refillPerSec: 25,
     lowThreshold: 25,
+    reserveSeconds: 8, // the flashing-red last breath
+    reserveRearmAt: 50, // refill past this to re-arm the reserve
     drownHpPerSec: 15,
     zoneMult: { sinkhole: 1.0, galleries: 1.0, maze: 1.1, throat: 1.25, abyss: 1.25 },
   },
