@@ -137,6 +137,37 @@ function initGame(): void {
   debug.hotkey('KeyR', 'Restart (when dead)', () => {
     if (vitals.dead) location.reload();
   });
+  // Ghost-wall probe: press P where collision feels wrong; records the spot
+  // and the field-vs-mesh mismatch along your view for later diagnosis.
+  const probes: object[] = [];
+  (window as { __bwProbes?: object[] }).__bwProbes = probes;
+  debug.hotkey('KeyP', 'Probe ghost wall (logs spot)', () => {
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    const c = camera.position;
+    let t = 0;
+    let fieldDist: number | null = null;
+    for (let i = 0; i < 200; i++) {
+      const d = sdf(c.x + dir.x * t, c.y + dir.y * t, c.z + dir.z * t);
+      if (d >= 0) {
+        fieldDist = t;
+        break;
+      }
+      t += Math.max(0.05, -d * 0.8);
+    }
+    const ray = new THREE.Raycaster(c.clone(), dir.clone(), 0, 60);
+    const hit = ray.intersectObject(caveMesh, false)[0];
+    const entry = {
+      pos: [c.x.toFixed(1), c.y.toFixed(1), c.z.toFixed(1)],
+      look: [dir.x.toFixed(2), dir.y.toFixed(2), dir.z.toFixed(2)],
+      collisionWallAt: fieldDist?.toFixed(2) ?? 'none<25m',
+      visualWallAt: hit ? hit.distance.toFixed(2) : 'none<60m',
+      region: regionAt(c.x, c.y, c.z),
+    };
+    probes.push(entry);
+    console.warn('[ghost-wall probe]', JSON.stringify(entry));
+    status.textContent = `probe #${probes.length} logged — collision ${entry.collisionWallAt} m vs visual ${entry.visualWallAt} m`;
+  });
 
   const view = debug.section('View');
   debug.button(view, 'Reset to spawn', spawn);
@@ -258,6 +289,8 @@ function initGame(): void {
     region: (x: number, y: number, z: number) => regionAt(x, y, z),
     waterLevelAt,
     stats: { tris, genMs },
+    caveMesh,
+    THREE,
     renderOnce: (): void => renderer.render(scene, camera),
     step: (frames = 1, dt = 1 / 60): void => {
       for (let i = 0; i < frames; i++) tick(dt);
