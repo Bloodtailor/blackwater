@@ -21,20 +21,24 @@ export class DebugPanel {
         h.fn();
       }
     });
-    if (enabled) {
-      const ui = document.getElementById('ui');
-      if (!ui) throw new Error('#ui missing');
-      this.root = document.createElement('div');
-      this.root.id = 'debug-panel';
-      const title = document.createElement('h3');
-      title.textContent = 'BLACKWATER DEBUG';
-      this.root.appendChild(title);
-      const sec = this.section('Hotkeys');
-      sec.classList.add('hotkeys');
-      this.hotkeyList = sec;
-      ui.appendChild(this.root);
-      this.hotkey('F1', 'Toggle debug panel', () => this.root?.classList.toggle('hidden'));
-    }
+    // Panel always exists so F1/backquote work from any URL; it starts hidden
+    // unless ?debug=1. (F1 without a registered handler fell through to
+    // Chrome's help page.)
+    const ui = document.getElementById('ui');
+    if (!ui) throw new Error('#ui missing');
+    this.root = document.createElement('div');
+    this.root.id = 'debug-panel';
+    if (!enabled) this.root.classList.add('hidden');
+    const title = document.createElement('h3');
+    title.textContent = 'BLACKWATER DEBUG';
+    this.root.appendChild(title);
+    const sec = this.section('Hotkeys');
+    sec.classList.add('hotkeys');
+    this.hotkeyList = sec;
+    ui.appendChild(this.root);
+    const togglePanel = () => this.root?.classList.toggle('hidden');
+    this.hotkey('F1', 'Toggle debug panel', togglePanel);
+    this.hotkey('Backquote', 'Toggle debug panel (alt)', togglePanel);
   }
 
   hotkey(code: string, label: string, fn: HotkeyFn): void {

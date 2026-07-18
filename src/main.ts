@@ -38,19 +38,17 @@ function initGame(): void {
   const ui = document.getElementById('ui');
   if (!ui) throw new Error('#ui missing');
   debug.hotkey('KeyH', 'Hide UI (screenshot mode)', () => ui.classList.toggle('hidden'));
-  if (debug.enabled) {
-    const view = debug.section('View');
-    debug.button(view, 'Reset camera', () => camera.position.set(0, 0, 0));
-    debug.toggle(
-      view,
-      'Freefly',
-      () => fly.enabled,
-      (v) => (fly.enabled = v),
-    );
-    debug.button(view, 'Open map viewer', () => {
-      location.search = '?view=map&debug=1';
-    });
-  }
+  const view = debug.section('View');
+  debug.button(view, 'Reset camera', () => camera.position.set(0, 0, 0));
+  debug.toggle(
+    view,
+    'Freefly',
+    () => fly.enabled,
+    (v) => (fly.enabled = v),
+  );
+  debug.button(view, 'Open map viewer', () => {
+    location.search = '?view=map&debug=1';
+  });
 
   const fpsEl = document.getElementById('fps');
   if (!fpsEl) throw new Error('#fps missing');
