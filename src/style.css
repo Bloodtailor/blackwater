@@ -27,6 +27,17 @@ canvas {
   opacity: 0.8;
   text-shadow: 0 0 4px #000;
 }
+#hint {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 1px;
+  opacity: 0.55;
+  text-shadow: 0 0 4px #000;
+  white-space: nowrap;
+}
 #debug-panel {
   position: absolute;
   top: 8px;
