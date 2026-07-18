@@ -10,16 +10,26 @@ export const TUNING = {
     accelTime: 0.55, // s to reach speed (silky/icy per user)
     glideTime: 1.5, // s glide-out (long — icy)
     freeflySpeed: 8.0, // debug camera
-    radius: 0.45, // collision clearance from cave walls
+    radius: 0.42, // collision clearance from cave walls
     eyeHeight: 1.05, // camera above the body point when walking
     gravity: 14, // walk-mode gravity (m/s²) — snappy, game-feel not physics
-    jumpSpeed: 5.2, // walk-mode jump
+    jumpSpeed: 7.0, // walk-mode jump — high + snappy (dolphin dive)
+    coyoteTime: 0.12, // s of jump grace after leaving the ground
     lungeImpulse: 3.5, // sprint-trigger lunge (m/s added)
-    lungeSqueezeFactor: 0.4, // lunges still fire in squeezes, but small
+    lungeSqueezeFactor: 0.7, // lunges still fire in squeezes, most of the punch
     lungeCooldown: 1.2, // s ("lunge protection")
-    currentSpeed: 0.4, // ambient wandering current peak (m/s, position push only)
+    currentSpeed: 1.2, // ambient wandering current peak (m/s) — fight it or ride it
     currentFreq: 0.02, // spatial frequency of current wander
     currentTimeFreq: 0.12, // temporal drift — quick shifts, smooth transitions
+    // Streamline momentum (user, 2026-07-18): holding one direction builds
+    // speed toward sprintSpeed even without sprint; direction changes dump it.
+    streamline: {
+      buildPerSec: 0.45, // no-sprint build rate (~2.2 s to full)
+      sprintBuildPerSec: 1.4, // sprint builds much faster and maintains
+      idleDecayPerSec: 0.25,
+      breakDot: 0.6, // wish·vel below this = direction change, dump speed
+      breakDecayPerSec: 3,
+    },
   },
   hr: {
     rest: 60, // bpm
@@ -35,14 +45,14 @@ export const TUNING = {
     panicTarget: 172, // reserve-breath HR floor
   },
   geometry: {
-    cellSize: 0.7, // marching grid resolution (m)
+    cellSize: 0.6, // marching grid resolution (m) — finer mesh tracks the collision field closer
     radiusOpen: 2.4, // tunnel radii by width class (m)
     radiusNormal: 1.6,
     radiusSqueeze: 0.75,
     noiseFreq: 0.35,
     noiseAmpFactor: 0.15, // wall noise amplitude = clamp(r * factor, 0.12, max)
     noiseAmpMax: 0.9,
-    doorBlockPad: 1.0, // door plug (disc) radius = tunnel radius + pad
+    doorBlockPad: 0.5, // door plug (disc) radius = tunnel radius + pad (still seals: noise ≤ 0.24)
     doorBlockHalfLen: 0.5, // disc half-thickness along the tunnel axis
   },
   air: {

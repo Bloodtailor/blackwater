@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { TUNING } from '../tuning';
-import { regionAt, resolveCollision } from '../cave/sdf';
+import { regionAt, resolveCollision, sdf } from '../cave/sdf';
 import { fbm } from '../util/noise';
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
@@ -23,6 +23,9 @@ export class PlayerController {
   private prevSprint = false;
   private prevSpace = false;
   private lungeCooldown = 0;
+  private streamline = 0; // 0..1 built momentum (user streamline system)
+  private coyote = 0;
+  private velDir = new THREE.Vector3();
   private yaw = 0;
   private pitch = 0;
   private euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -71,6 +74,11 @@ export class PlayerController {
   get inSqueeze(): boolean {
     const p = this.camera.position;
     return regionAt(p.x, p.y, p.z)?.width === 'squeeze';
+  }
+
+  /** Built streamline momentum, 0..1 (debug/harness). */
+  get momentum(): number {
+    return this.streamline;
   }
 
   // Ambient current: direction AND strength wander with position and time —
@@ -133,13 +141,33 @@ export class PlayerController {
         this.lungeCooldown = P.lungeCooldown;
         this.onLunge?.();
       }
-      let target: number = this.sprinting ? P.sprintSpeed : P.swimSpeed;
+      // Streamline (user, 2026-07-18): holding one direction builds speed
+      // toward sprintSpeed even without sprint; direction changes dump it;
+      // sprint builds it faster and holds it.
+      const S = P.streamline;
+      const speed = this.vel.length();
+      if (this.wish.lengthSq() > 0) {
+        let align = 1;
+        if (speed > 0.5) {
+          this.velDir.copy(this.vel).normalize();
+          align = this.velDir.dot(this.wish);
+        }
+        if (align >= 0.85) {
+          this.streamline = Math.min(1, this.streamline + dt * (this.sprinting ? S.sprintBuildPerSec : S.buildPerSec));
+        } else if (align < S.breakDot) {
+          this.streamline = Math.max(0, this.streamline - dt * S.breakDecayPerSec);
+        }
+      } else if (!this.sprinting) {
+        this.streamline = Math.max(0, this.streamline - dt * S.idleDecayPerSec);
+      }
+      let target: number = THREE.MathUtils.lerp(P.swimSpeed, P.sprintSpeed, this.streamline);
       if (this.inSqueeze) target = P.squeezeSpeed;
-      // momentum: exponential approach + glide
-      const k = this.wish.lengthSq() > 0 ? dt / P.accelTime : dt / P.glideTime;
+      // momentum: exponential approach + glide; almost no thrust in air
+      // (breaching = a momentum arc, not flight)
+      let k = this.wish.lengthSq() > 0 ? dt / P.accelTime : dt / P.glideTime;
+      if (headAbove) k *= 0.1;
       this.vel.lerp(this.wish.clone().multiplyScalar(target), Math.min(1, k));
-      // out of the water you can't hover — gravity pulls you down to land/water
-      if (headAbove) this.vel.y -= P.gravity * 0.6 * dt;
+      if (headAbove) this.vel.y -= P.gravity * dt;
       pos.addScaledVector(this.vel, dt);
       // ambient current pushes position only (never the camera view)
       if (!headAbove) {
@@ -150,28 +178,42 @@ export class PlayerController {
       // surface into walking: head above water and floor close underfoot
       if (headAbove) {
         const probe = { x: pos.x, y: pos.y - P.eyeHeight, z: pos.z };
-        if (resolveCollision(probe, P.radius)) this.mode = 'walk';
+        if (resolveCollision(probe, P.radius)) {
+          this.mode = 'walk';
+          this.grounded = true;
+          this.streamline = 0;
+        }
       }
     } else {
-      // walk: horizontal wish only, gravity, ground via SDF, jump on Space
+      // walk: horizontal wish, gravity, SDF ground with snap (no jitter),
+      // snappy jump with coyote time (dolphin dives off the shore)
       this.wish.y = 0;
       if (this.wish.lengthSq() > 0) this.wish.normalize();
-      if (this.keys.has('Space') && !this.prevSpace && this.grounded) {
-        this.vel.y = P.jumpSpeed;
-        this.grounded = false;
-      }
       const target = this.wish.multiplyScalar(P.walkSpeed);
       this.vel.x = THREE.MathUtils.lerp(this.vel.x, target.x, Math.min(1, dt / 0.15));
       this.vel.z = THREE.MathUtils.lerp(this.vel.z, target.z, Math.min(1, dt / 0.15));
-      this.vel.y -= P.gravity * dt;
+      this.coyote = this.grounded ? P.coyoteTime : Math.max(0, this.coyote - dt);
+      if (this.keys.has('Space') && !this.prevSpace && this.coyote > 0) {
+        this.vel.y = P.jumpSpeed;
+        this.coyote = 0;
+        this.grounded = false;
+      }
+      if (!this.grounded || this.vel.y > 0) this.vel.y -= P.gravity * dt;
       pos.addScaledVector(this.vel, dt);
-      // body point below the eyes stands on the floor
       const body = { x: pos.x, y: pos.y - P.eyeHeight, z: pos.z };
-      const before = body.y;
       const corrected = resolveCollision(body, P.radius);
-      this.grounded = corrected && body.y > before - 0.001;
+      let grounded = corrected && this.vel.y <= 0.05;
+      if (!corrected && this.vel.y <= 0) {
+        // ground-snap: floor just below the feet? stick, don't micro-fall
+        const d = sdf(body.x, body.y, body.z);
+        if (d > -(P.radius + 0.3)) {
+          body.y -= -d - P.radius;
+          grounded = true;
+        }
+      }
+      this.grounded = grounded;
+      if (grounded && this.vel.y < 0) this.vel.y = 0;
       pos.set(body.x, body.y + P.eyeHeight, body.z);
-      if (this.grounded && this.vel.y < 0) this.vel.y = 0;
       resolveCollision(pos, 0.3); // headroom
     }
     this.prevSprint = this.sprinting;

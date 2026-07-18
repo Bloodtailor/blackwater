@@ -116,7 +116,9 @@ export function buildDoors(scene: THREE.Scene): Door[] {
   for (const e of doorEdges()) {
     const kind: Door['kind'] = e.powerGate ? 'powerGate' : e.door!.kind;
     const { pos, dir, blockR } = doorPlacement(e);
-    const visualR = blockR - 0.6;
+    // visual matches the collision plug closely — a plug wider than its mesh
+    // reads as an invisible wall (user report, 2026-07-18)
+    const visualR = blockR - 0.15;
     const group = kind === 'debris' ? debrisMesh(visualR) : kind === 'hatch' ? hatchMesh(visualR) : grateMesh(visualR);
     group.position.set(...pos);
     group.quaternion.setFromUnitVectors(Z, new THREE.Vector3(...dir));
