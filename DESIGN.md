@@ -2,7 +2,7 @@
 
 Working title: **BLACKWATER** (Black Ops 1 zombies × cave diving). Solo-only, single-run, browser game.
 
-> **How to use this document (note to future me):** This file is the source of truth for *what the game is*. PLAN.md is the source of truth for *what to do next*. When implementation reality diverges from this doc, update the doc in the same session — never let the code become the only record of a decision. Once `src/cave/data.ts` exists, it is the source of truth for the *layout itself*; this doc only states layout *requirements* the data must satisfy. All gameplay numbers below are v1 guesses — they live in `src/tuning.ts` once coded, and Milestone 9 (balance) owns changing them. When tuning changes a number, update it here only if the *design intent* changed, not for every nudge.
+> **How to use this document (note to future me):** This file is the source of truth for *what the game is*. PLAN.md is the source of truth for *what to do next*. LORE.md is the source of truth for *why the world looks and sounds the way it does* — setting, player character, VO, every asset's in-world identity and appearance, tape scripts, the easter egg song, and the Gemini image manifest. Build nothing player-visible without checking LORE.md. When implementation reality diverges from this doc, update the doc in the same session — never let the code become the only record of a decision. Once `src/cave/data.ts` exists, it is the source of truth for the *layout itself*; this doc only states layout *requirements* the data must satisfy. All gameplay numbers below are v1 guesses — they live in `src/tuning.ts` once coded, and Milestone 9 (balance) owns changing them. When tuning changes a number, update it here only if the *design intent* changed, not for every nudge.
 
 ---
 
@@ -30,6 +30,7 @@ The original asks are all in (see traceability table §18). These are the load-b
 | **Light discipline in the Abyss** (§8.4): Guardians aggro on your flashlight | Makes light itself a decision, and makes the deepest zone play differently from everything above it. |
 | **Surface decay** (§5.1): the safe spawn pool becomes contested from round 5+ | The surface must not become the crawler-camp substitute. |
 | **The Angler** (§8.2): an enemy whose lure mimics a friendly light | Weaponizes the player's own navigation trust. Cheap to build, huge dread. |
+| **Setting is a facility fused through the cave** (user asked cave vs. flooded nuclear facility, 2026-07-18): natural cave is the connective tissue, the 1960s nuclear site intrudes more densely with depth; the Throat is the site's own bore | Keeps the cave-diving horror and the procedurally-strong organic geometry; man-made pieces become isolated, readable landmarks instead of corridor systems demanding asset quality we can't produce (the Venice Beach trap). Full identity in LORE.md §3. |
 | **Door buys** (§10.3): debris chokes, grates, and site hatches bought open with points; each opens once and never re-closes | Restored at the user's request — buying territory is core BO1 fun. Consistent with "passages never close": a door only ever *adds* passage. Consumable sinks (batteries, reels, chemlights) stay too. |
 
 ## 4. The Race (macro structure)
@@ -63,7 +64,7 @@ The original asks are all in (see traceability table §18). These are the load-b
 | **The Throat** | 45–60 m | The vertical shaft. 25 m straight down. Max-strength tilt zone. Chalk mounds at the rim (a silt-out inside a vertical shaft is intended nightmare fuel). | One air-pocket niche at the top rim. Squeeze exit at the bottom. |
 | **The Abyss** | 60–75 m | Endgame. The Cathedral: one grand chamber + side passages, faint bioluminescence (navigable with light off, barely). | Pack-a-Punch (unsealed by power), 2 Guardians patrolling, the Heart in the apse, 1 perk station, box location C, 1 air pocket hidden behind a squeeze. |
 
-Diegetic dressing: the cave was **Site BLACKWATER**, a drowned 1960s research installation — explains generator, string lights, perk machines, PaP, and gives us found radio-log tapes for ElevenLabs VO flavor (§14). Homage tone, no real-brand assets.
+Diegetic dressing: the cave holds **Site BLACKWATER**, a drowned 1960s naval nuclear installation built along its own dig — berthing shallow, stores mid, the reactor ("the Pile") and drill head deep; the Throat *is* the bore. The facility-through-cave gradient, every object's in-world identity, and all appearance directives live in **LORE.md** (§3–§4 there). Homage tone, no real-brand assets.
 
 ## 6. Player systems
 
@@ -165,7 +166,7 @@ Classic territory purchases, underwater: debris chokes, rusted grates, and the s
 Mandatory spend to reach the Abyss comfortably: ~5500. Costs are v1 guesses (`tuning.ts`).
 
 ### 10.4 Power
-- One switch, generator room, far end of the Galleries ring. On: perk stations light up and vend, **string lights** trace the two main arteries (Sinkhole↔Galleries↔Maze hub), PaP grate in the Abyss grinds open (opens once, never re-closes — consistent with "passages never close"). Turning on power is the first real dive: the moment the game starts.
+- One switch, the **Pile room** (the site's small experimental reactor), far end of the Galleries ring. On: perk stations light up and vend, cherenkov-tinted **string lights** trace the two main arteries (Sinkhole↔Galleries↔Maze hub), PaP grate in the Abyss grinds open (opens once, never re-closes — consistent with "passages never close"). Turning on power is the first real dive: the moment the game starts.
 
 ### 10.5 Perks — pick 4 of 9, stations fixed in data, power required
 | Perk | Cost | Effect |
@@ -215,7 +216,9 @@ Menus: title (Dive / How to Dive / Settings), pause, death screen with stats, wi
 - **Global underwater DSP:** low-pass + light convolver on everything below surface; lifts when head breaks water — the transition *is* the surface-relief feeling.
 - **Breathing loop** tied to air level (calm → ragged), heartbeat under 25 air; regulator hiss per exhale (synced to the visible bubble stream = the up-tell has a sound).
 - Zombie moans (wet, muffled), Angler lure hum (faint wrong-feeling chord), Guardian sub-bass presence, silt-out "whump" + tinnitus dip, perk jingles (short, dark-goofy originals), round stingers, PaP choir-groan, box music-box tease.
-- **Radio logs:** ~6 waterproof tape players scattered in data-tagged spots; 20–40 s ElevenLabs VO of Site BLACKWATER staff, 1968, increasingly wrong. Subtitled. Skippable. Pure flavor, zero mechanics.
+- **Radio logs:** 6 waterproof tape players in data-tagged spots; scripts are final in LORE.md §5 (Site BLACKWATER crew, 1968, increasingly wrong). ElevenLabs VO. Subtitled. Skippable. Pure flavor, zero mechanics.
+- **Player VO — Dutch:** speaks ONLY with his head above water (platform, air pockets, menus) — never below (regulator in; his underwater silence is the horror discipline). Line list + character voice in LORE.md §2. Tape reactions queue until he next surfaces.
+- **Easter egg — "Still on Shift":** three wind-up toy divers hidden in dead ends (data tag `toy`); winding all three wakes the rec-room jukebox, which plays one track game-wide through the underwater DSP, once per run. Track source: a random MP3 from `public/music/easteregg/` — try ElevenLabs Eleven Music (it does lyrics) at M8 for track one; the user can drop Suno tracks (prompt + full lyrics in LORE.md §6) into the folder anytime, zero code.
 - Generation: ElevenLabs TTS for VO + sound-effects endpoint for moans/stingers where it shines; WebAudio synthesis fallback for anything it can't do. All audio generated once at Milestone 8 and committed as static files — runtime never calls external APIs.
 
 ## 15. Art direction
@@ -224,6 +227,7 @@ Menus: title (Dive / How to Dive / Settings), pause, death screen with stats, wi
 - **Murk is the art style.** Fog and darkness hide low fidelity; silhouettes carry: Drowned = ragged humanoid drift, Angler = a light with a suggestion of a body, Guardian = large slow occlusion of the biolum field, Heart = warm pulse in cold water.
 - Palette by depth: sun-dappled teal (Sinkhole) → grey-green (Galleries) → near-black with pale chalk formations (Maze) → black with cyan biolum accents (Throat/Abyss). PaP/perk stations: small saturated color signatures — the only saturated things down there.
 - Post: vignette, slight chromatic aberration scaling with tilt, subtle screen-space particulate always.
+- **Flat diegetic media via Gemini:** posters, the site patch, perk labels, blueprint, crew photo, title art — full manifest with prompts in LORE.md §7; rendered as textured quads at data-tagged spots. Procedural canvas-text fallbacks so the game never blocks on generation quality. Everything else stays procedural.
 
 ## 16. Technical architecture & development rules
 
@@ -235,7 +239,8 @@ type NodeId = string;
 interface CaveNode { id: NodeId; pos: [number, number, number]; radius: number;
   zone: 'sinkhole'|'galleries'|'maze'|'throat'|'abyss';
   tags: ('airPocket'|'ambushPocket'|'burrow'|'landmark'|'siltyFloor'|'chalkMound'|'tiltZone'
-        |'perk'|'wallBuy'|'boxSpot'|'power'|'pap'|'heart'|'tape'|'cache'|'tieOff')[];
+        |'perk'|'wallBuy'|'boxSpot'|'power'|'pap'|'heart'|'tape'|'cache'|'tieOff'
+        |'poster'|'toy'|'jukebox')[];
   contents?: { perk?: PerkId; wallBuy?: WeaponId; landmarkName?: string; burrowActiveFromRound?: number };
 }
 interface CaveEdge { a: NodeId; b: NodeId; width: 'open'|'normal'|'squeeze';
@@ -276,6 +281,10 @@ v1 numbers above are deliberate guesses shipped fast. Milestone 9 is a real play
 | Win = reach deepest point and return | §11 |
 | Box, power, wall buys, PaP | §10 |
 | Door buys (added back at user request, 2026-07-18) | §10.3 |
+| Lore/worldbuilding step; coherent world; asset appearance dictated (user, 2026-07-18) | LORE.md (whole file); §3, §5.1, §14, §15 here |
+| Flooded nuclear facility (user question, 2026-07-18) | Hybrid: facility fused through the cave — §3, §5.1, LORE.md §3 |
+| Player character, motivations, out-of-water voice lines (user, 2026-07-18) | LORE.md §2; §14 VO rules |
+| Easter egg music à la BO1 teddy bears (user, 2026-07-18) | §14; toys/jukebox in LORE.md §6; MP3 folder + Suno prompt there |
 | Silt-out object: instant on shoot/touch, avoidable, fades, re-arms | §7.2 chalk mounds |
 | Swim in any direction | §6.1 |
 | ≥1 passage straight down | The Throat §5.1 |

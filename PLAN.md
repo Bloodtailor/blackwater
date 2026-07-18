@@ -4,7 +4,7 @@
 
 ## Session protocol (follow this every prompt)
 
-1. Read DESIGN.md and this file. Trust the docs over memory of past sessions; trust `src/cave/data.ts` over both for layout specifics.
+1. Read DESIGN.md and this file — plus LORE.md before building anything player-visible (it dictates every asset's identity and appearance). Trust the docs over memory of past sessions; trust `src/cave/data.ts` over both for layout specifics.
 2. Smoke check: `npm run dev` via the preview pane, load the game, glance at console. If the repo is broken, fixing it *is* the session until green. (Skip pre-M0.)
 3. Do the **next unchecked milestone**. One milestone per prompt. If a milestone turns out too big, split it *in this file* mid-session and finish the first half properly — never rush the back half.
 4. Every feature lands with its `?debug=1` trigger in the same milestone.
@@ -24,7 +24,7 @@
 - **DoD:** preview shows a foggy rock chamber I can fly through at 60 fps; debug panel opens; committed.
 
 ### M1 — Cave data & map viewer
-- [ ] Schema from DESIGN §16; author the full layout in `src/cave/data.ts` (all 5 zones, every tag: burrows, pockets, mounds, tilt edges, squeezes, doors, buys, perks, box spots, power, PaP, Heart, tapes, caches, tie-offs)
+- [ ] Schema from DESIGN §16; author the full layout in `src/cave/data.ts` (all 5 zones, every tag: burrows, pockets, mounds, tilt edges, squeezes, doors, buys, perks, box spots, power, PaP, Heart, tapes, caches, tie-offs, posters, toys ×3, jukebox) — placements follow LORE.md §3–§4 (facility intrusion gradient; toys in dead ends)
 - [ ] `?view=map`: labeled 3D wireframe + ortho top/side projections, color by zone/tag
 - [ ] Automated layout assertions (Vitest + shown in viewer): two-route rule (on the fully-opened graph), door progression (every zone reachable via purchasable doors; alternates per DESIGN §10.3), air rule (BFS at swim speed), ≥1 vertical passage ≥25 m, ≥4 squeezes, ≥8 dead ends
 - **DoD:** all assertions pass; map-viewer screenshots (top + side) look like DESIGN §5 and get committed to `docs/layout/` as the permanent visual reference.
@@ -79,12 +79,16 @@
 - [ ] Win + death screens with full run stats; restart loop clean
 - **DoD:** scripted verification of each special via debug (Angler ambush from a fake-light setup; Shade dies with the silt; sneak past Guardians lights-off, get caught lights-on); then one full assisted run (debug points allowed, no god): grab the Heart, ascend, win screen shows correct stats.
 
-### M8 — Audio & flavor
+### M8 — Audio, VO, images & flavor (large — split in place if quality would suffer)
 - [ ] WebAudio graph: global underwater low-pass/convolver, surface-break transition, positional attenuation/occlusion
-- [ ] Generate via ElevenLabs (key in `.env`; VO + SFX endpoints), commit as static assets: breathing set, heartbeat, regulator/bubbles, moans, Angler hum, Guardian presence, silt whump, stingers, perk jingles, box/PaP motifs, 6 radio logs (write scripts first; Site BLACKWATER, 1968). WebAudio-synth fallback for anything weak.
-- [ ] Wire everything incl. breathing-to-air-level, low-air heartbeat; volume sliders + subtitles for logs
-- [ ] Title/pause/settings/How-to-Dive menus finalized (settings from DESIGN §12)
-- **DoD:** headphone pass with eyes closed: I can tell air state, zombie direction, silt-out, and surface break by sound alone; all 6 logs subtitled and skippable; menus navigable start-to-restart.
+- [ ] Generate via ElevenLabs (key in `.env`; VO + SFX endpoints), commit as static assets: breathing set, heartbeat, regulator/bubbles, moans, Angler hum, Guardian presence, silt whump, stingers, perk jingles, box/PaP motifs; WebAudio-synth fallback for anything weak
+- [ ] Radio logs: 6 tapes voiced from the final scripts in LORE.md §5; subtitled, skippable
+- [ ] Dutch VO from LORE.md §2 line list (one consistent voice); surface-only trigger system + queued tape reactions
+- [ ] Easter egg: 3 wind-up toys (interact + Dutch lines) → jukebox plays a random MP3 from `public/music/easteregg/`; attempt "Still on Shift" via Eleven Music (lyrics in LORE.md §6, quality gate applies); folder works with any user-dropped MP3s
+- [ ] Gemini images per LORE.md §7 manifest (patch, posters, labels, blueprint, crew photo, title art) placed as quads at `poster`-tagged spots; procedural canvas-text fallbacks committed alongside
+- [ ] Wire everything incl. breathing-to-air-level, low-air heartbeat; volume sliders + subtitles
+- [ ] Title/pause/settings/How-to-Dive menus finalized (settings from DESIGN §12; title uses G2 key art)
+- **DoD:** headphone pass with eyes closed: I can tell air state, zombie direction, silt-out, and surface break by sound alone; all 6 logs + Dutch lines subtitled and audible only above water; winding 3 toys plays a track from the folder (verified with a placeholder MP3); posters/labels visible in-world with fallbacks proven by deleting one image; menus navigable start-to-restart.
 
 ### M9 — Balance via pilot mode & simulation (the biggest quality lever — do not rush)
 Honest constraint: I cannot reliably twitch-pilot a 40–70 min real-time run through screenshots. Full runs are tested by machinery; my manual play is only for judging feel.
@@ -118,4 +122,5 @@ Multiplayer/co-op · saves mid-run · difficulty modes (the tilt slider is acces
 
 ## Worklog (append-only; newest last)
 - **2026-07-18 — Planning session.** DESIGN.md and PLAN.md written from the user's brief + my redesign (race structure, guide line, honest-tells doctrine). Layout-as-data + map viewer + debug-harness-first chosen specifically to avoid the prior "Venice Beach" failure (assets improvised against an undocumented layout). Keys present in `.env` (ELEVENLABS_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY — names only, never commit). Repo initialized. Nothing coded yet by explicit user instruction.
+- **2026-07-18 — Lore session (user request).** LORE.md written before M0: Site BLACKWATER internal truth (1968 flood, the Pile, Project CORMORANT, the Heart), player character Elias "Dutch" Voss with surface-only VO rule + full line list, facility-fused-through-cave setting decision (user asked cave vs. nuclear facility — hybrid keeps organic geometry strengths, facility pieces become landmarks; Throat = the bore), visual language glossary for every game object, 6 final tape scripts, easter egg (3 wind-up toys → rec-room jukebox → random MP3 from `public/music/easteregg/`; Eleven Music attempt + Suno prompt/lyrics for "Still on Shift"), Gemini image manifest (12 images + fallback rule). DESIGN/PLAN updated to reference LORE.md; schema gains poster/toy/jukebox tags.
 - **2026-07-18 — Design revision (user feedback).** Door buys restored (DESIGN §10.3: progression + shortcut doors, buy-open/never-close, ~5500 mandatory) — consistent with "passages never close" since doors only ever add passage. Frenzy rule replaced by the user's mechanic, the Cave Stirs countdown (§9): near-empty rounds auto-advance after 45 s, survivors carry over; pillar 2 reworded — I had oversold breath as the anti-crawler mechanic (it taxes chores; only a rule stops round-freezing). M9 rebuilt around headless balance simulation + in-game scripted pilot mode after honestly assessing that I can't twitch-play long real-time runs; manual play is for feel only. Geometry method pinned: SDF + marching cubes for organic/layered passages.
