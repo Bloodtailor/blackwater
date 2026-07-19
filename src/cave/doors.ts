@@ -68,16 +68,24 @@ export function computeDoorBlocks(doors: { edge: CaveEdge; open: boolean }[]): D
 }
 
 function debrisMesh(radius: number): THREE.Group {
+  // The visual must COVER the collision disc: see-through gaps in a rock
+  // choke read as invisible walls (user ghost-wall report 2026-07-18).
+  // Dense pack: center boulder + two overlapping golden-angle rings.
   const g = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: 0x4a4238, roughness: 0.97, flatShading: true });
-  for (let i = 0; i < 9; i++) {
-    const r = 0.45 + Math.abs(Math.sin(i * 7.31)) * 0.65;
+  const place = (r: number, rad: number, ang: number, z: number, i: number): void => {
     const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), mat);
-    const ang = i * 2.399; // golden angle scatter across the disc
-    const rad = Math.abs(Math.sin(i * 3.7)) * radius * 0.75;
-    rock.position.set(Math.cos(ang) * rad, Math.sin(ang) * rad, Math.sin(i * 5.1) * 0.35);
+    rock.position.set(Math.cos(ang) * rad, Math.sin(ang) * rad, z);
+    rock.scale.set(1, 0.85 + 0.3 * Math.abs(Math.sin(i * 2.1)), 0.8);
     rock.rotation.set(i, i * 1.7, i * 0.6);
     g.add(rock);
+  };
+  place(radius * 0.5, 0, 0, 0, 0);
+  for (let i = 0; i < 8; i++) {
+    place(radius * 0.42 + Math.abs(Math.sin(i * 7.31)) * 0.25, radius * 0.48, i * 0.785 + 0.4, Math.sin(i * 5.1) * 0.25, i + 1);
+  }
+  for (let i = 0; i < 10; i++) {
+    place(radius * 0.36 + Math.abs(Math.sin(i * 3.7)) * 0.2, radius * 0.88, i * 0.628, Math.sin(i * 4.3) * 0.3, i + 9);
   }
   return g;
 }

@@ -212,7 +212,9 @@ export const NODES: CaveNode[] = [
   { id: 'mz-d3', pos: [-11, -42, 33], radius: 1.8, zone: 'maze',
     tags: ['poster'], contents: { poster: 'G8' } },
   { id: 'mz-d4', pos: [16, -39, 31], radius: 1.8, zone: 'maze', tags: ['siltyFloor', 'chalkMound'] },
-  { id: 'mz-d5', pos: [-1, -44, 40], radius: 1.8, zone: 'maze',
+  // deep pocket under the Chapel (moved down 2026-07-19: its ceiling grazed
+  // the Chapel bowl — noise-thin wall = see-through-but-solid ghost wall)
+  { id: 'mz-d5', pos: [-1, -47.5, 40], radius: 1.8, zone: 'maze',
     tags: ['cache', 'chalkMound'], contents: { cache: 'chemlights' } },
   { id: 'mz-b1', pos: [-4, -32, 22], radius: 1.2, zone: 'maze',
     tags: ['burrow'], contents: { burrowActiveFromRound: 6 } },
@@ -461,6 +463,16 @@ export function buildAirWaterMap(): Map<string, number> {
     else if (b.dry && b.waterY !== undefined) map.set(ref, b.waterY);
   }
   return map;
+}
+
+/** Edge ref (`a~b`, as regionAt reports) → full polyline. Used by the squeeze
+ *  view-cone to know the passage direction at any point along it. */
+export function buildEdgePolylines(): Map<string, [number, number, number][]> {
+  const m = new Map<string, [number, number, number][]>();
+  for (const e of EDGES) {
+    m.set(`${e.a}~${e.b}`, [getNode(e.a).pos, ...(e.waypoints ?? []), getNode(e.b).pos]);
+  }
+  return m;
 }
 
 /** Slide regions: edge ref → unit downhill vector (walk mode loses traction here). */

@@ -29,7 +29,7 @@ export function buildTiltRegions(): Map<string, number> {
 }
 
 export class TiltSystem {
-  /** Current camera roll in degrees (+ = clockwise). */
+  /** Last output roll in degrees (HUD/debug mirror; the camera owns truth). */
   rollDeg = 0;
 
   constructor(
@@ -44,25 +44,34 @@ export class TiltSystem {
     return Math.min(zoneMax, SETTINGS.maxTiltDeg);
   }
 
-  update(dt: number, regionRef: string | null, relevelHeld: boolean, time: number): void {
+  /**
+   * Step the roll. Free-look rework (user 2026-07-18): the camera's MEASURED
+   * roll comes in, the new roll comes back, and the controller applies the
+   * difference about the view axis — so drift/decay/re-level act on whatever
+   * roll the camera actually has, however it was acquired.
+   */
+  update(dt: number, regionRef: string | null, relevelHeld: boolean, time: number, currentRollDeg: number): number {
     const T = TUNING.tilt;
     const max = this.maxFor(regionRef);
+    let roll = currentRollDeg;
     if (relevelHeld) {
       // active re-level always wins — the player's counter-tool
-      this.rollDeg = approachZero(this.rollDeg, T.relevelDegPerSec * dt);
+      roll = approachZero(roll, T.relevelDegPerSec * dt);
     } else if (max > 0) {
       // drift in a direction that holds for long stretches, then wanders
       const s = Math.sin(time * T.wanderFreq * Math.PI * 2 + this.phase) + 0.35 * Math.sin(time * 0.73 + this.phase * 2);
-      this.rollDeg += (s >= 0 ? 1 : -1) * T.driftDegPerSec * dt;
+      roll += (s >= 0 ? 1 : -1) * T.driftDegPerSec * dt;
     } else {
       // slow natural decay — you carry disorientation out of the zone
-      this.rollDeg = approachZero(this.rollDeg, T.decayDegPerSec * dt);
+      roll = approachZero(roll, T.decayDegPerSec * dt);
     }
     // clamp to the stronger of zone cap / accessibility cap; if the setting
     // shrank mid-run, pull the roll back inside it
     const cap = max > 0 ? max : SETTINGS.maxTiltDeg;
-    if (this.rollDeg > cap) this.rollDeg = cap;
-    if (this.rollDeg < -cap) this.rollDeg = -cap;
+    if (roll > cap) roll = cap;
+    if (roll < -cap) roll = -cap;
+    this.rollDeg = roll;
+    return roll;
   }
 }
 

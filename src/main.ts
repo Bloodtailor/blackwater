@@ -203,8 +203,23 @@ function initGame(): void {
   });
   // Ghost-wall probe: press P where collision feels wrong; records the spot
   // and the field-vs-mesh mismatch along your view for later diagnosis.
-  const probes: object[] = [];
+  // PERSISTENT now (user probed and the data was lost to a reload): probes
+  // POST to the dev server (docs/probes.jsonl) AND mirror to localStorage.
+  let probes: object[] = [];
+  try {
+    probes = JSON.parse(localStorage.getItem('bw-probes') ?? '[]') as object[];
+  } catch {
+    probes = [];
+  }
   (window as { __bwProbes?: object[] }).__bwProbes = probes;
+  const persistProbe = (entry: object): void => {
+    try {
+      localStorage.setItem('bw-probes', JSON.stringify(probes.slice(-200)));
+    } catch {
+      // storage full/unavailable — server sink still gets it
+    }
+    fetch('/__probe', { method: 'POST', body: JSON.stringify(entry) }).catch(() => {});
+  };
   debug.hotkey('KeyP', 'Probe ghost wall (logs spot)', () => {
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
@@ -222,6 +237,7 @@ function initGame(): void {
     const ray = new THREE.Raycaster(c.clone(), dir.clone(), 0, 60);
     const hit = ray.intersectObject(caveMesh, false)[0];
     const entry = {
+      t: new Date().toISOString(),
       pos: [c.x.toFixed(1), c.y.toFixed(1), c.z.toFixed(1)],
       look: [dir.x.toFixed(2), dir.y.toFixed(2), dir.z.toFixed(2)],
       collisionWallAt: fieldDist?.toFixed(2) ?? 'none<25m',
@@ -229,6 +245,7 @@ function initGame(): void {
       region: regionAt(c.x, c.y, c.z),
     };
     probes.push(entry);
+    persistProbe(entry);
     console.warn('[ghost-wall probe]', JSON.stringify(entry));
     flashStatus(`probe #${probes.length}: collision ${entry.collisionWallAt} m vs visual ${entry.visualWallAt} m`);
   });
@@ -295,7 +312,7 @@ function initGame(): void {
     }
   });
   debug.button(siltSec, 'Clear all silt (re-arm mounds)', () => silt.clearAll());
-  debug.slider(siltSec, 'Roll°', -180, 180, 1, () => tilt.rollDeg, (v) => (tilt.rollDeg = v));
+  debug.slider(siltSec, 'Roll°', -180, 180, 1, () => player.measuredRollDeg, (v) => player.setRollDeg(v));
   debug.slider(siltSec, 'Max tilt° (accessibility)', 0, 180, 5, () => SETTINGS.maxTiltDeg, (v) => {
     SETTINGS.maxTiltDeg = v;
     saveSettings();
@@ -351,10 +368,13 @@ function initGame(): void {
 
     // tilt drifts only while swimming below the surface; X re-levels, and
     // breaking into air auto-levels you (user 2026-07-18: hitting an air
-    // pocket fixes your roll — the surface hands you your orientation back)
+    // pocket fixes your roll — the surface hands you your orientation back).
+    // Free-look model: the tilt system steps the camera's MEASURED roll and
+    // the controller applies the delta about the view axis.
     const tiltRef = player.mode === 'swim' && !headAbove ? (region?.ref ?? null) : null;
-    tilt.update(dt, tiltRef, player.keyDown('KeyX') || headAbove, time);
-    player.roll = THREE.MathUtils.degToRad(tilt.rollDeg);
+    const measuredRoll = player.measuredRollDeg;
+    const newRoll = tilt.update(dt, tiltRef, player.keyDown('KeyX') || headAbove, time, measuredRoll);
+    player.applyRollDelta(newRoll - measuredRoll);
     sampleCurrent(p.x, p.y, p.z, time, currentVec);
 
     // follow mode (hold T near the line): hand-over-hand glide — works blind
@@ -440,7 +460,8 @@ function initGame(): void {
     const clearVis = TUNING.visibility.clearVisM[zone];
     const siltout = silt.siltoutAt(chamber);
     const daylight = headAbove && Math.hypot(p.x, p.z) < 18 && p.y > -16; // open cenote only
-    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis), siltout, currentVec, daylight);
+    // noclip = debug map survey: full visibility and brightness (user)
+    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis), siltout, currentVec, daylight, player.mode === 'noclip');
     siltFx.update(dt, p, silt.thicknessAt(chamber), !headAbove, currentVec);
     // squeeze claustrophobia: modest FOV pull-in
     const targetFov = player.mode !== 'noclip' && player.inSqueeze ? 64 : 75;

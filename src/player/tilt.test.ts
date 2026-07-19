@@ -7,10 +7,11 @@ afterEach(() => {
   SETTINGS.maxTiltDeg = 180;
 });
 
-function run(t: TiltSystem, seconds: number, ref: string | null, relevel = false, t0 = 0): number {
+// Free-look model: measured roll in, new roll out — tests thread it through.
+function run(t: TiltSystem, seconds: number, ref: string | null, relevel = false, t0 = 0, roll = t.rollDeg): number {
   const dt = 1 / 30;
-  for (let time = t0; time < t0 + seconds; time += dt) t.update(dt, ref, relevel, time);
-  return t.rollDeg;
+  for (let time = t0; time < t0 + seconds; time += dt) roll = t.update(dt, ref, relevel, time, roll);
+  return roll;
 }
 
 describe('tilt regions from edge data', () => {
@@ -52,13 +53,10 @@ describe('tilt drift, decay, re-level (§6.5)', () => {
 
   it('decays slowly outside a zone, re-levels fast on X', () => {
     const t = new TiltSystem(regions, 4.7);
-    t.rollDeg = 40;
-    run(t, 2, null);
-    expect(t.rollDeg).toBeCloseTo(40 - TUNING.tilt.decayDegPerSec * 2, 0); // 2°/s: you carry it with you
-    t.rollDeg = 90;
-    run(t, 1, 'bore', true); // X held wins even inside the zone
-    expect(t.rollDeg).toBeCloseTo(90 - TUNING.tilt.relevelDegPerSec, -1);
-    run(t, 2, null, true);
-    expect(t.rollDeg).toBe(0);
+    const decayed = run(t, 2, null, false, 0, 40);
+    expect(decayed).toBeCloseTo(40 - TUNING.tilt.decayDegPerSec * 2, 0); // 2°/s: you carry it with you
+    const relevelled = run(t, 1, 'bore', true, 0, 90); // X held wins even inside the zone
+    expect(relevelled).toBeCloseTo(90 - TUNING.tilt.relevelDegPerSec, -1);
+    expect(run(t, 2, null, true, 0, relevelled)).toBe(0);
   });
 });

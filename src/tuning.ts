@@ -41,9 +41,16 @@ export const TUNING = {
     currentSpeed: 2.0, // peak push (m/s); no floor — real lulls happen
     currentFreq: 0.02, // spatial wander scale
     currentTimeFreq: 0.03, // how fast it shifts over time (higher = twitchier)
-    currentDepthFactorMin: 0.45, // × current strength at the surface
-    currentDepthFactorMax: 1.5, // × at/below currentDepthRangeM (user: stronger deeper)
-    currentDepthRangeM: 70,
+    // depth bands (user 2026-07-18): 0–50 m shallow ×, 50–100 m mid ×,
+    // 100 m+ deep ×, soft-blended over blendM around each boundary
+    currentDepth: {
+      shallowFactor: 0.7,
+      midFactor: 1.0,
+      deepFactor: 1.7,
+      shallowToMidM: 50,
+      midToDeepM: 100,
+      blendM: 15,
+    },
 
     // ── the wet slide (one-way chute; user 2026-07-18) ──
     slideAccel: 9, // m/s² downhill — you do not climb this
@@ -58,6 +65,11 @@ export const TUNING = {
       breakDot: 0.6, // wish·vel below this = direction change, dump speed
       breakDecayPerSec: 3,
     },
+
+    // ── squeeze view cone (user 2026-07-18: too tight to look behind you) ──
+    squeezeConeDeg: 30, // max look angle off the passage direction
+    squeezeConeTightness: 4, // mouse slowdown curve: exp(−tightness·(θ/cone)²)
+    squeezeConePullDegPerSec: 100, // entering off-axis: head forced forward
 
     // ── misc ──
     freeflySpeed: 8.0, // debug noclip camera
@@ -78,7 +90,7 @@ export const TUNING = {
     panicTarget: 172, // reserve-breath HR floor
   },
   geometry: {
-    cellSize: 0.6, // marching grid resolution (m) — finer mesh tracks the collision field closer
+    cellSize: 0.5, // marching grid resolution (m) — finer cells catch thin rock walls the mesh used to drop (ghost-wall hunt 2026-07-19)
     radiusOpen: 2.4, // tunnel radii by width class (m)
     radiusNormal: 1.6,
     radiusSqueeze: 0.75,
@@ -137,10 +149,12 @@ export const TUNING = {
     lerpPerSec: 1.2, // how fast fog chases its target (zone/silt transitions)
   },
   atmosphere: {
-    particulateCount: 1500, // ambient motes riding the current near the camera
-    particulateDepthMinFrac: 0.3, // fraction of motes rendered at the surface
+    particulateCount: 6000, // ambient motes riding the current near the camera
+    particulateDepthMinFrac: 0.35, // fraction of motes rendered at the surface
     particulateFullDepthM: 55, // full mote density at/below this depth
-    particulateBoxM: 16, // they wrap inside a box this wide around the camera
+    particulateBoxM: 10, // they wrap inside a box this wide around the camera
+    particulateFadeNearM: 1.6, // full brightness inside this camera distance…
+    particulateFadeFarM: 7.5, // …fading to nothing by this distance
     siltParticleMax: 2600, // camera-local silt cloud budget
     siltCloudRadiusM: 9,
     depthDarkStart: 6, // ambient light starts fading below this depth (m)

@@ -9,6 +9,29 @@ function shotPlugin(): Plugin {
   return {
     name: 'bw-shot',
     configureServer(server) {
+      // Ghost-wall probe sink: P-key probes append here so they survive
+      // reloads and reach the next build session (docs/probes.jsonl).
+      server.middlewares.use('/__probe', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        let body = '';
+        req.on('data', (c: Buffer) => (body += c.toString()));
+        req.on('end', () => {
+          try {
+            JSON.parse(body); // validate
+            const dir = path.resolve(server.config.root, 'docs');
+            fs.mkdirSync(dir, { recursive: true });
+            fs.appendFileSync(path.join(dir, 'probes.jsonl'), body.replace(/\n/g, ' ') + '\n');
+            res.end('ok');
+          } catch {
+            res.statusCode = 400;
+            res.end('bad body');
+          }
+        });
+      });
       server.middlewares.use('/__shot', (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;

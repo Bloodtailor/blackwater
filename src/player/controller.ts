@@ -1,25 +1,35 @@
 // The player's body (DESIGN §6.1). Three modes:
-//  swim  — 6DOF momentum movement; Space/C are CAMERA-relative up/down (under
-//          tilt your controls follow your disorientation — user decision);
-//          an ambient wandering current pushes position, never the camera.
+//  swim  — 6DOF momentum movement; Space/C are CAMERA-relative up/down; an
+//          ambient wandering current pushes position, never the camera.
 //  walk  — on dry land (shore, dry pockets): gravity, horizontal movement.
 //  noclip — debug freefly (harness + verification), no collision, no drain.
+//
+// LOOK MODEL (user 2026-07-18, free-look rework): orientation is a single
+// quaternion and the mouse always rotates about the CAMERA'S OWN axes — under
+// any tilt, mouse-up moves the view "up" on screen. It feels like the world
+// has tilted; the controls never change. Walking re-projects to yaw/pitch
+// (pitch clamped) so land movement stays a normal first-person feel.
+//
+// SQUEEZE CONE (user 2026-07-18): inside a squeeze you cannot turn around —
+// the view is held to a cone around the passage direction, mouse speed dying
+// exponentially toward the rim (full speed back toward center).
 
 import * as THREE from 'three';
 import { TUNING } from '../tuning';
 import { gradient, regionAt, resolveCollision, sdf } from '../cave/sdf';
-import { buildSlideRegions } from '../cave/data';
+import { buildEdgePolylines, buildSlideRegions } from '../cave/data';
 import { sampleCurrent } from './current';
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
+const X_AXIS = new THREE.Vector3(1, 0, 0);
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
 export type MoveMode = 'swim' | 'walk' | 'noclip';
 
 export class PlayerController {
   mode: MoveMode = 'swim';
   readonly vel = new THREE.Vector3();
-  /** Camera roll in radians (tilt system, M4). Applied after yaw/pitch. */
-  roll = 0;
   /** Fired when a lunge triggers (main wires this to the HR spike). */
   onLunge?: () => void;
   private keys = new Set<string>();
@@ -31,15 +41,22 @@ export class PlayerController {
   private prevSubmerged = true;
   private velDir = new THREE.Vector3();
   private grad: [number, number, number] = [0, 0, 0];
-  private yaw = 0;
-  private pitch = 0;
+  private orient = new THREE.Quaternion();
   private euler = new THREE.Euler(0, 0, 0, 'YXZ');
+  private qTmp = new THREE.Quaternion();
+  private qTmp2 = new THREE.Quaternion();
   private fwd = new THREE.Vector3();
   private right = new THREE.Vector3();
   private camUp = new THREE.Vector3();
+  private vTmp = new THREE.Vector3();
+  private vTmp2 = new THREE.Vector3();
   private wish = new THREE.Vector3();
   private current = new THREE.Vector3();
   private slides = buildSlideRegions();
+  private polylines = buildEdgePolylines();
+  private squeezeAxis = new THREE.Vector3();
+  private squeezeLocked = false;
+  private lastRollDeg = 0;
   private grounded = false;
   private time = 0;
 
@@ -50,28 +67,86 @@ export class PlayerController {
     dom.addEventListener('click', () => dom.requestPointerLock());
     window.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== dom) return;
-      this.yaw -= e.movementX * 0.0022;
-      this.pitch = THREE.MathUtils.clamp(this.pitch - e.movementY * 0.0022, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
+      this.rotateLook(-e.movementX * 0.0022, -e.movementY * 0.0022);
     });
     window.addEventListener('keydown', (e) => this.keys.add(e.code));
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
   }
 
+  /** Set absolute yaw/pitch (harness/scripts). Resets roll to level. */
   look(yawDeg: number, pitchDeg: number): void {
-    this.yaw = THREE.MathUtils.degToRad(yawDeg);
-    this.pitch = THREE.MathUtils.clamp(THREE.MathUtils.degToRad(pitchDeg), -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
-    this.applyLook();
+    this.euler.set(THREE.MathUtils.degToRad(pitchDeg), THREE.MathUtils.degToRad(yawDeg), 0);
+    this.orient.setFromEuler(this.euler);
+    this.camera.quaternion.copy(this.orient);
   }
 
-  private applyLook(): void {
-    this.euler.set(this.pitch, this.yaw, this.roll);
-    this.camera.quaternion.setFromEuler(this.euler);
+  /** Incremental look about the camera's own axes (mouse, arrows, scripts). */
+  rotateLook(dYaw: number, dPitch: number): void {
+    if (this.squeezeLocked && this.mode === 'swim') {
+      // moving toward the cone rim slows exponentially; toward center is free
+      const cone = THREE.MathUtils.degToRad(TUNING.player.squeezeConeDeg);
+      this.vTmp.set(0, 0, -1).applyQuaternion(this.orient);
+      const before = this.vTmp.angleTo(this.squeezeAxis);
+      this.qTmp2.copy(this.orient);
+      this.qTmp.setFromAxisAngle(Y_AXIS, dYaw);
+      this.qTmp2.multiply(this.qTmp);
+      this.qTmp.setFromAxisAngle(X_AXIS, dPitch);
+      this.qTmp2.multiply(this.qTmp);
+      this.vTmp.set(0, 0, -1).applyQuaternion(this.qTmp2);
+      if (this.vTmp.angleTo(this.squeezeAxis) > before) {
+        const f = Math.exp(-TUNING.player.squeezeConeTightness * (before / cone) ** 2);
+        dYaw *= f;
+        dPitch *= f;
+      }
+    }
+    this.qTmp.setFromAxisAngle(Y_AXIS, dYaw);
+    this.orient.multiply(this.qTmp);
+    this.qTmp.setFromAxisAngle(X_AXIS, dPitch);
+    this.orient.multiply(this.qTmp);
+    if (this.squeezeLocked && this.mode === 'swim') {
+      this.clampIntoCone(THREE.MathUtils.degToRad(TUNING.player.squeezeConeDeg), Infinity);
+    }
+    this.camera.quaternion.copy(this.orient);
   }
 
-  /** Is a key currently held? (tilt re-level, line follow — M4 systems.) */
-  keyDown(code: string): boolean {
-    return this.keys.has(code);
+  /** Camera roll relative to level, in degrees (the tilt system's input). */
+  get measuredRollDeg(): number {
+    this.fwd.set(0, 0, -1).applyQuaternion(this.orient);
+    if (Math.abs(this.fwd.y) > 0.995) return this.lastRollDeg; // gimbal pole
+    this.vTmp.crossVectors(this.fwd, WORLD_UP).normalize(); // level right
+    this.vTmp2.set(1, 0, 0).applyQuaternion(this.orient); // camera right
+    const cos = this.vTmp2.dot(this.vTmp);
+    const sin = this.vTmp.cross(this.vTmp2).dot(this.fwd); // levelRight × camRight
+    this.lastRollDeg = THREE.MathUtils.radToDeg(Math.atan2(sin, cos));
+    return this.lastRollDeg;
+  }
+
+  /** Roll the view about its own axis by a delta (tilt system applies drift). */
+  applyRollDelta(deltaDeg: number): void {
+    if (deltaDeg === 0) return;
+    this.qTmp.setFromAxisAngle(Z_AXIS, -THREE.MathUtils.degToRad(deltaDeg));
+    this.orient.multiply(this.qTmp);
+    this.camera.quaternion.copy(this.orient);
+  }
+
+  /** Set absolute roll (debug slider / scripts). */
+  setRollDeg(deg: number): void {
+    this.applyRollDelta(deg - this.measuredRollDeg);
+  }
+
+  /** Rotate the view toward the squeeze axis until within `maxRad`, moving at
+   *  most `stepRad` this call (Infinity = hard clamp). */
+  private clampIntoCone(maxRad: number, stepRad: number): void {
+    this.vTmp.set(0, 0, -1).applyQuaternion(this.orient);
+    const theta = this.vTmp.angleTo(this.squeezeAxis);
+    if (theta <= maxRad) return;
+    const move = Math.min(theta - maxRad, stepRad);
+    this.vTmp2.crossVectors(this.vTmp, this.squeezeAxis);
+    if (this.vTmp2.lengthSq() < 1e-8) this.vTmp2.crossVectors(this.squeezeAxis, Math.abs(this.squeezeAxis.y) < 0.9 ? WORLD_UP : X_AXIS);
+    this.qTmp.setFromAxisAngle(this.vTmp2.normalize(), move);
+    this.orient.premultiply(this.qTmp);
+    this.camera.quaternion.copy(this.orient);
   }
 
   get sprinting(): boolean {
@@ -92,10 +167,68 @@ export class PlayerController {
     return this.streamline;
   }
 
+  /** Is a key currently held? (tilt re-level, line follow — M4 systems.) */
+  keyDown(code: string): boolean {
+    return this.keys.has(code);
+  }
+
   /** Is this walk-region a wet slide chute? Downhill unit vector if so. */
   private slideDirAt(x: number, y: number, z: number): [number, number, number] | undefined {
     const ref = regionAt(x, y, z)?.ref;
     return ref ? this.slides.get(ref) : undefined;
+  }
+
+  /** Track the squeeze view-lock: passage tangent at the player, signed by
+   *  travel direction, with sign continuity while inside. */
+  private updateSqueezeLock(): void {
+    const p = this.camera.position;
+    const r = this.mode === 'swim' ? regionAt(p.x, p.y, p.z) : null;
+    if (!r || r.width !== 'squeeze') {
+      this.squeezeLocked = false;
+      return;
+    }
+    const pts = this.polylines.get(r.ref);
+    if (!pts || pts.length < 2) {
+      this.squeezeLocked = false;
+      return;
+    }
+    let bestD = Infinity;
+    let bi = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay, az] = pts[i - 1];
+      const [bx, by, bz] = pts[i];
+      const abx = bx - ax, aby = by - ay, abz = bz - az;
+      const len2 = abx * abx + aby * aby + abz * abz;
+      let t = len2 > 0 ? ((p.x - ax) * abx + (p.y - ay) * aby + (p.z - az) * abz) / len2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const dx = p.x - (ax + abx * t), dy = p.y - (ay + aby * t), dz = p.z - (az + abz * t);
+      const d = dx * dx + dy * dy + dz * dz;
+      if (d < bestD) {
+        bestD = d;
+        bi = i;
+      }
+    }
+    this.vTmp.set(pts[bi][0] - pts[bi - 1][0], pts[bi][1] - pts[bi - 1][1], pts[bi][2] - pts[bi - 1][2]).normalize();
+    if (this.squeezeLocked) {
+      if (this.vTmp.dot(this.squeezeAxis) < 0) this.vTmp.negate(); // continuity
+    } else {
+      // entering: face-of-travel becomes "forward" for the whole crawl
+      const mov = this.vel.lengthSq() > 0.25 ? this.vel : this.fwd;
+      if (this.vTmp.dot(mov) < 0) this.vTmp.negate();
+    }
+    this.squeezeAxis.copy(this.vTmp);
+    this.squeezeLocked = true;
+  }
+
+  /** Walking is plain first-person: project back to yaw/pitch, clamp pitch. */
+  private reprojectWalk(): void {
+    const roll = this.measuredRollDeg; // preserved; decays via the tilt system
+    this.fwd.set(0, 0, -1).applyQuaternion(this.orient);
+    const pitch = THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(this.fwd.y, -1, 1)), -1.5, 1.5);
+    const yaw = Math.atan2(-this.fwd.x, -this.fwd.z);
+    this.euler.set(pitch, yaw, -THREE.MathUtils.degToRad(roll));
+    this.orient.setFromEuler(this.euler);
+    this.camera.quaternion.copy(this.orient);
   }
 
   update(dt: number, waterLevel: number | null): void {
@@ -106,17 +239,30 @@ export class PlayerController {
     const h = waterLevel !== null ? this.camera.position.y - waterLevel : -1;
     const headAbove = h > 0;
     const look = 1.6 * dt;
-    if (this.keys.has('ArrowLeft')) this.yaw += look;
-    if (this.keys.has('ArrowRight')) this.yaw -= look;
-    if (this.keys.has('ArrowUp')) this.pitch = Math.min(this.pitch + look, Math.PI / 2 - 0.01);
-    if (this.keys.has('ArrowDown')) this.pitch = Math.max(this.pitch - look, -Math.PI / 2 + 0.01);
-    this.applyLook();
+    if (this.keys.has('ArrowLeft')) this.rotateLook(look, 0);
+    if (this.keys.has('ArrowRight')) this.rotateLook(-look, 0);
+    if (this.keys.has('ArrowUp')) this.rotateLook(0, look);
+    if (this.keys.has('ArrowDown')) this.rotateLook(0, -look);
+    if (this.mode === 'walk') this.reprojectWalk();
+    this.camera.quaternion.copy(this.orient);
 
     this.camera.getWorldDirection(this.fwd);
-    // camera-relative right: under tilt, strafe follows the rolled frame just
-    // like Space/C do — the disorientation carries into ALL the controls
+    // camera-relative frame: under tilt, strafe and vertical follow the
+    // rolled view — the disorientation carries into ALL the controls
     this.right.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
     this.camUp.copy(WORLD_UP).applyQuaternion(this.camera.quaternion);
+
+    // squeeze view-lock upkeep + forced-forward pull when entering off-axis
+    this.updateSqueezeLock();
+    if (this.squeezeLocked && this.mode === 'swim') {
+      this.clampIntoCone(
+        THREE.MathUtils.degToRad(TUNING.player.squeezeConeDeg),
+        THREE.MathUtils.degToRad(TUNING.player.squeezeConePullDegPerSec) * dt,
+      );
+      this.camera.getWorldDirection(this.fwd);
+      this.right.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
+      this.camUp.copy(WORLD_UP).applyQuaternion(this.camera.quaternion);
+    }
 
     // desired direction
     this.wish.set(0, 0, 0);

@@ -46,7 +46,7 @@ export class Atmosphere {
   private motes: THREE.Points;
   private motePos: Float32Array;
   private moteVel: Float32Array;
-  private moteMat: THREE.PointsMaterial;
+  private moteMat: THREE.ShaderMaterial;
   private rays: THREE.Group;
 
   constructor(
@@ -76,12 +76,42 @@ export class Atmosphere {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(this.motePos, 3));
-    this.moteMat = new THREE.PointsMaterial({
-      map: softDotTexture(),
-      color: this.moteColor,
-      size: 0.045,
+    // custom shader: motes are BRIGHT close to the lens and fade with camera
+    // distance (user 2026-07-18) — the water reads as full of matter around
+    // you without walling off the view
+    this.moteMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uMap: { value: softDotTexture() },
+        uColor: { value: new THREE.Color(ZONE_ENV.sinkhole.mote) },
+        uOpacity: { value: 0.55 },
+        uNear: { value: A.particulateFadeNearM },
+        uFar: { value: A.particulateFadeFarM },
+        uSize: { value: 0.1 },
+      },
+      vertexShader: /* glsl */ `
+        uniform float uSize;
+        uniform float uNear;
+        uniform float uFar;
+        varying float vFade;
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          float d = length(mv.xyz);
+          gl_PointSize = uSize * (240.0 / max(d, 0.4));
+          vFade = 1.0 - smoothstep(uNear, uFar, d);
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform sampler2D uMap;
+        uniform vec3 uColor;
+        uniform float uOpacity;
+        varying float vFade;
+        void main() {
+          vec4 tex = texture2D(uMap, gl_PointCoord);
+          gl_FragColor = vec4(uColor, uOpacity * vFade) * tex;
+        }
+      `,
       transparent: true,
-      opacity: 0.4,
       depthWrite: false,
     });
     this.motes = new THREE.Points(geo, this.moteMat);
@@ -96,6 +126,7 @@ export class Atmosphere {
    * @param current ambient current at the camera — the motes ride it
    * @param daylight head above water AND under the open cenote sky (false in
    *   underground air: bells, dry passages, the slide)
+   * @param reveal noclip map-survey mode: no fog, bright flat light (debug)
    */
   update(
     dt: number,
@@ -106,10 +137,23 @@ export class Atmosphere {
     siltout: boolean,
     current: THREE.Vector3,
     daylight: boolean,
+    reveal = false,
   ): void {
     const V = TUNING.visibility;
     const A = TUNING.atmosphere;
     const k = Math.min(1, dt * V.lerpPerSec);
+
+    if (reveal) {
+      // debug survey: see the WHOLE map (user 2026-07-18)
+      if (!(this.scene.background instanceof THREE.Color)) this.scene.background = new THREE.Color();
+      (this.scene.background as THREE.Color).setHex(0x1c2429);
+      this.fog.density = 0;
+      this.ambient.color.setHex(0xffffff);
+      this.ambient.intensity = 1.5;
+      this.motes.visible = false;
+      this.rays.visible = false;
+      return;
+    }
 
     if (headAbove) {
       const env = daylight ? ABOVE : CAVE_AIR;
@@ -154,7 +198,7 @@ export class Atmosphere {
       const env = ZONE_ENV[zone];
       this.targetMote.setHex(env.mote);
       this.moteColor.lerp(this.targetMote, k);
-      this.moteMat.color.copy(this.moteColor);
+      (this.moteMat.uniforms.uColor.value as THREE.Color).copy(this.moteColor);
       const depthFrac = THREE.MathUtils.clamp(-cam.y / A.particulateFullDepthM, 0, 1);
       const density = THREE.MathUtils.lerp(A.particulateDepthMinFrac, 1, depthFrac);
       const half = A.particulateBoxM / 2;

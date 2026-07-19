@@ -13,11 +13,19 @@ export interface Vec3Like {
   z: number;
 }
 
-/** Depth multiplier: gentle near the surface, mean at the bottom. */
+function smooth01(t: number): number {
+  const c = Math.min(1, Math.max(0, t));
+  return c * c * (3 - 2 * c);
+}
+
+/** Depth multiplier — three tunable bands with soft blends (user 2026-07-18):
+ *  0→shallowToMidM: shallowFactor; …→midToDeepM: midFactor; below: deepFactor. */
 export function currentDepthFactor(y: number): number {
-  const P = TUNING.player;
-  const t = Math.min(1, Math.max(0, -y / P.currentDepthRangeM));
-  return P.currentDepthFactorMin + (P.currentDepthFactorMax - P.currentDepthFactorMin) * t;
+  const D = TUNING.player.currentDepth;
+  const depth = -y;
+  const half = D.blendM / 2;
+  const f1 = D.shallowFactor + (D.midFactor - D.shallowFactor) * smooth01((depth - (D.shallowToMidM - half)) / D.blendM);
+  return f1 + (D.deepFactor - D.midFactor) * smooth01((depth - (D.midToDeepM - half)) / D.blendM);
 }
 
 /** Current velocity at a point — direction AND strength wander with position
