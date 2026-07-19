@@ -256,7 +256,7 @@ Menus: title (Dive / How to Dive / Settings), pause (incl. recovered-tapes list)
 
 **Stack:** TypeScript (strict) + Three.js + Vite. No other runtime deps without a PLAN.md note. Tests: Vitest for pure logic (economy, air math, round scaling, graph connectivity); everything visual verified via the browser preview + debug harness.
 
-**Map-as-data:** `src/cave/data.ts` exports the graph:
+**Map-as-data:** the layout lives in `src/cave/layout.json` (world units; the editor writes it, the loader `src/cave/data.ts` exports it — migrated 2026-07-19 when the level editor shipped at `?edit=1`). The schema:
 ```ts
 type NodeId = string;
 interface CaveNode { id: NodeId; pos: [number, number, number]; radius: number;

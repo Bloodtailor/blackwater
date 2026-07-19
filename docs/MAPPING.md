@@ -1,24 +1,32 @@
-# Designing caves yourself — the 10-minute guide
+# Designing caves yourself — THE LEVEL EDITOR
 
-The entire cave is ONE data file: **`src/cave/data.ts`**. No modeling tools,
-no editor — the geometry, collision, water, doors, and zombie pathing are all
-generated from that file every time the game loads. Change a number, save,
-and the browser reloads with the new cave. You can absolutely design maps.
+Open the game with **`?edit=1`** (or the debug panel → "Open level editor").
+The whole cave appears as a labeled 3D diagram you can edit directly:
 
-## The workflow
+- **Click** a room, tunnel, or orange waypoint to select it — every field
+  appears in the side panel (zone, radius, stretch, air/waterY, floor,
+  spikes, falseUp, tags, doors, slides, tilt…).
+- **Drag the gizmo** to move rooms and waypoints.
+- **Shift-click** a second room to connect a tunnel. **Double-click** a
+  tunnel to add a waypoint (bend it).
+- **+ ROOM** adds a room at the camera target. **DEL** deletes (rooms take
+  their tunnels with them). **Ctrl+Z** undoes. **F** frames the selection.
+- **⛰ ROCK** generates the REAL cave mesh in the editor (~4 s) so you see
+  the actual rock your data makes, not just the diagram.
+- The **DESIGN §5 rule checks run live** at the bottom of the panel — break
+  the two-route rule or starve a zone of air and it goes red immediately,
+  with the reason.
+- **💾 SAVE** writes `src/cave/layout.json` on disk (dev server). Then
+  reload the game tab (or press ▶ PLAY) and swim your edit.
 
-1. Run the game (`npm run dev`), open `src/cave/data.ts` in any editor.
-2. Change something (move a room, add a tunnel). Save. The game reloads.
-3. Press **N** (noclip) in game — it's a survey mode now: full visibility,
-   full brightness, fly anywhere, god mode on. Inspect your change.
-4. Open **`http://localhost:5173/?view=map`** for blueprints (top + side
-   views) AND the rule checks — a badge turns red if your edit broke a rule
-   (disconnected the cave, removed the second route to a zone, starved an
-   area of air, etc.). `npx vitest run` checks the same rules plus geometry
-   (every passage swimmable, doors seal, floors flat).
-5. Feel a ghost wall while playtesting? Press **P** — it flashes "PROBE
-   SAVED" and appends the exact spot to `docs/probes.jsonl` so it can be
-   fixed precisely later.
+The layout file itself is `src/cave/layout.json` — world coordinates,
+exactly what the editor shows. Hand-editing still works (fields below), and
+`npx vitest run` checks everything the editor checks plus geometry
+(passages swimmable, doors seal, floors flat).
+
+In game: **N** (noclip) is a survey mode — full visibility and brightness,
+fly anywhere, god on. Feel a ghost wall? Press **P** — "PROBE SAVED" flashes
+and the exact spot lands in `docs/probes.jsonl` for a precise fix later.
 
 ## Rooms (`NODES`)
 
@@ -71,6 +79,7 @@ exactly what's violated.
 
 ## Multiple maps
 
-Today the game loads the one layout in `data.ts`. If you build a second one
-(say `data-reef.ts`), keeping it selectable is a small code change (a URL
-parameter switch) — ask for it in a build session and it'll be wired up.
+Today the game loads the one layout in `layout.json`. Use **⬇ JSON** in the
+editor to export copies of different designs; keeping several selectable in
+game is a small code change (a URL parameter switch) — ask for it in a build
+session and it'll be wired up.

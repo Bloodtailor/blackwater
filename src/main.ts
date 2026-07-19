@@ -26,6 +26,8 @@ const params = new URLSearchParams(location.search);
 
 if (params.get('view') === 'map') {
   void import('./viewer/map').then((m) => m.initMapViewer());
+} else if (params.has('edit')) {
+  void import('./editor/editor').then((m) => m.initEditor());
 } else {
   initGame();
 }
@@ -247,6 +249,9 @@ function initGame(): void {
   debug.button(view, 'Reset to spawn', spawn);
   debug.button(view, 'Open map viewer', () => {
     location.search = '?view=map&debug=1';
+  });
+  debug.button(view, 'Open level editor', () => {
+    location.search = '?edit=1';
   });
 
   const tp = debug.section('Teleport');

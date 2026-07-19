@@ -1,0 +1,1963 @@
+{
+  "nodes": [
+    {
+      "id": "sink-platform",
+      "pos": [
+        10.2,
+        1.19,
+        3.4
+      ],
+      "radius": 5.4,
+      "stretch": [
+        1.6,
+        0.4,
+        1.2
+      ],
+      "zone": "sinkhole",
+      "tags": [
+        "surface",
+        "tieOff",
+        "tape",
+        "poster"
+      ],
+      "contents": {
+        "tape": "T1",
+        "poster": "G11"
+      }
+    },
+    {
+      "id": "sink-blueprint",
+      "pos": [
+        13.6,
+        1.19,
+        0
+      ],
+      "radius": 1.5,
+      "zone": "sinkhole",
+      "tags": [
+        "surface",
+        "poster"
+      ],
+      "contents": {
+        "poster": "G10"
+      }
+    },
+    {
+      "id": "sink-pool",
+      "pos": [
+        0,
+        -8.5,
+        0
+      ],
+      "radius": 8.100000000000001,
+      "stretch": [
+        1.4,
+        0.9,
+        1.2
+      ],
+      "zone": "sinkhole",
+      "tags": [
+        "surface",
+        "tieOff"
+      ]
+    },
+    {
+      "id": "sink-wall-e",
+      "pos": [
+        10.2,
+        -11.9,
+        5.1
+      ],
+      "radius": 2.875,
+      "zone": "sinkhole",
+      "tags": [
+        "wallBuy"
+      ],
+      "contents": {
+        "wallBuy": "speargun"
+      }
+    },
+    {
+      "id": "sink-wall-w",
+      "pos": [
+        -8.5,
+        -11.9,
+        -5.1
+      ],
+      "radius": 2.875,
+      "zone": "sinkhole",
+      "tags": [
+        "wallBuy"
+      ],
+      "contents": {
+        "wallBuy": "pneuDriver"
+      }
+    },
+    {
+      "id": "sink-b1",
+      "pos": [
+        11.9,
+        -13.6,
+        -3.4
+      ],
+      "radius": 1,
+      "zone": "sinkhole",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 1
+      }
+    },
+    {
+      "id": "sink-b2",
+      "pos": [
+        -10.2,
+        -15.299999999999999,
+        5.1
+      ],
+      "radius": 1,
+      "zone": "sinkhole",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 3
+      }
+    },
+    {
+      "id": "sink-b3",
+      "pos": [
+        1.7,
+        -15.299999999999999,
+        10.2
+      ],
+      "radius": 1,
+      "zone": "sinkhole",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 5
+      }
+    },
+    {
+      "id": "sink-shaft",
+      "pos": [
+        0,
+        -17,
+        -8.5
+      ],
+      "radius": 2.875,
+      "zone": "sinkhole",
+      "tags": [
+        "tieOff"
+      ]
+    },
+    {
+      "id": "sink-crack",
+      "pos": [
+        8.5,
+        -17,
+        8.5
+      ],
+      "radius": 1.2,
+      "zone": "sinkhole",
+      "tags": []
+    },
+    {
+      "id": "gal-entry",
+      "pos": [
+        0,
+        -23.8,
+        -13.6
+      ],
+      "radius": 4.050000000000001,
+      "zone": "galleries",
+      "tags": [
+        "tieOff"
+      ]
+    },
+    {
+      "id": "gal-ring-w",
+      "pos": [
+        -13.6,
+        -27.2,
+        -17
+      ],
+      "radius": 2.875,
+      "zone": "galleries",
+      "tags": [
+        "wallBuy",
+        "siltyFloor"
+      ],
+      "contents": {
+        "wallBuy": "flechette"
+      }
+    },
+    {
+      "id": "gal-air1",
+      "pos": [
+        -13.6,
+        -18.02,
+        -17
+      ],
+      "radius": 5.4,
+      "stretch": [
+        1.5,
+        0.75,
+        1.4
+      ],
+      "dry": true,
+      "waterY": -19.618,
+      "floor": 0.32,
+      "spikes": 4,
+      "zone": "galleries",
+      "tags": [
+        "airPocket"
+      ]
+    },
+    {
+      "id": "dry-hall",
+      "pos": [
+        -22.099999999999998,
+        -17.68,
+        -22.099999999999998
+      ],
+      "radius": 2.76,
+      "stretch": [
+        1.1,
+        0.75,
+        1.1
+      ],
+      "dry": true,
+      "waterY": -20.4,
+      "floor": 0.7,
+      "spikes": 5,
+      "zone": "galleries",
+      "tags": [
+        "airPocket"
+      ]
+    },
+    {
+      "id": "dry-gallery",
+      "pos": [
+        -30.599999999999998,
+        -14.62,
+        -27.2
+      ],
+      "radius": 4.86,
+      "stretch": [
+        1.15,
+        1.5,
+        1.05
+      ],
+      "dry": true,
+      "waterY": -20.4,
+      "floor": 0.2,
+      "spikes": 9,
+      "zone": "galleries",
+      "tags": [
+        "airPocket"
+      ]
+    },
+    {
+      "id": "dry-teaser1",
+      "pos": [
+        -36.55,
+        -7.14,
+        -31.45
+      ],
+      "radius": 1.5,
+      "dry": true,
+      "waterY": -20.4,
+      "zone": "galleries",
+      "tags": []
+    },
+    {
+      "id": "dry-teaser2",
+      "pos": [
+        -25.5,
+        -6.12,
+        -32.3
+      ],
+      "radius": 1.3,
+      "dry": true,
+      "waterY": -20.4,
+      "zone": "galleries",
+      "tags": []
+    },
+    {
+      "id": "dry-slide-top",
+      "pos": [
+        -34,
+        -17.849999999999998,
+        -34
+      ],
+      "radius": 2.3,
+      "stretch": [
+        1.2,
+        0.8,
+        1.2
+      ],
+      "dry": true,
+      "waterY": -21.25,
+      "floor": 0.79,
+      "spikes": 3,
+      "zone": "galleries",
+      "tags": []
+    },
+    {
+      "id": "slide-pool",
+      "pos": [
+        -23.8,
+        -38.25,
+        -40.8
+      ],
+      "radius": 2.76,
+      "zone": "galleries",
+      "tags": []
+    },
+    {
+      "id": "gal-turn",
+      "pos": [
+        28.9,
+        -17,
+        -23.8
+      ],
+      "radius": 2.53,
+      "zone": "galleries",
+      "tags": []
+    },
+    {
+      "id": "gal-berthing",
+      "pos": [
+        -23.8,
+        -30.599999999999998,
+        -6.8
+      ],
+      "radius": 4.7250000000000005,
+      "stretch": [
+        1.6,
+        0.55,
+        0.9
+      ],
+      "zone": "galleries",
+      "tags": [
+        "perk",
+        "wallBuy",
+        "poster",
+        "tieOff"
+      ],
+      "contents": {
+        "perk": "secondWind",
+        "vendor": "reel",
+        "poster": "G3"
+      }
+    },
+    {
+      "id": "gal-rec",
+      "pos": [
+        -27.2,
+        -32.3,
+        6.8
+      ],
+      "radius": 5.4,
+      "stretch": [
+        1.5,
+        0.55,
+        1.2
+      ],
+      "pillars": 2,
+      "zone": "galleries",
+      "tags": [
+        "landmark",
+        "jukebox",
+        "tape",
+        "poster"
+      ],
+      "contents": {
+        "landmarkName": "Rec Room",
+        "tape": "T2",
+        "poster": "G12"
+      }
+    },
+    {
+      "id": "gal-mess",
+      "pos": [
+        -17,
+        -35.699999999999996,
+        17
+      ],
+      "radius": 4.050000000000001,
+      "stretch": [
+        1.3,
+        0.6,
+        1.1
+      ],
+      "zone": "galleries",
+      "tags": [
+        "wallBuy",
+        "siltyFloor"
+      ],
+      "contents": {
+        "vendor": "chemlights"
+      }
+    },
+    {
+      "id": "gal-pile",
+      "pos": [
+        0,
+        -39.1,
+        23.8
+      ],
+      "radius": 5.4,
+      "stretch": [
+        1.3,
+        0.75,
+        1.3
+      ],
+      "pillars": 1,
+      "zone": "galleries",
+      "tags": [
+        "power",
+        "landmark",
+        "tape",
+        "poster",
+        "tieOff"
+      ],
+      "contents": {
+        "landmarkName": "The Pile",
+        "tape": "T3",
+        "poster": "G5"
+      }
+    },
+    {
+      "id": "gal-air2",
+      "pos": [
+        0,
+        -33.15,
+        23.8
+      ],
+      "radius": 1.5,
+      "dry": true,
+      "waterY": -33.15,
+      "zone": "galleries",
+      "tags": [
+        "airPocket",
+        "ambushPocket"
+      ]
+    },
+    {
+      "id": "gal-ring-e",
+      "pos": [
+        15.299999999999999,
+        -30.599999999999998,
+        13.6
+      ],
+      "radius": 2.875,
+      "zone": "galleries",
+      "tags": [
+        "perk"
+      ],
+      "contents": {
+        "perk": "barnacleHide"
+      }
+    },
+    {
+      "id": "gal-box",
+      "pos": [
+        22.099999999999998,
+        -27.2,
+        3.4
+      ],
+      "radius": 4.050000000000001,
+      "zone": "galleries",
+      "tags": [
+        "boxSpot",
+        "wallBuy",
+        "poster"
+      ],
+      "contents": {
+        "vendor": "battery",
+        "poster": "G7"
+      }
+    },
+    {
+      "id": "gal-air3",
+      "pos": [
+        22.099999999999998,
+        -21.25,
+        3.4
+      ],
+      "radius": 1.5,
+      "dry": true,
+      "waterY": -21.25,
+      "zone": "galleries",
+      "tags": [
+        "airPocket"
+      ]
+    },
+    {
+      "id": "gal-ring-ne",
+      "pos": [
+        13.6,
+        -23.8,
+        -8.5
+      ],
+      "radius": 2.53,
+      "zone": "galleries",
+      "tags": [
+        "siltyFloor"
+      ]
+    },
+    {
+      "id": "gal-spur-battery",
+      "pos": [
+        -34,
+        -34,
+        -15.299999999999999
+      ],
+      "radius": 2.07,
+      "zone": "galleries",
+      "tags": [
+        "cache"
+      ],
+      "contents": {
+        "cache": "battery"
+      }
+    },
+    {
+      "id": "gal-spur-toy",
+      "pos": [
+        -35.699999999999996,
+        -28.9,
+        15.299999999999999
+      ],
+      "radius": 2.07,
+      "zone": "galleries",
+      "tags": [
+        "toy"
+      ],
+      "contents": {
+        "toyColor": "red"
+      }
+    },
+    {
+      "id": "gal-spur-empty1",
+      "pos": [
+        -20.4,
+        -42.5,
+        27.2
+      ],
+      "radius": 2.07,
+      "zone": "galleries",
+      "tags": [
+        "siltyFloor"
+      ]
+    },
+    {
+      "id": "gal-spur-empty2",
+      "pos": [
+        18.7,
+        -18.7,
+        -17
+      ],
+      "radius": 2.07,
+      "zone": "galleries",
+      "tags": []
+    },
+    {
+      "id": "gal-b1",
+      "pos": [
+        -15.299999999999999,
+        -28.9,
+        -10.2
+      ],
+      "radius": 1,
+      "zone": "galleries",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 3
+      }
+    },
+    {
+      "id": "gal-b2",
+      "pos": [
+        3.4,
+        -37.4,
+        18.7
+      ],
+      "radius": 1,
+      "zone": "galleries",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 5
+      }
+    },
+    {
+      "id": "gal-b3",
+      "pos": [
+        20.4,
+        -28.9,
+        8.5
+      ],
+      "radius": 1,
+      "zone": "galleries",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 7
+      }
+    },
+    {
+      "id": "mz-gate",
+      "pos": [
+        17,
+        -45.9,
+        20.4
+      ],
+      "radius": 2.53,
+      "zone": "maze",
+      "tags": [
+        "tieOff"
+      ]
+    },
+    {
+      "id": "mz-west",
+      "pos": [
+        -20.4,
+        -47.6,
+        27.2
+      ],
+      "radius": 2.53,
+      "zone": "maze",
+      "tags": [
+        "siltyFloor"
+      ]
+    },
+    {
+      "id": "mz-a",
+      "pos": [
+        -10.2,
+        -51,
+        30.599999999999998
+      ],
+      "radius": 2.3,
+      "zone": "maze",
+      "tags": []
+    },
+    {
+      "id": "mz-b",
+      "pos": [
+        3.4,
+        -52.699999999999996,
+        34
+      ],
+      "radius": 2.3,
+      "zone": "maze",
+      "tags": [
+        "siltyFloor"
+      ]
+    },
+    {
+      "id": "mz-c",
+      "pos": [
+        15.299999999999999,
+        -54.4,
+        37.4
+      ],
+      "radius": 2.3,
+      "zone": "maze",
+      "tags": []
+    },
+    {
+      "id": "mz-air1",
+      "pos": [
+        3.4,
+        -46.75,
+        34
+      ],
+      "radius": 1.5,
+      "dry": true,
+      "waterY": -46.75,
+      "zone": "maze",
+      "tags": [
+        "airPocket"
+      ]
+    },
+    {
+      "id": "mz-organ",
+      "pos": [
+        -17,
+        -57.8,
+        40.8
+      ],
+      "radius": 4.7250000000000005,
+      "stretch": [
+        0.9,
+        1.6,
+        0.9
+      ],
+      "pillars": 5,
+      "zone": "maze",
+      "tags": [
+        "landmark",
+        "perk",
+        "wallBuy"
+      ],
+      "contents": {
+        "landmarkName": "The Organ Pipes",
+        "perk": "greasedGears",
+        "wallBuy": "harpoon"
+      }
+    },
+    {
+      "id": "mz-e",
+      "pos": [
+        0,
+        -59.5,
+        44.199999999999996
+      ],
+      "radius": 2.3,
+      "zone": "maze",
+      "tags": [
+        "chalkMound"
+      ]
+    },
+    {
+      "id": "mz-f",
+      "pos": [
+        13.6,
+        -61.199999999999996,
+        47.6
+      ],
+      "radius": 2.3,
+      "zone": "maze",
+      "tags": []
+    },
+    {
+      "id": "mz-infirm",
+      "pos": [
+        -10.2,
+        -64.6,
+        51
+      ],
+      "radius": 4.050000000000001,
+      "zone": "maze",
+      "tags": [
+        "perk",
+        "wallBuy",
+        "tape",
+        "poster"
+      ],
+      "contents": {
+        "perk": "ironLungs",
+        "vendor": "chemlights",
+        "tape": "T4",
+        "poster": "G6"
+      }
+    },
+    {
+      "id": "mz-air2",
+      "pos": [
+        -10.2,
+        -53.04,
+        51
+      ],
+      "radius": 6.75,
+      "stretch": [
+        1.2,
+        0.9,
+        1.2
+      ],
+      "dry": true,
+      "waterY": -54.892999999999994,
+      "floor": 0.32,
+      "spikes": 8,
+      "falseUp": [
+        0.5000110003630133,
+        0.866019052628739,
+        0
+      ],
+      "zone": "maze",
+      "tags": [
+        "airPocket",
+        "ambushPocket"
+      ]
+    },
+    {
+      "id": "mz-air2-t1",
+      "pos": [
+        -4.25,
+        -46.75,
+        51.85
+      ],
+      "radius": 1.3,
+      "dry": true,
+      "waterY": -54.892999999999994,
+      "zone": "maze",
+      "tags": []
+    },
+    {
+      "id": "mz-air2-t2",
+      "pos": [
+        -15.299999999999999,
+        -46.239999999999995,
+        55.25
+      ],
+      "radius": 1.2,
+      "dry": true,
+      "waterY": -54.892999999999994,
+      "zone": "maze",
+      "tags": []
+    },
+    {
+      "id": "mz-stores",
+      "pos": [
+        6.8,
+        -66.3,
+        56.1
+      ],
+      "radius": 4.7250000000000005,
+      "stretch": [
+        1.4,
+        0.7,
+        1.2
+      ],
+      "pillars": 2,
+      "zone": "maze",
+      "tags": [
+        "boxSpot",
+        "perk",
+        "wallBuy",
+        "poster"
+      ],
+      "contents": {
+        "perk": "steadyHands",
+        "vendor": "battery",
+        "poster": "G4"
+      }
+    },
+    {
+      "id": "mz-chapel",
+      "pos": [
+        -5.1,
+        -69.7,
+        61.199999999999996
+      ],
+      "radius": 5.4,
+      "stretch": [
+        1.25,
+        1.3,
+        1.1
+      ],
+      "pillars": 3,
+      "zone": "maze",
+      "tags": [
+        "landmark",
+        "chalkMound",
+        "siltyFloor"
+      ],
+      "contents": {
+        "landmarkName": "The White Chapel"
+      }
+    },
+    {
+      "id": "mz-coil",
+      "pos": [
+        17,
+        -71.39999999999999,
+        61.199999999999996
+      ],
+      "radius": 4.050000000000001,
+      "zone": "maze",
+      "tags": [
+        "landmark",
+        "perk",
+        "wallBuy"
+      ],
+      "contents": {
+        "landmarkName": "The Coil",
+        "perk": "triggerFish",
+        "wallBuy": "lineLance"
+      }
+    },
+    {
+      "id": "mz-air3",
+      "pos": [
+        17,
+        -65.45,
+        61.199999999999996
+      ],
+      "radius": 1.5,
+      "dry": true,
+      "waterY": -65.45,
+      "zone": "maze",
+      "tags": [
+        "airPocket"
+      ]
+    },
+    {
+      "id": "mz-d1",
+      "pos": [
+        -23.8,
+        -61.199999999999996,
+        34
+      ],
+      "radius": 2.07,
+      "zone": "maze",
+      "tags": [
+        "toy"
+      ],
+      "contents": {
+        "toyColor": "blue"
+      }
+    },
+    {
+      "id": "mz-d2",
+      "pos": [
+        23.8,
+        -56.1,
+        42.5
+      ],
+      "radius": 2.07,
+      "zone": "maze",
+      "tags": [
+        "cache"
+      ],
+      "contents": {
+        "cache": "battery"
+      }
+    },
+    {
+      "id": "mz-turn",
+      "pos": [
+        30.599999999999998,
+        -51,
+        34
+      ],
+      "radius": 2.53,
+      "zone": "maze",
+      "tags": []
+    },
+    {
+      "id": "mz-d3",
+      "pos": [
+        -18.7,
+        -71.39999999999999,
+        56.1
+      ],
+      "radius": 2.07,
+      "zone": "maze",
+      "tags": [
+        "poster"
+      ],
+      "contents": {
+        "poster": "G8"
+      }
+    },
+    {
+      "id": "mz-d4",
+      "pos": [
+        27.2,
+        -66.3,
+        52.699999999999996
+      ],
+      "radius": 2.07,
+      "zone": "maze",
+      "tags": [
+        "siltyFloor",
+        "chalkMound"
+      ]
+    },
+    {
+      "id": "mz-d5",
+      "pos": [
+        -1.7,
+        -80.75,
+        68
+      ],
+      "radius": 2.07,
+      "zone": "maze",
+      "tags": [
+        "cache",
+        "chalkMound"
+      ],
+      "contents": {
+        "cache": "chemlights"
+      }
+    },
+    {
+      "id": "mz-b1",
+      "pos": [
+        -6.8,
+        -54.4,
+        37.4
+      ],
+      "radius": 1,
+      "zone": "maze",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 6
+      }
+    },
+    {
+      "id": "mz-b2",
+      "pos": [
+        10.2,
+        -62.9,
+        51
+      ],
+      "radius": 1,
+      "zone": "maze",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 8
+      }
+    },
+    {
+      "id": "mz-b3",
+      "pos": [
+        -13.6,
+        -68,
+        57.8
+      ],
+      "radius": 1,
+      "zone": "maze",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 10
+      }
+    },
+    {
+      "id": "throat-rim",
+      "pos": [
+        8.5,
+        -76.5,
+        68
+      ],
+      "radius": 4.7250000000000005,
+      "zone": "throat",
+      "tags": [
+        "perk",
+        "tape",
+        "chalkMound",
+        "tieOff"
+      ],
+      "contents": {
+        "perk": "finKick",
+        "tape": "T5"
+      }
+    },
+    {
+      "id": "throat-rim-air",
+      "pos": [
+        8.5,
+        -68.67999999999999,
+        68
+      ],
+      "radius": 5.4,
+      "stretch": [
+        1.5,
+        0.75,
+        1.4
+      ],
+      "dry": true,
+      "waterY": -70.278,
+      "floor": 0.32,
+      "spikes": 6,
+      "zone": "throat",
+      "tags": [
+        "airPocket"
+      ]
+    },
+    {
+      "id": "throat-mid",
+      "pos": [
+        8.5,
+        -98.6,
+        68
+      ],
+      "radius": 2.3,
+      "zone": "throat",
+      "tags": []
+    },
+    {
+      "id": "throat-bottom",
+      "pos": [
+        8.5,
+        -119,
+        68
+      ],
+      "radius": 2.875,
+      "zone": "throat",
+      "tags": [
+        "tieOff"
+      ]
+    },
+    {
+      "id": "abyss-hall",
+      "pos": [
+        8.5,
+        -124.1,
+        78.2
+      ],
+      "radius": 4.050000000000001,
+      "stretch": [
+        1.3,
+        0.8,
+        1.1
+      ],
+      "zone": "abyss",
+      "tags": [
+        "wallBuy"
+      ],
+      "contents": {
+        "vendor": "battery"
+      }
+    },
+    {
+      "id": "abyss-box",
+      "pos": [
+        17,
+        -125.8,
+        81.6
+      ],
+      "radius": 2.875,
+      "zone": "abyss",
+      "tags": [
+        "boxSpot"
+      ]
+    },
+    {
+      "id": "abyss-toy",
+      "pos": [
+        20.4,
+        -120.7,
+        74.8
+      ],
+      "radius": 2.07,
+      "zone": "abyss",
+      "tags": [
+        "toy"
+      ],
+      "contents": {
+        "toyColor": "yellow"
+      }
+    },
+    {
+      "id": "cathedral",
+      "pos": [
+        0,
+        -129.2,
+        88.39999999999999
+      ],
+      "radius": 13.5,
+      "stretch": [
+        1.5,
+        2.1,
+        1.3
+      ],
+      "pillars": 6,
+      "zone": "abyss",
+      "tags": [
+        "landmark",
+        "perk",
+        "guardianPost",
+        "tieOff"
+      ],
+      "contents": {
+        "landmarkName": "The Cathedral",
+        "perk": "catEyes"
+      }
+    },
+    {
+      "id": "abyss-air",
+      "pos": [
+        -10.2,
+        -122.39999999999999,
+        93.5
+      ],
+      "radius": 1.5,
+      "dry": true,
+      "waterY": -122.39999999999999,
+      "zone": "abyss",
+      "tags": [
+        "airPocket"
+      ]
+    },
+    {
+      "id": "pap-chamber",
+      "pos": [
+        -27.2,
+        -129.2,
+        76.5
+      ],
+      "radius": 4.050000000000001,
+      "zone": "abyss",
+      "tags": [
+        "pap",
+        "perk"
+      ],
+      "contents": {
+        "perk": "deepPockets"
+      }
+    },
+    {
+      "id": "drill-head",
+      "pos": [
+        3.4,
+        -134.29999999999998,
+        96.89999999999999
+      ],
+      "radius": 4.050000000000001,
+      "stretch": [
+        1.3,
+        0.7,
+        1.3
+      ],
+      "zone": "abyss",
+      "tags": [
+        "guardianPost",
+        "tape",
+        "poster"
+      ],
+      "contents": {
+        "tape": "T6",
+        "poster": "G13"
+      }
+    },
+    {
+      "id": "heart-apse",
+      "pos": [
+        11.9,
+        -134.29999999999998,
+        100.3
+      ],
+      "radius": 2.875,
+      "stretch": [
+        1.1,
+        1.3,
+        1
+      ],
+      "zone": "abyss",
+      "tags": [
+        "heart"
+      ]
+    },
+    {
+      "id": "abyss-b1",
+      "pos": [
+        -13.6,
+        -139.4,
+        91.8
+      ],
+      "radius": 1,
+      "zone": "abyss",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 10
+      }
+    },
+    {
+      "id": "abyss-b2",
+      "pos": [
+        10.2,
+        -130.9,
+        91.8
+      ],
+      "radius": 1,
+      "zone": "abyss",
+      "tags": [
+        "burrow"
+      ],
+      "contents": {
+        "burrowActiveFromRound": 12
+      }
+    },
+    {
+      "id": "chim-1",
+      "pos": [
+        -13.6,
+        -85,
+        68
+      ],
+      "radius": 1.6,
+      "zone": "throat",
+      "tags": [
+        "siltyFloor",
+        "chalkMound"
+      ]
+    },
+    {
+      "id": "chim-2",
+      "pos": [
+        -17,
+        -105.39999999999999,
+        78.2
+      ],
+      "radius": 1.6,
+      "zone": "throat",
+      "tags": []
+    }
+  ],
+  "edges": [
+    {
+      "a": "sink-platform",
+      "b": "sink-pool",
+      "width": "open"
+    },
+    {
+      "a": "sink-platform",
+      "b": "sink-blueprint",
+      "width": "open"
+    },
+    {
+      "a": "sink-pool",
+      "b": "sink-wall-e",
+      "width": "open"
+    },
+    {
+      "a": "sink-pool",
+      "b": "sink-wall-w",
+      "width": "open"
+    },
+    {
+      "a": "sink-pool",
+      "b": "sink-b1",
+      "width": "squeeze"
+    },
+    {
+      "a": "sink-pool",
+      "b": "sink-b2",
+      "width": "squeeze"
+    },
+    {
+      "a": "sink-pool",
+      "b": "sink-b3",
+      "width": "squeeze"
+    },
+    {
+      "a": "sink-pool",
+      "b": "sink-shaft",
+      "width": "normal"
+    },
+    {
+      "a": "sink-pool",
+      "b": "sink-crack",
+      "width": "normal"
+    },
+    {
+      "a": "sink-shaft",
+      "b": "gal-entry",
+      "width": "normal",
+      "door": {
+        "cost": 750,
+        "kind": "debris"
+      }
+    },
+    {
+      "a": "sink-crack",
+      "b": "gal-ring-ne",
+      "width": "squeeze",
+      "waypoints": [
+        [
+          11.9,
+          -20.4,
+          0
+        ]
+      ]
+    },
+    {
+      "a": "gal-entry",
+      "b": "gal-ring-w",
+      "width": "normal"
+    },
+    {
+      "a": "gal-ring-w",
+      "b": "gal-air1",
+      "width": "normal"
+    },
+    {
+      "a": "gal-ring-w",
+      "b": "gal-berthing",
+      "width": "normal"
+    },
+    {
+      "a": "gal-berthing",
+      "b": "gal-rec",
+      "width": "open"
+    },
+    {
+      "a": "gal-rec",
+      "b": "gal-mess",
+      "width": "normal"
+    },
+    {
+      "a": "gal-mess",
+      "b": "gal-pile",
+      "width": "normal"
+    },
+    {
+      "a": "gal-pile",
+      "b": "gal-air2",
+      "width": "open"
+    },
+    {
+      "a": "gal-pile",
+      "b": "gal-ring-e",
+      "width": "normal"
+    },
+    {
+      "a": "gal-ring-e",
+      "b": "gal-box",
+      "width": "normal"
+    },
+    {
+      "a": "gal-box",
+      "b": "gal-air3",
+      "width": "open"
+    },
+    {
+      "a": "gal-box",
+      "b": "gal-ring-ne",
+      "width": "normal"
+    },
+    {
+      "a": "gal-ring-ne",
+      "b": "gal-entry",
+      "width": "normal"
+    },
+    {
+      "a": "gal-berthing",
+      "b": "gal-ring-e",
+      "width": "squeeze",
+      "waypoints": [
+        [
+          -5.1,
+          -30.599999999999998,
+          5.1
+        ]
+      ]
+    },
+    {
+      "a": "gal-entry",
+      "b": "gal-pile",
+      "width": "normal",
+      "door": {
+        "cost": 1000,
+        "kind": "grate"
+      },
+      "waypoints": [
+        [
+          0,
+          -32.3,
+          5.1
+        ]
+      ]
+    },
+    {
+      "a": "gal-air1",
+      "b": "dry-hall",
+      "width": "normal"
+    },
+    {
+      "a": "dry-hall",
+      "b": "dry-gallery",
+      "width": "normal"
+    },
+    {
+      "a": "dry-gallery",
+      "b": "dry-teaser1",
+      "width": "normal"
+    },
+    {
+      "a": "dry-gallery",
+      "b": "dry-teaser2",
+      "width": "normal"
+    },
+    {
+      "a": "dry-gallery",
+      "b": "dry-slide-top",
+      "width": "normal"
+    },
+    {
+      "a": "dry-slide-top",
+      "b": "slide-pool",
+      "width": "normal",
+      "slide": true,
+      "waterY": -34.339999999999996
+    },
+    {
+      "a": "slide-pool",
+      "b": "gal-ring-w",
+      "width": "normal",
+      "waypoints": [
+        [
+          -20.4,
+          -34,
+          -28.9
+        ]
+      ]
+    },
+    {
+      "a": "gal-berthing",
+      "b": "gal-spur-battery",
+      "width": "normal"
+    },
+    {
+      "a": "gal-rec",
+      "b": "gal-spur-toy",
+      "width": "normal"
+    },
+    {
+      "a": "gal-mess",
+      "b": "gal-spur-empty1",
+      "width": "normal"
+    },
+    {
+      "a": "gal-ring-ne",
+      "b": "gal-spur-empty2",
+      "width": "normal"
+    },
+    {
+      "a": "gal-spur-empty2",
+      "b": "gal-turn",
+      "width": "squeeze",
+      "waypoints": [
+        [
+          22.099999999999998,
+          -17.849999999999998,
+          -22.099999999999998
+        ],
+        [
+          26.349999999999998,
+          -15.299999999999999,
+          -18.7
+        ]
+      ]
+    },
+    {
+      "a": "gal-ring-w",
+      "b": "gal-b1",
+      "width": "squeeze"
+    },
+    {
+      "a": "gal-pile",
+      "b": "gal-b2",
+      "width": "squeeze"
+    },
+    {
+      "a": "gal-box",
+      "b": "gal-b3",
+      "width": "squeeze"
+    },
+    {
+      "a": "gal-box",
+      "b": "mz-gate",
+      "width": "normal",
+      "door": {
+        "cost": 1250,
+        "kind": "debris"
+      },
+      "tilt": {
+        "maxDeg": 90
+      }
+    },
+    {
+      "a": "gal-mess",
+      "b": "mz-west",
+      "width": "normal",
+      "waypoints": [
+        [
+          -27.2,
+          -40.8,
+          23.8
+        ],
+        [
+          -25.5,
+          -44.199999999999996,
+          27.2
+        ]
+      ]
+    },
+    {
+      "a": "mz-gate",
+      "b": "mz-c",
+      "width": "normal"
+    },
+    {
+      "a": "mz-west",
+      "b": "mz-a",
+      "width": "normal"
+    },
+    {
+      "a": "mz-a",
+      "b": "mz-b",
+      "width": "normal",
+      "waterY": -51.442,
+      "falseUp": [
+        -0.14018235567070347,
+        0.8711332102393715,
+        0.47061219403736154
+      ]
+    },
+    {
+      "a": "mz-b",
+      "b": "mz-c",
+      "width": "normal"
+    },
+    {
+      "a": "mz-b",
+      "b": "mz-air1",
+      "width": "open"
+    },
+    {
+      "a": "mz-a",
+      "b": "mz-organ",
+      "width": "normal"
+    },
+    {
+      "a": "mz-b",
+      "b": "mz-e",
+      "width": "normal"
+    },
+    {
+      "a": "mz-c",
+      "b": "mz-f",
+      "width": "squeeze"
+    },
+    {
+      "a": "mz-organ",
+      "b": "mz-e",
+      "width": "normal"
+    },
+    {
+      "a": "mz-e",
+      "b": "mz-f",
+      "width": "normal",
+      "waterY": -60.00999999999999,
+      "falseUp": [
+        0.15996001499375273,
+        0.8197950768429827,
+        -0.549862551541025
+      ]
+    },
+    {
+      "a": "mz-organ",
+      "b": "mz-infirm",
+      "width": "normal"
+    },
+    {
+      "a": "mz-e",
+      "b": "mz-infirm",
+      "width": "normal",
+      "tilt": {
+        "maxDeg": 90
+      }
+    },
+    {
+      "a": "mz-infirm",
+      "b": "mz-air2",
+      "width": "normal"
+    },
+    {
+      "a": "mz-air2",
+      "b": "mz-air2-t1",
+      "width": "normal"
+    },
+    {
+      "a": "mz-air2",
+      "b": "mz-air2-t2",
+      "width": "normal"
+    },
+    {
+      "a": "mz-f",
+      "b": "mz-stores",
+      "width": "normal"
+    },
+    {
+      "a": "mz-infirm",
+      "b": "mz-chapel",
+      "width": "normal"
+    },
+    {
+      "a": "mz-stores",
+      "b": "mz-chapel",
+      "width": "normal"
+    },
+    {
+      "a": "mz-stores",
+      "b": "mz-coil",
+      "width": "normal"
+    },
+    {
+      "a": "mz-chapel",
+      "b": "mz-coil",
+      "width": "squeeze",
+      "waypoints": [
+        [
+          5.1,
+          -71.39999999999999,
+          62.9
+        ]
+      ]
+    },
+    {
+      "a": "mz-coil",
+      "b": "mz-air3",
+      "width": "open"
+    },
+    {
+      "a": "mz-gate",
+      "b": "mz-stores",
+      "width": "normal",
+      "door": {
+        "cost": 1250,
+        "kind": "grate"
+      },
+      "waypoints": [
+        [
+          25.5,
+          -52.699999999999996,
+          28.9
+        ],
+        [
+          27.2,
+          -61.199999999999996,
+          49.3
+        ]
+      ]
+    },
+    {
+      "a": "mz-organ",
+      "b": "mz-d1",
+      "width": "normal"
+    },
+    {
+      "a": "mz-c",
+      "b": "mz-d2",
+      "width": "normal"
+    },
+    {
+      "a": "mz-d2",
+      "b": "mz-turn",
+      "width": "squeeze",
+      "waypoints": [
+        [
+          27.2,
+          -53.55,
+          39.949999999999996
+        ],
+        [
+          31.45,
+          -54.4,
+          36.55
+        ]
+      ]
+    },
+    {
+      "a": "mz-infirm",
+      "b": "mz-d3",
+      "width": "normal"
+    },
+    {
+      "a": "mz-d4",
+      "b": "mz-stores",
+      "width": "squeeze"
+    },
+    {
+      "a": "mz-chapel",
+      "b": "mz-d5",
+      "width": "normal"
+    },
+    {
+      "a": "mz-b",
+      "b": "mz-b1",
+      "width": "squeeze"
+    },
+    {
+      "a": "mz-f",
+      "b": "mz-b2",
+      "width": "squeeze"
+    },
+    {
+      "a": "mz-chapel",
+      "b": "mz-b3",
+      "width": "squeeze"
+    },
+    {
+      "a": "mz-coil",
+      "b": "throat-rim",
+      "width": "normal",
+      "door": {
+        "cost": 1500,
+        "kind": "debris"
+      }
+    },
+    {
+      "a": "mz-chapel",
+      "b": "throat-rim",
+      "width": "normal",
+      "waypoints": [
+        [
+          1.7,
+          -74.8,
+          66.3
+        ]
+      ]
+    },
+    {
+      "a": "throat-rim",
+      "b": "throat-rim-air",
+      "width": "normal"
+    },
+    {
+      "a": "throat-rim",
+      "b": "throat-mid",
+      "width": "normal",
+      "tilt": {
+        "maxDeg": 180
+      }
+    },
+    {
+      "a": "throat-mid",
+      "b": "throat-bottom",
+      "width": "normal",
+      "tilt": {
+        "maxDeg": 180
+      }
+    },
+    {
+      "a": "throat-bottom",
+      "b": "abyss-hall",
+      "width": "normal",
+      "door": {
+        "cost": 2000,
+        "kind": "hatch"
+      }
+    },
+    {
+      "a": "throat-bottom",
+      "b": "abyss-hall",
+      "width": "squeeze",
+      "waypoints": [
+        [
+          15.299999999999999,
+          -123.25,
+          73.95
+        ]
+      ]
+    },
+    {
+      "a": "mz-chapel",
+      "b": "chim-1",
+      "width": "squeeze",
+      "waypoints": [
+        [
+          -10.2,
+          -78.2,
+          64.6
+        ]
+      ]
+    },
+    {
+      "a": "chim-1",
+      "b": "chim-2",
+      "width": "squeeze",
+      "tilt": {
+        "maxDeg": 180
+      }
+    },
+    {
+      "a": "chim-2",
+      "b": "cathedral",
+      "width": "normal",
+      "tilt": {
+        "maxDeg": 180
+      },
+      "waypoints": [
+        [
+          -10.2,
+          -119,
+          85
+        ]
+      ]
+    },
+    {
+      "a": "abyss-hall",
+      "b": "abyss-box",
+      "width": "normal"
+    },
+    {
+      "a": "abyss-hall",
+      "b": "abyss-toy",
+      "width": "normal"
+    },
+    {
+      "a": "abyss-hall",
+      "b": "cathedral",
+      "width": "open"
+    },
+    {
+      "a": "cathedral",
+      "b": "abyss-air",
+      "width": "squeeze",
+      "waypoints": [
+        [
+          -8.5,
+          -125.8,
+          91.8
+        ]
+      ]
+    },
+    {
+      "a": "cathedral",
+      "b": "pap-chamber",
+      "width": "normal",
+      "powerGate": true,
+      "gateAt": 0.75
+    },
+    {
+      "a": "cathedral",
+      "b": "drill-head",
+      "width": "open"
+    },
+    {
+      "a": "drill-head",
+      "b": "heart-apse",
+      "width": "normal"
+    },
+    {
+      "a": "cathedral",
+      "b": "abyss-b1",
+      "width": "squeeze"
+    },
+    {
+      "a": "drill-head",
+      "b": "abyss-b2",
+      "width": "squeeze"
+    }
+  ],
+  "zoneHubs": {
+    "sinkhole": "sink-pool",
+    "galleries": "gal-entry",
+    "maze": "mz-e",
+    "throat": "throat-rim",
+    "abyss": "cathedral"
+  }
+}

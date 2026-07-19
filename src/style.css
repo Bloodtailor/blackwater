@@ -281,6 +281,143 @@ canvas {
 #hud-toast.show {
   opacity: 0.95;
 }
+#editor-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 320px;
+  height: 100vh;
+  overflow-y: auto;
+  background: rgba(8, 14, 17, 0.94);
+  border-left: 1px solid #1d4a44;
+  padding: 10px;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  color: #bfe8dc;
+  z-index: 20;
+  box-sizing: border-box;
+}
+.ed-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.ed-toolbar button,
+.ed-actions button {
+  background: #0a2a26;
+  color: #bfeee4;
+  border: 1px solid #1d4a44;
+  padding: 4px 8px;
+  font: inherit;
+  cursor: pointer;
+}
+.ed-toolbar button:hover,
+.ed-actions button:hover {
+  background: #12403a;
+}
+.ed-toolbar .ed-primary {
+  background: #14532d;
+  border-color: #2f8f57;
+}
+.ed-hint {
+  opacity: 0.6;
+  font-size: 10px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.ed-title {
+  color: #55e0c8;
+  letter-spacing: 2px;
+  margin: 10px 0 6px;
+  font-size: 11px;
+}
+.ed-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+}
+.ed-row span {
+  width: 88px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+.ed-row input[type='number'],
+.ed-row input[type='text'],
+.ed-row input:not([type]) {
+  width: 100%;
+  min-width: 0;
+  background: #061a18;
+  color: #d8f2ea;
+  border: 1px solid #1d4a44;
+  padding: 2px 4px;
+  font: inherit;
+}
+.ed-row input.ed-vec {
+  width: 33%;
+}
+.ed-row select {
+  width: 100%;
+  background: #061a18;
+  color: #d8f2ea;
+  border: 1px solid #1d4a44;
+  font: inherit;
+}
+.ed-tags {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 8px;
+  margin: 6px 0;
+  font-size: 11px;
+}
+.ed-tags label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  opacity: 0.85;
+}
+.ed-json {
+  width: 100%;
+  box-sizing: border-box;
+  background: #061a18;
+  color: #d8f2ea;
+  border: 1px solid #1d4a44;
+  font: inherit;
+}
+.ed-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.ed-note {
+  opacity: 0.7;
+  margin: 6px 0;
+  line-height: 1.4;
+}
+.ed-checks {
+  margin-top: 12px;
+  line-height: 1.55;
+  font-size: 11px;
+}
+#editor-toast {
+  position: fixed;
+  top: 18px;
+  left: calc(50% - 160px);
+  transform: translateX(-50%);
+  font-family: Consolas, monospace;
+  font-size: 15px;
+  letter-spacing: 3px;
+  color: #d8f2e8;
+  text-shadow: 0 0 8px #000;
+  opacity: 0;
+  transition: opacity 0.25s;
+  z-index: 30;
+  white-space: nowrap;
+}
+#editor-toast.show {
+  opacity: 0.95;
+}
 #hud-death {
   position: absolute;
   inset: 0;
