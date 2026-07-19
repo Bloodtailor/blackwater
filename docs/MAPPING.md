@@ -11,6 +11,18 @@ The whole cave appears as a labeled 3D diagram you can edit directly:
   tunnel to add a waypoint (bend it).
 - **+ ROOM** adds a room at the camera target. **DEL** deletes (rooms take
   their tunnels with them). **Ctrl+Z** undoes. **F** frames the selection.
+- **R** (or ⟲ in the panel) switches the gizmo to ROTATION RINGS that drag
+  the selection's `falseUp` — the water surface and floor tilt with it.
+  **🧭** toggles the water discs and falseUp arrows (hidden by default).
+- Waypoint panel → **⭘ → room** replaces a waypoint with a small turnaround
+  room (splits the tunnel). Squeezes need this at every sharp bend — you
+  cannot turn around inside a squeeze, and a rule check flags such bends.
+- **▶ TEST** plays the layout WITHOUT saving: you drop into the game in
+  noclip/god exactly where the editor camera was, with every tuning knob
+  applied. **F4** in game returns to the editor — same camera, edits intact.
+- **TUNING KNOBS** at the panel bottom edit every gameplay number
+  (swim speed, air drain, fog…). Overrides persist (amber = changed) and
+  ride into ▶ TEST; "reset all" restores stock values.
 - **⛰ ROCK** generates the REAL cave mesh in the editor (~4 s) so you see
   the actual rock your data makes, not just the diagram.
 - The **DESIGN §5 rule checks run live** at the bottom of the panel — break
@@ -34,8 +46,8 @@ and the exact spot lands in `docs/probes.jsonl` for a precise fix later.
 { id: 'my-room', pos: [x, y, z], radius: 3, zone: 'galleries', tags: [] },
 ```
 
-- `pos` is in authored meters, y NEGATIVE = deeper. The whole map scales
-  ×1.7 at load, so in-game distances are bigger than the numbers you type.
+- `pos` is in world meters, y NEGATIVE = deeper. Editor coordinates = game
+  coordinates (the old ×1.7 load-time scale is retired).
 - `radius` — the room's size. `stretch: [sx, sy, sz]` squashes it into an
   ellipsoid (wide flat room: `[1.5, 0.6, 1.2]`).
 - `pillars: 3` — rock columns (auto-placed clear of passages).
@@ -46,8 +58,9 @@ and the exact spot lands in `docs/probes.jsonl` for a precise fix later.
 - Air rooms: `dry: true, waterY: <absolute y of the water surface>`. Water
   below that height, air above. Put waterY under the floor for a fully dry
   room; slightly below the floor for a bell with a pool hole.
-- `falseUp: [0.5, 0.866, 0]` — the DECEPTION knob: tilts the floor/spikes
-  and makes the camera orient to the lie (see the Listing Room).
+- `falseUp: [0.5, 0.866, 0]` — the DECEPTION knob: tilts the floor/spikes,
+  the WATER SURFACE, and the camera's sense of up (see the Listing Room).
+  Easiest set with the editor's R rotate gizmo.
 - `tags` place gameplay: `airPocket`, `burrow`, `perk`, `wallBuy`, `boxSpot`,
   `chalkMound` (silt trap column), `siltyFloor`, `toy`, `tape`, `poster`…
 

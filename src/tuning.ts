@@ -215,3 +215,101 @@ export const TUNING = {
     followPullPerSec: 3, // how hard follow mode pulls you onto the line
   },
 } as const;
+
+// ── live tuning overrides (editor/debug panels, user 2026-07-19) ──
+// Overrides live in localStorage so a tweak made in the level editor carries
+// into a playtest tab and back. They mutate TUNING in place at load; values
+// read per-frame pick them up live too.
+
+const OVERRIDE_KEY = 'bw-tuning-overrides';
+
+type AnyObj = Record<string, unknown>;
+
+function leafAt(path: string): { obj: AnyObj; key: string } | null {
+  const parts = path.split('.');
+  let obj = TUNING as unknown as AnyObj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const next = obj[parts[i]];
+    if (typeof next !== 'object' || next === null) return null;
+    obj = next as AnyObj;
+  }
+  return { obj, key: parts[parts.length - 1] };
+}
+
+function loadOverrides(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(OVERRIDE_KEY) ?? '{}') as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+/** The pristine DESIGN values, captured before overrides apply. */
+const DEFAULTS: Record<string, number> = {};
+
+/** Every numeric knob as a dotted path, in declaration order. */
+export function listTuningPaths(): string[] {
+  const paths: string[] = [];
+  const walk = (obj: AnyObj, prefix: string): void => {
+    for (const [k, v] of Object.entries(obj)) {
+      const p = prefix ? `${prefix}.${k}` : k;
+      if (typeof v === 'number') paths.push(p);
+      else if (typeof v === 'object' && v !== null) walk(v as AnyObj, p);
+    }
+  };
+  walk(TUNING as unknown as AnyObj, '');
+  return paths;
+}
+
+export function getTuningValue(path: string): number {
+  const l = leafAt(path);
+  return l ? (l.obj[l.key] as number) : NaN;
+}
+
+export function getTuningDefault(path: string): number {
+  return DEFAULTS[path] ?? getTuningValue(path);
+}
+
+/** Set (v: number) or clear (v: undefined) an override; mutates TUNING live. */
+export function setTuningValue(path: string, v: number | undefined): void {
+  const l = leafAt(path);
+  if (!l) return;
+  const overrides = loadOverrides();
+  if (v === undefined || v === DEFAULTS[path]) {
+    delete overrides[path];
+    l.obj[l.key] = DEFAULTS[path] ?? l.obj[l.key];
+  } else {
+    overrides[path] = v;
+    l.obj[l.key] = v;
+  }
+  try {
+    localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
+  } catch {
+    // storage unavailable — the in-memory value still applies this session
+  }
+}
+
+export function clearTuningOverrides(): void {
+  for (const p of Object.keys(loadOverrides())) {
+    const l = leafAt(p);
+    if (l && DEFAULTS[p] !== undefined) l.obj[l.key] = DEFAULTS[p];
+  }
+  try {
+    localStorage.removeItem(OVERRIDE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function tuningOverrideCount(): number {
+  return Object.keys(loadOverrides()).length;
+}
+
+// capture defaults, then apply stored overrides
+for (const p of listTuningPaths()) DEFAULTS[p] = getTuningValue(p);
+for (const [p, v] of Object.entries(loadOverrides())) {
+  if (typeof v === 'number') {
+    const l = leafAt(p);
+    if (l && typeof l.obj[l.key] === 'number') l.obj[l.key] = v;
+  }
+}

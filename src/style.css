@@ -400,6 +400,70 @@ canvas {
   line-height: 1.55;
   font-size: 11px;
 }
+/* TUNING knob forms (editor panel + in-game debug panel) */
+.ed-tuning {
+  margin-top: 14px;
+}
+.ed-tuning > summary {
+  cursor: pointer;
+}
+.tuning-ui {
+  font-size: 11px;
+}
+.tuning-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 4px 0 6px;
+  opacity: 0.85;
+}
+.tuning-head button {
+  background: #0a2a26;
+  color: #bfeee4;
+  border: 1px solid #1d4a44;
+  padding: 2px 8px;
+  font: inherit;
+  cursor: pointer;
+}
+.tuning-ui details {
+  margin: 2px 0;
+}
+.tuning-ui summary {
+  cursor: pointer;
+  color: #55e0c8;
+  letter-spacing: 1px;
+}
+.tuning-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 2px 12px;
+}
+.tuning-row span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.8;
+}
+.tuning-row input {
+  width: 76px;
+  flex-shrink: 0;
+  background: #061a18;
+  color: #d8f2ea;
+  border: 1px solid #1d4a44;
+  padding: 1px 4px;
+  font: inherit;
+}
+.tuning-row.tuned span {
+  color: #ffd166;
+  opacity: 1;
+}
+.tuning-row.tuned input {
+  border-color: #ffd166;
+}
+
 #editor-toast {
   position: fixed;
   top: 18px;

@@ -1313,6 +1313,72 @@
       "radius": 1.6,
       "zone": "throat",
       "tags": []
+    },
+    {
+      "id": "galleries-elbow-1",
+      "pos": [
+        22.099999999999998,
+        -17.849999999999998,
+        -22.099999999999998
+      ],
+      "radius": 2,
+      "zone": "galleries",
+      "tags": []
+    },
+    {
+      "id": "galleries-elbow-2",
+      "pos": [
+        26.349999999999998,
+        -15.299999999999999,
+        -18.7
+      ],
+      "radius": 2,
+      "zone": "galleries",
+      "tags": []
+    },
+    {
+      "id": "maze-elbow-3",
+      "pos": [
+        27.2,
+        -53.55,
+        39.949999999999996
+      ],
+      "radius": 2,
+      "zone": "maze",
+      "tags": []
+    },
+    {
+      "id": "maze-elbow-4",
+      "pos": [
+        31.45,
+        -54.4,
+        36.55
+      ],
+      "radius": 2,
+      "zone": "maze",
+      "tags": []
+    },
+    {
+      "id": "throat-elbow-5",
+      "pos": [
+        15.299999999999999,
+        -123.25,
+        73.95
+      ],
+      "radius": 2,
+      "zone": "throat",
+      "tags": []
+    },
+    {
+      "id": "abyss-elbow-6",
+      "pos": [
+        -8.5,
+        -125.8,
+        91.8
+      ],
+      "radius": 2,
+      "zone": "abyss",
+      "tags": []
     }
   ],
   "edges": [
@@ -1536,20 +1602,18 @@
     },
     {
       "a": "gal-spur-empty2",
+      "b": "galleries-elbow-1",
+      "width": "squeeze"
+    },
+    {
+      "a": "galleries-elbow-1",
+      "b": "galleries-elbow-2",
+      "width": "squeeze"
+    },
+    {
+      "a": "galleries-elbow-2",
       "b": "gal-turn",
-      "width": "squeeze",
-      "waypoints": [
-        [
-          22.099999999999998,
-          -17.849999999999998,
-          -22.099999999999998
-        ],
-        [
-          26.349999999999998,
-          -15.299999999999999,
-          -18.7
-        ]
-      ]
+      "width": "squeeze"
     },
     {
       "a": "gal-ring-w",
@@ -1755,20 +1819,18 @@
     },
     {
       "a": "mz-d2",
+      "b": "maze-elbow-3",
+      "width": "squeeze"
+    },
+    {
+      "a": "maze-elbow-3",
+      "b": "maze-elbow-4",
+      "width": "squeeze"
+    },
+    {
+      "a": "maze-elbow-4",
       "b": "mz-turn",
-      "width": "squeeze",
-      "waypoints": [
-        [
-          27.2,
-          -53.55,
-          39.949999999999996
-        ],
-        [
-          31.45,
-          -54.4,
-          36.55
-        ]
-      ]
+      "width": "squeeze"
     },
     {
       "a": "mz-infirm",
@@ -1853,15 +1915,13 @@
     },
     {
       "a": "throat-bottom",
+      "b": "throat-elbow-5",
+      "width": "squeeze"
+    },
+    {
+      "a": "throat-elbow-5",
       "b": "abyss-hall",
-      "width": "squeeze",
-      "waypoints": [
-        [
-          15.299999999999999,
-          -123.25,
-          73.95
-        ]
-      ]
+      "width": "squeeze"
     },
     {
       "a": "mz-chapel",
@@ -1915,15 +1975,13 @@
     },
     {
       "a": "cathedral",
+      "b": "abyss-elbow-6",
+      "width": "squeeze"
+    },
+    {
+      "a": "abyss-elbow-6",
       "b": "abyss-air",
-      "width": "squeeze",
-      "waypoints": [
-        [
-          -8.5,
-          -125.8,
-          91.8
-        ]
-      ]
+      "width": "squeeze"
     },
     {
       "a": "cathedral",

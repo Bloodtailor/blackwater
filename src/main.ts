@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import './style.css';
 import { DebugPanel } from './debug/panel';
-import { EDGES, NODES, buildAirWaterMap, buildFalseUpMap, getNode, type Zone } from './cave/data';
+import { buildTuningUI } from './debug/tuningPanel';
+import { EDGES, NODES, buildAirWaterMap, buildFalseUpMap, getNode, waterSurfaceLevel, type Zone } from './cave/data';
 import { initSdf, regionAt, resolveCollision, sdf } from './cave/sdf';
 import { buildCaveMesh } from './cave/mesh';
 import { buildDoors, openAllDoors, openDoor } from './cave/doors';
@@ -92,20 +93,28 @@ function initGame(): void {
   const waterLevelAt = (x: number, y: number, z: number): number | null => {
     if (Math.hypot(x, z) < 18 && y > -16) return WATER_Y; // open cenote water
     const ref = regionAt(x, y, z)?.ref;
-    const lvl = ref !== undefined ? airWater.get(ref) : undefined;
-    return lvl ?? null;
+    const ws = ref !== undefined ? airWater.get(ref) : undefined;
+    // tilted rooms tilt their water too (user 2026-07-19): the surface is a
+    // plane normal to the region's falseUp, so the level varies across x,z
+    return ws ? waterSurfaceLevel(ws, x, z) : null;
   };
   // pool surfaces: drawn only where a region's water line actually cuts its
-  // cavity (flat-floored bells occlude theirs except down the entrance hole)
+  // cavity (flat-floored bells occlude theirs except down the entrance hole).
+  // Shaped as the room's own ellipse cross-section (not a max-radius circle,
+  // which spilled outside stretched rooms) and tilted to the room's falseUp.
+  const orientDisc = (disc: THREE.Mesh, up?: [number, number, number]): void => {
+    disc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...(up ?? [0, 1, 0])).normalize());
+  };
   for (const n of NODES) {
     if (!n.dry || n.waterY === undefined) continue;
     const s = n.stretch ?? [1, 1, 1];
     const ry = n.radius * s[1];
     const rel = (n.waterY - n.pos[1]) / ry;
     if (rel <= -1 || rel >= 1) continue; // line misses this room entirely
-    const rAt = Math.sqrt(1 - rel * rel) * Math.max(n.radius * s[0], n.radius * s[2]);
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(rAt * 1.15, 24), waterMat);
-    disc.rotation.x = -Math.PI / 2;
+    const chord = Math.sqrt(1 - rel * rel);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(1, 24), waterMat);
+    disc.geometry.scale(chord * n.radius * s[0] * 1.08, chord * n.radius * s[2] * 1.08, 1);
+    orientDisc(disc, n.falseUp);
     disc.position.set(n.pos[0], n.waterY, n.pos[2]);
     scene.add(disc);
   }
@@ -119,7 +128,7 @@ function initGame(): void {
       if ((ay - w) * (by - w) > 0) continue;
       const t = (w - ay) / (by - ay || 1);
       const disc = new THREE.Mesh(new THREE.CircleGeometry(2.8, 20), waterMat);
-      disc.rotation.x = -Math.PI / 2;
+      orientDisc(disc, e.falseUp);
       disc.position.set(ax + (bx - ax) * t, w, az + (bz - az) * t);
       scene.add(disc);
       break;
@@ -150,7 +159,8 @@ function initGame(): void {
     }
   });
   window.addEventListener('beforeunload', (e) => {
-    if (played && !vitals.dead) e.preventDefault(); // accidental close → confirm
+    // accidental close → confirm (never during an editor playtest round-trip)
+    if (played && !vitals.dead && !params.has('playtest')) e.preventDefault();
   });
 
   // ── player ──
@@ -183,6 +193,27 @@ function initGame(): void {
     player.look(80, -10);
   };
   spawn();
+
+  // ── playtest mode (editor "TEST" button): unsaved layout, noclip+god,
+  // starting exactly where the editor camera was (user 2026-07-19) ──
+  const playtest = params.has('playtest');
+  if (playtest) {
+    player.mode = 'noclip';
+    vitals.god = true;
+    try {
+      const cam = JSON.parse(sessionStorage.getItem('bw-test-cam') ?? 'null') as { pos: [number, number, number]; yawDeg: number; pitchDeg: number } | null;
+      if (cam) {
+        camera.position.set(...cam.pos);
+        player.look(cam.yawDeg, cam.pitchDeg);
+      }
+    } catch {
+      // bad stash — spawn position stands
+    }
+  }
+  const backToEditor = (): void => {
+    sessionStorage.setItem('bw-test-return', '1');
+    location.search = '?edit=1';
+  };
 
   // ── hotkeys & debug ──
   // shared control state (tick writes, hotkeys read)
@@ -273,6 +304,10 @@ function initGame(): void {
   debug.button(view, 'Open level editor', () => {
     location.search = '?edit=1';
   });
+  if (playtest) {
+    debug.button(view, '⏎ Back to editor (F4)', backToEditor);
+    debug.hotkey('F4', 'Back to editor (playtest)', backToEditor);
+  }
 
   const tp = debug.section('Teleport');
   const select = document.createElement('select');
@@ -353,6 +388,8 @@ function initGame(): void {
     debug.button(doorSec, `Open ${d.id} (${d.kind}${d.cost ? ` ${d.cost}` : ''})`, () => openDoor(doors, d.id));
   }
 
+  buildTuningUI(debug.section('Tuning'));
+
   const info = debug.section('Info');
   const status = document.createElement('div');
   status.style.lineHeight = '1.5';
@@ -391,8 +428,8 @@ function initGame(): void {
     const zone: Zone = region?.zone ?? 'sinkhole';
 
     // reference up: regions can LIE about which way is up (the Listing Room,
-    // deceptive tunnel air gaps) — the camera orients to the lie, the water
-    // surface and bubbles stay honest (user 2026-07-19)
+    // deceptive tunnel air gaps) — the camera orients to the lie and the
+    // water tilts with it; only the bubbles stay honest (user 2026-07-19)
     const falseUp = region ? falseUps.get(region.ref) : undefined;
     player.setReferenceUp(player.mode === 'noclip' ? null : falseUp ?? null);
 

@@ -70,9 +70,10 @@ export interface CaveNode {
   waterY?: number;
   /**
    * DECEPTION (user 2026-07-19): this region's "up" is a lie. The flat floor
-   * tilts to this vector, spikes grow along it, and the camera orients itself
-   * to it — the room looks level while the water surface and bubbles (which
-   * stay honest) look wrong. Normalized at load.
+   * tilts to this vector, spikes grow along it, the camera orients itself to
+   * it, AND the water surface tilts with it (user round 8: a flat pool in a
+   * tilted room broke the illusion) — the room looks level and only the
+   * bubbles (which stay honest) betray true up. Normalized at load.
    */
   falseUp?: [number, number, number];
   /**
@@ -123,7 +124,22 @@ interface Layout {
   zoneHubs: Record<Zone, string>;
 }
 
-const layout = layoutJson as unknown as Layout;
+// Playtest mode (?playtest=1, editor "TEST" button): the editor stashes its
+// UNSAVED working layout in sessionStorage and the game loads that instead of
+// layout.json — try the edit without committing it.
+function loadLayout(): Layout {
+  // typeof guards: Vitest imports this module in plain node (no window)
+  if (typeof location !== 'undefined' && typeof sessionStorage !== 'undefined' && new URLSearchParams(location.search).has('playtest')) {
+    try {
+      const raw = sessionStorage.getItem('bw-test-layout');
+      if (raw) return JSON.parse(raw) as Layout;
+    } catch {
+      // fall through to the saved file
+    }
+  }
+  return layoutJson as unknown as Layout;
+}
+const layout = loadLayout();
 
 export const NODES: CaveNode[] = layout.nodes;
 export const EDGES: CaveEdge[] = layout.edges;
@@ -187,28 +203,48 @@ export function buildAdjacency(edges: CaveEdge[] = EDGES): Adjacency {
  * water line; transition passages inherit it so you surface exactly where the
  * shaft breaches the pool.
  */
-export function buildAirWaterMap(): Map<string, number> {
-  const map = new Map<string, number>();
+export interface WaterSurface {
+  /** Water line height at the region's center (absolute y, world units). */
+  y: number;
+  /** Surface normal. Follows the region's falseUp when the region lies about
+   *  up (user 2026-07-19: tilted rooms need tilted water); world up otherwise. */
+  up?: [number, number, number];
+  /** Point the plane pivots around (region center, xz). */
+  c: [number, number];
+}
+
+/** Height of a (possibly tilted) water surface at world (x,z). */
+export function waterSurfaceLevel(ws: WaterSurface, x: number, z: number): number {
+  if (!ws.up || Math.abs(ws.up[1]) < 0.2) return ws.y; // near-vertical "up": treat as flat
+  return ws.y - (ws.up[0] * (x - ws.c[0]) + ws.up[2] * (z - ws.c[1])) / ws.up[1];
+}
+
+export function buildAirWaterMap(): Map<string, WaterSurface> {
+  const map = new Map<string, WaterSurface>();
   for (const n of NODES) {
-    if (n.dry && n.waterY !== undefined) map.set(n.id, n.waterY);
+    if (n.dry && n.waterY !== undefined) map.set(n.id, { y: n.waterY, up: n.falseUp, c: [n.pos[0], n.pos[2]] });
   }
   for (const e of EDGES) {
     const ref = `${e.a}~${e.b}`;
-    if (e.waterY !== undefined) {
-      map.set(ref, e.waterY);
-      continue;
-    }
     const a = getNode(e.a);
     const b = getNode(e.b);
-    if (a.dry && b.dry) map.set(ref, Math.min(a.waterY ?? Infinity, b.waterY ?? Infinity));
-    else if (a.dry && a.waterY !== undefined) map.set(ref, a.waterY);
-    else if (b.dry && b.waterY !== undefined) map.set(ref, b.waterY);
+    const mid: [number, number] = [(a.pos[0] + b.pos[0]) / 2, (a.pos[2] + b.pos[2]) / 2];
+    if (e.waterY !== undefined) {
+      map.set(ref, { y: e.waterY, up: e.falseUp, c: mid });
+      continue;
+    }
+    if (a.dry && b.dry) {
+      const src = (a.waterY ?? Infinity) <= (b.waterY ?? Infinity) ? a : b;
+      if (src.waterY !== undefined) map.set(ref, { y: src.waterY, up: src.falseUp, c: mid });
+    } else if (a.dry && a.waterY !== undefined) map.set(ref, { y: a.waterY, up: a.falseUp, c: mid });
+    else if (b.dry && b.waterY !== undefined) map.set(ref, { y: b.waterY, up: b.falseUp, c: mid });
   }
   return map;
 }
 
-/** Region ref → deceptive reference-up (the camera orients to it; water and
- *  bubbles stay honest). Regions absent from the map use true world up. */
+/** Region ref → deceptive reference-up (the camera orients to it and the
+ *  water tilts with it; only bubbles stay honest). Regions absent from the
+ *  map use true world up. */
 export function buildFalseUpMap(): Map<string, [number, number, number]> {
   const m = new Map<string, [number, number, number]>();
   for (const n of NODES) if (n.falseUp) m.set(n.id, n.falseUp);

@@ -166,6 +166,26 @@ export function runChecks(): CheckResult[] {
   const squeezes = EDGES.filter((e) => e.width === 'squeeze').length;
   check('squeezes ≥4', squeezes >= 4, `${squeezes} squeeze passages`);
 
+  // Squeeze turnarounds (user 2026-07-19): you cannot turn around inside a
+  // squeeze, so sharp bends mid-squeeze are unplayable — a bend needs to be a
+  // room (editor: select the waypoint → "⭘ → room").
+  const sharpBends: string[] = [];
+  for (const e of EDGES.filter((e) => e.width === 'squeeze' && e.waypoints?.length)) {
+    const pts: [number, number, number][] = [getNode(e.a).pos, ...e.waypoints!, getNode(e.b).pos];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const d0 = [pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1], pts[i][2] - pts[i - 1][2]];
+      const d1 = [pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1], pts[i + 1][2] - pts[i][2]];
+      const l0 = Math.hypot(...(d0 as [number, number, number])) || 1;
+      const l1 = Math.hypot(...(d1 as [number, number, number])) || 1;
+      const cos = (d0[0] * d1[0] + d0[1] * d1[1] + d0[2] * d1[2]) / (l0 * l1);
+      if (cos < Math.cos((35 * Math.PI) / 180)) {
+        sharpBends.push(`${e.a}↔${e.b} wp${i}`);
+        break;
+      }
+    }
+  }
+  check('squeeze bends have turnaround rooms', sharpBends.length === 0, sharpBends.length ? `sharp bend mid-squeeze (make it a room): ${sharpBends.join(', ')}` : 'no sharp bends inside squeezes');
+
   const degree = new Map<string, number>();
   for (const e of EDGES) {
     degree.set(e.a, (degree.get(e.a) ?? 0) + 1);

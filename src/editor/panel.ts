@@ -4,6 +4,7 @@
 
 import { EDGES, NODES, ZONE_HUBS, getNode, type CaveEdge, type CaveNode, type NodeTag, type Zone } from '../cave/data';
 import { runChecks } from '../cave/validate';
+import { buildTuningUI } from '../debug/tuningPanel';
 import type { Selection } from './editor';
 
 export interface PanelApi {
@@ -21,6 +22,10 @@ export interface PanelApi {
   previewRock(): void;
   hideRock(): void;
   toggleLabels(): void;
+  toggleMarkers(): void;
+  toggleOrient(): void;
+  waypointToRoom(): void;
+  playtest(): void;
 }
 
 export interface Panel {
@@ -64,17 +69,20 @@ export function buildPanel(api: PanelApi): Panel {
     return b;
   };
   btn('💾 SAVE', () => api.save(), 'ed-primary');
-  btn('▶ PLAY', () => (location.search = '?debug=1'));
+  btn('▶ TEST', () => api.playtest(), 'ed-primary');
+  btn('▶ saved', () => (location.search = '?debug=1'));
   btn('+ ROOM', () => api.addRoom());
   btn('⛰ ROCK', () => api.previewRock());
   btn('⛰ off', () => api.hideRock());
   btn('↩ UNDO', () => api.undo());
   btn('⬇ JSON', () => api.download());
   btn('🏷', () => api.toggleLabels());
+  btn('🧭', () => api.toggleMarkers());
 
   const hint = document.createElement('div');
   hint.className = 'ed-hint';
-  hint.textContent = 'click select · drag gizmo · shift-click 2nd room = tunnel · dbl-click tunnel = waypoint · DEL delete · F frame · ctrl+Z undo';
+  hint.textContent =
+    'click select · drag gizmo · R orient (tilt falseUp+water) · shift-click 2nd room = tunnel · dbl-click tunnel = waypoint · DEL delete · F frame · ctrl+Z undo · 🧭 water/up gizmos · TEST plays the UNSAVED layout in noclip, F4 in game returns here';
   root.appendChild(hint);
 
   const form = document.createElement('div');
@@ -84,6 +92,16 @@ export function buildPanel(api: PanelApi): Panel {
   const checksEl = document.createElement('div');
   checksEl.className = 'ed-checks';
   root.appendChild(checksEl);
+
+  // every TUNING knob, editable here; values persist and ride into ▶ TEST
+  const tuningDet = document.createElement('details');
+  tuningDet.className = 'ed-tuning';
+  const tuningSum = document.createElement('summary');
+  tuningSum.className = 'ed-title';
+  tuningSum.textContent = 'TUNING KNOBS';
+  tuningDet.appendChild(tuningSum);
+  buildTuningUI(tuningDet);
+  root.appendChild(tuningDet);
 
   // ── field helpers ──
   const row = (parent: HTMLElement, label: string): HTMLElement => {
@@ -236,6 +254,7 @@ export function buildPanel(api: PanelApi): Panel {
     acts.className = 'ed-actions';
     for (const [label, fn] of [
       ['⌖ frame', api.frame],
+      ['⟲ orient (R)', api.toggleOrient],
       ['⧉ duplicate', api.duplicateNode],
       ['✕ delete', api.deleteSelection],
     ] as const) {
@@ -274,6 +293,10 @@ export function buildPanel(api: PanelApi): Panel {
     form.appendChild(wp);
     const acts = document.createElement('div');
     acts.className = 'ed-actions';
+    const orient = document.createElement('button');
+    orient.textContent = '⟲ orient (R)';
+    orient.addEventListener('click', api.toggleOrient);
+    acts.appendChild(orient);
     const del = document.createElement('button');
     del.textContent = '✕ delete tunnel';
     del.addEventListener('click', api.deleteSelection);
@@ -290,6 +313,11 @@ export function buildPanel(api: PanelApi): Panel {
     posInputs = vecField(form, 'pos', () => e.waypoints![wpIndex], (v) => (e.waypoints![wpIndex] = v ?? e.waypoints![wpIndex]));
     const acts = document.createElement('div');
     acts.className = 'ed-actions';
+    const toRoom = document.createElement('button');
+    toRoom.textContent = '⭘ → room';
+    toRoom.title = 'Replace this waypoint with a small room (splits the tunnel). Squeeze bends need a chamber you can turn around in.';
+    toRoom.addEventListener('click', api.waypointToRoom);
+    acts.appendChild(toRoom);
     const del = document.createElement('button');
     del.textContent = '✕ delete waypoint';
     del.addEventListener('click', api.deleteSelection);
@@ -308,10 +336,18 @@ export function buildPanel(api: PanelApi): Panel {
     form.appendChild(h);
     const note = document.createElement('div');
     note.className = 'ed-note';
-    note.textContent = `${NODES.length} rooms · ${EDGES.length} tunnels. Zone hubs (rule checks measure routes to these):`;
+    note.textContent =
+      `${NODES.length} rooms · ${EDGES.length} tunnels. Zone hubs: each zone names its "center" room — the rule checks below measure routes (two disjoint paths, air distances) to these. Changing one only re-aims the checks; it does not move anything.`;
     form.appendChild(note);
     for (const z of ZONES) {
-      selectField(form, `${z} hub`, NODES.filter((n) => n.zone === z).map((n) => n.id), () => ZONE_HUBS[z], (v) => (ZONE_HUBS[z] = v));
+      const ids = NODES.filter((n) => n.zone === z).map((n) => n.id);
+      const cur = ZONE_HUBS[z];
+      // a hub id can go stale (room deleted or re-zoned) — surface that
+      // instead of silently showing the first option
+      const options = ids.includes(cur) ? ids : [`⚠ ${cur} (not in ${z})`, ...ids];
+      selectField(form, `${z} hub`, options, () => (ids.includes(cur) ? cur : options[0]), (v) => {
+        if (!v.startsWith('⚠')) ZONE_HUBS[z] = v;
+      });
     }
   };
 
