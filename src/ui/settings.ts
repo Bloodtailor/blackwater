@@ -4,11 +4,15 @@
 
 export interface Settings {
   maxTiltDeg: number; // 0–180 cap on camera roll; motion-sickness accessibility
+  /** Enter fullscreen when you click to play. Required for the browser to
+   *  hand Ctrl+W/R/T to the game instead of closing/refreshing the tab
+   *  (Ctrl is the wall-grab key — user report 2026-07-19). */
+  fullscreenOnPlay: boolean;
 }
 
 const KEY = 'bw-settings';
 
-const DEFAULTS: Settings = { maxTiltDeg: 180 };
+const DEFAULTS: Settings = { maxTiltDeg: 180, fullscreenOnPlay: true };
 
 function load(): Settings {
   try {

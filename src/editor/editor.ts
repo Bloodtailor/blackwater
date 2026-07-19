@@ -201,17 +201,23 @@ export function initEditor(): void {
     panel.toast('UNDONE');
   };
   // after any committed mutation: refresh lookups, checks, visuals
+  let dirty = false;
   const commit = (): void => {
+    dirty = true;
     refreshNodeMap();
     pushUndo();
     rebuild();
   };
+  window.addEventListener('beforeunload', (e) => {
+    if (dirty) e.preventDefault(); // unsaved layout edits → confirm
+  });
 
   const save = async (): Promise<void> => {
     const res = await fetch('/__layout', {
       method: 'POST',
       body: JSON.stringify({ nodes: NODES, edges: EDGES, zoneHubs: ZONE_HUBS }),
     }).catch(() => null);
+    if (res?.ok) dirty = false;
     panel.toast(res?.ok ? 'SAVED — reload the game tab to play it' : 'SAVE FAILED (dev server only)');
   };
 

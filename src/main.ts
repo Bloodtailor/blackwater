@@ -133,6 +133,26 @@ function initGame(): void {
   const silt = new SiltSystem(chambersFromNodes(NODES));
   const siltFx = new SiltParticles(scene);
 
+  // ── keep the browser's hands off the game keys (user report 2026-07-19:
+  // Ctrl is wall-grab, W is swim — Ctrl+W closed the tab mid-dive!) ──
+  //  layer 1: fullscreen + Keyboard Lock on play → Chromium delivers
+  //           Ctrl+W / Ctrl+R / Ctrl+T to the game instead of acting on them
+  //  layer 2: once a dive has started, closing the tab asks first
+  const kb = (navigator as { keyboard?: { lock?: (keys?: string[]) => Promise<void> } }).keyboard;
+  let played = false;
+  renderer.domElement.addEventListener('click', () => {
+    played = true;
+    if (SETTINGS.fullscreenOnPlay && !document.fullscreenElement) {
+      document.documentElement
+        .requestFullscreen()
+        .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'Space']))
+        .catch(() => {});
+    }
+  });
+  window.addEventListener('beforeunload', (e) => {
+    if (played && !vitals.dead) e.preventDefault(); // accidental close → confirm
+  });
+
   // ── player ──
   const debug = new DebugPanel(params.has('debug'));
   const player = new PlayerController(camera, renderer.domElement);
@@ -316,6 +336,10 @@ function initGame(): void {
     saveSettings();
   });
   debug.toggle(siltSec, 'Fog off', () => atmo.fogOff, (v) => (atmo.fogOff = v));
+  debug.toggle(siltSec, 'Fullscreen on play', () => SETTINGS.fullscreenOnPlay, (v) => {
+    SETTINGS.fullscreenOnPlay = v;
+    saveSettings();
+  });
   debug.button(siltSec, 'Give reel (+200 m)', () => {
     guideLine.reelM += TUNING.guideLine.reelLengthM;
   });
