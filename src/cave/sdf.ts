@@ -27,9 +27,11 @@ interface Prim extends PrimRegion {
   ellipsoid: boolean;
   solid: boolean; // pillars, spikes: subtract from passable space
   broad: number; // large-scale wall-warp amplitude (big chambers)
-  /** Flat floor: soft-intersect the chamber with the half-space above this y
-   *  (user 2026-07-18: rooms — especially air rooms — must not read as spheres). */
-  floorY?: number;
+  /** Flat floor: soft-intersect the chamber with the half-space on the
+   *  positive side of plane dot(N,p) = D. N is world-up normally, or the
+   *  room's deceptive falseUp (user 2026-07-19: the Listing Room). */
+  floorN?: [number, number, number];
+  floorD?: number;
   noiseAmp: number;
 }
 
@@ -107,7 +109,17 @@ export function initSdf(): void {
     const ry = n.radius * s[1];
     const rz = n.radius * s[2];
     const maxR = Math.max(rx, ry, rz);
-    const floorY = n.floor !== undefined ? n.pos[1] - ry * n.floor : undefined;
+    // room "up": world up, or the deceptive falseUp (the Listing Room)
+    const up: [number, number, number] = n.falseUp ?? [0, 1, 0];
+    let floorN: [number, number, number] | undefined;
+    let floorD: number | undefined;
+    if (n.floor !== undefined) {
+      floorN = up;
+      const px = n.pos[0] - up[0] * ry * n.floor;
+      const py = n.pos[1] - up[1] * ry * n.floor;
+      const pz = n.pos[2] - up[2] * ry * n.floor;
+      floorD = up[0] * px + up[1] * py + up[2] * pz;
+    }
     prims.push({
       ax: n.pos[0], ay: n.pos[1], az: n.pos[2],
       bx: n.pos[0], by: n.pos[1], bz: n.pos[2],
@@ -115,36 +127,55 @@ export function initSdf(): void {
       ellipsoid: true,
       solid: false,
       broad: n.radius >= 4 ? Math.min(maxR * 0.15, 3.5) : 0,
-      floorY,
+      floorN,
+      floorD,
       noiseAmp: noiseAmpFor(Math.min(rx, ry, rz)),
       zone: n.zone, width: 'chamber', ref: n.id,
     });
     // Stalactites & stalagmites (user 2026-07-18): tapered solid spikes in air
-    // rooms — ceiling estimated analytically against the ellipsoid, floor from
-    // the flat-floor plane; kept clear of every authored path like pillars.
+    // rooms, grown along the room's up (falseUp in deception rooms — they lie
+    // WITH the architecture); kept clear of every authored path like pillars.
     if (n.spikes) {
+      // basis perpendicular to `up`
+      const t1: [number, number, number] =
+        Math.abs(up[1]) < 0.95
+          ? [up[2] === 0 && up[0] === 0 ? 1 : -up[2], 0, up[0]]
+          : [1, 0, 0];
+      const l1 = Math.hypot(...t1) || 1;
+      t1[0] /= l1; t1[1] /= l1; t1[2] /= l1;
+      const t2: [number, number, number] = [
+        up[1] * t1[2] - up[2] * t1[1],
+        up[2] * t1[0] - up[0] * t1[2],
+        up[0] * t1[1] - up[1] * t1[0],
+      ];
       for (let i = 0; i < n.spikes; i++) {
         const ang = i * 2.399 + n.pos[2] * 0.31;
         const rr = 0.15 + 0.6 * Math.abs(Math.sin(i * 12.99 + n.pos[0]));
-        const px = n.pos[0] + Math.cos(ang) * rx * rr;
-        const pz = n.pos[2] + Math.sin(ang) * rz * rr;
-        const frac = ((px - n.pos[0]) / rx) ** 2 + ((pz - n.pos[2]) / rz) ** 2;
+        const a = Math.cos(ang) * rx * rr;
+        const b = Math.sin(ang) * rz * rr;
+        const px = n.pos[0] + t1[0] * a + t2[0] * b;
+        const py = n.pos[1] + t1[1] * a + t2[1] * b;
+        const pz = n.pos[2] + t1[2] * a + t2[2] * b;
+        const frac = (a / rx) ** 2 + (b / rz) ** 2;
         if (frac > 0.72) continue;
         if (horizClearanceTo(px, pz, n.pos[1] - ry, n.pos[1] + ry) < 1.0) continue;
         const vary = Math.abs(Math.sin(i * 3.37 + n.pos[2]));
+        const reach = ry * Math.sqrt(1 - frac);
         if (i % 2 === 0) {
-          const ceilY = n.pos[1] + ry * Math.sqrt(1 - frac);
           const len = 0.7 + 1.2 * vary;
           prims.push(segPrim({
-            ax: px, ay: ceilY + 0.8, az: pz,
-            bx: px, by: ceilY - len, bz: pz,
+            ax: px + up[0] * (reach + 0.8), ay: py + up[1] * (reach + 0.8), az: pz + up[2] * (reach + 0.8),
+            bx: px + up[0] * (reach - len), by: py + up[1] * (reach - len), bz: pz + up[2] * (reach - len),
             r: 0.42, rb: 0.12, noiseAmp: 0.1, zone: n.zone, width: 'chamber', ref: `${n.id}-tite${i}`,
           }, true));
-        } else if (floorY !== undefined) {
+        } else if (floorD !== undefined) {
+          // project the offset point onto the floor plane, grow along up
+          const over = up[0] * px + up[1] * py + up[2] * pz - floorD;
+          const fx = px - up[0] * over, fy = py - up[1] * over, fz = pz - up[2] * over;
           const len = 0.4 + 0.7 * vary;
           prims.push(segPrim({
-            ax: px, ay: floorY - 0.6, az: pz,
-            bx: px, by: floorY + len, bz: pz,
+            ax: fx - up[0] * 0.6, ay: fy - up[1] * 0.6, az: fz - up[2] * 0.6,
+            bx: fx + up[0] * len, by: fy + up[1] * len, bz: fz + up[2] * len,
             r: 0.5, rb: 0.14, noiseAmp: 0.1, zone: n.zone, width: 'chamber', ref: `${n.id}-mite${i}`,
           }, true));
         }
@@ -262,10 +293,11 @@ export function sdf(x: number, y: number, z: number, withDoors = true): number {
         if (broadNoise === null) broadNoise = fbm(x * 0.06 + 31.7, y * 0.06, z * 0.06, 2);
         di -= broadNoise * p.broad;
       }
-      // flat floor: soft intersection with the half-space above floorY —
-      // mostly level, a quarter of the wall noise, curved soft edges
-      if (p.floorY !== undefined) {
-        di = smax(di, p.floorY - y - noise * p.noiseAmp * 0.25, 1.2);
+      // flat floor: soft intersection with the half-space above the floor
+      // plane — mostly level, a quarter of the wall noise, soft edges
+      if (p.floorN !== undefined && p.floorD !== undefined) {
+        const along = p.floorN[0] * x + p.floorN[1] * y + p.floorN[2] * z;
+        di = smax(di, p.floorD - along - noise * p.noiseAmp * 0.25, 1.2);
       }
       if (di < d) d = di;
     }

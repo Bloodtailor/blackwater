@@ -45,6 +45,13 @@ export class PlayerController {
   private euler = new THREE.Euler(0, 0, 0, 'YXZ');
   private qTmp = new THREE.Quaternion();
   private qTmp2 = new THREE.Quaternion();
+  private qLocal = new THREE.Quaternion();
+  /** Reference "up" for leveling/roll — world up, or a region's deceptive
+   *  falseUp (user 2026-07-19: the environment can lie; bubbles don't). */
+  private refUp = new THREE.Vector3(0, 1, 0);
+  private refUpTarget = new THREE.Vector3(0, 1, 0);
+  private qRef = new THREE.Quaternion();
+  private headAboveNow = false;
   private fwd = new THREE.Vector3();
   private right = new THREE.Vector3();
   private camUp = new THREE.Vector3();
@@ -81,8 +88,37 @@ export class PlayerController {
     this.camera.quaternion.copy(this.orient);
   }
 
+  /** Region reference up (null = true world up). Smoothed in update(). */
+  setReferenceUp(v: { x: number; y: number; z: number } | [number, number, number] | null): void {
+    if (v === null) this.refUpTarget.set(0, 1, 0);
+    else if (Array.isArray(v)) this.refUpTarget.set(v[0], v[1], v[2]);
+    else this.refUpTarget.set(v.x, v.y, v.z);
+  }
+
+  /** Traditional first-person look (walking, head above water, noclip):
+   *  yaw/pitch in the reference-up frame, pitch clamped, roll preserved —
+   *  no free-look tumbling while you're breathing (user 2026-07-19). */
+  get traditionalLook(): boolean {
+    return this.mode !== 'swim' || this.headAboveNow;
+  }
+
+  private traditionalRotate(dYaw: number, dPitch: number): void {
+    this.qTmp2.copy(this.qRef).invert();
+    this.qLocal.copy(this.qTmp2).multiply(this.orient);
+    this.euler.setFromQuaternion(this.qLocal, 'YXZ');
+    this.euler.y += dYaw;
+    this.euler.x = THREE.MathUtils.clamp(this.euler.x + dPitch, -1.5, 1.5);
+    this.qLocal.setFromEuler(this.euler);
+    this.orient.copy(this.qRef).multiply(this.qLocal);
+    this.camera.quaternion.copy(this.orient);
+  }
+
   /** Incremental look about the camera's own axes (mouse, arrows, scripts). */
   rotateLook(dYaw: number, dPitch: number): void {
+    if (this.traditionalLook) {
+      this.traditionalRotate(dYaw, dPitch);
+      return;
+    }
     if (this.squeezeLocked && this.mode === 'swim') {
       // moving toward the cone rim slows exponentially; toward center is free
       const cone = THREE.MathUtils.degToRad(TUNING.player.squeezeConeDeg);
@@ -110,16 +146,23 @@ export class PlayerController {
     this.camera.quaternion.copy(this.orient);
   }
 
-  /** Camera roll relative to level, in degrees (the tilt system's input). */
+  /** Camera roll relative to the REFERENCE up, in degrees (tilt input). */
   get measuredRollDeg(): number {
     this.fwd.set(0, 0, -1).applyQuaternion(this.orient);
-    if (Math.abs(this.fwd.y) > 0.995) return this.lastRollDeg; // gimbal pole
-    this.vTmp.crossVectors(this.fwd, WORLD_UP).normalize(); // level right
+    if (Math.abs(this.fwd.dot(this.refUp)) > 0.995) return this.lastRollDeg; // gimbal pole
+    this.vTmp.crossVectors(this.fwd, this.refUp).normalize(); // level right
     this.vTmp2.set(1, 0, 0).applyQuaternion(this.orient); // camera right
     const cos = this.vTmp2.dot(this.vTmp);
     const sin = this.vTmp.cross(this.vTmp2).dot(this.fwd); // levelRight × camRight
     this.lastRollDeg = THREE.MathUtils.radToDeg(Math.atan2(sin, cos));
     return this.lastRollDeg;
+  }
+
+  /** Looking straight along the reference up? (roll is undefined there — the
+   *  max-tilt-0 spin bug lived here; the tilt step is gated on this) */
+  get nearGimbalPole(): boolean {
+    this.vTmp.set(0, 0, -1).applyQuaternion(this.orient);
+    return Math.abs(this.vTmp.dot(this.refUp)) > 0.99;
   }
 
   /** Roll the view about its own axis by a delta (tilt system applies drift). */
@@ -220,17 +263,6 @@ export class PlayerController {
     this.squeezeLocked = true;
   }
 
-  /** Walking is plain first-person: project back to yaw/pitch, clamp pitch. */
-  private reprojectWalk(): void {
-    const roll = this.measuredRollDeg; // preserved; decays via the tilt system
-    this.fwd.set(0, 0, -1).applyQuaternion(this.orient);
-    const pitch = THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(this.fwd.y, -1, 1)), -1.5, 1.5);
-    const yaw = Math.atan2(-this.fwd.x, -this.fwd.z);
-    this.euler.set(pitch, yaw, -THREE.MathUtils.degToRad(roll));
-    this.orient.setFromEuler(this.euler);
-    this.camera.quaternion.copy(this.orient);
-  }
-
   update(dt: number, waterLevel: number | null): void {
     this.time += dt;
     const P = TUNING.player;
@@ -238,12 +270,20 @@ export class PlayerController {
     // -1 stands in for "no surface anywhere near")
     const h = waterLevel !== null ? this.camera.position.y - waterLevel : -1;
     const headAbove = h > 0;
+    this.headAboveNow = headAbove;
+    // reference up eases toward the region's (possibly deceptive) up
+    this.refUp.lerp(this.refUpTarget, Math.min(1, dt * 2.2)).normalize();
+    this.qRef.setFromUnitVectors(WORLD_UP, this.refUp);
     const look = 1.6 * dt;
     if (this.keys.has('ArrowLeft')) this.rotateLook(look, 0);
     if (this.keys.has('ArrowRight')) this.rotateLook(-look, 0);
     if (this.keys.has('ArrowUp')) this.rotateLook(0, look);
     if (this.keys.has('ArrowDown')) this.rotateLook(0, -look);
-    if (this.mode === 'walk') this.reprojectWalk();
+    // Q/E: manual camera roll (user 2026-07-19 — replaces the X auto-level)
+    const rollRate = P.manualRollDegPerSec * dt;
+    if (this.keys.has('KeyQ')) this.applyRollDelta(-rollRate);
+    if (this.keys.has('KeyE')) this.applyRollDelta(rollRate);
+    if (this.mode === 'walk') this.traditionalRotate(0, 0);
     this.camera.quaternion.copy(this.orient);
 
     this.camera.getWorldDirection(this.fwd);

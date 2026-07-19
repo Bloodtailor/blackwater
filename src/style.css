@@ -265,6 +265,22 @@ canvas {
   color: #ffe9a8;
   opacity: 1;
 }
+#hud-toast {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  letter-spacing: 4px;
+  color: #d8f2e8;
+  text-shadow: 0 0 8px #000;
+  opacity: 0;
+  transition: opacity 0.25s;
+  white-space: nowrap;
+}
+#hud-toast.show {
+  opacity: 0.95;
+}
 #hud-death {
   position: absolute;
   inset: 0;

@@ -27,7 +27,7 @@ export function doorPlacement(e: CaveEdge): { pos: [number, number, number]; dir
     segLens.push(l);
     total += l;
   }
-  let half = total * (e.door?.at ?? 0.5);
+  let half = total * (e.door?.at ?? e.gateAt ?? 0.5);
   let seg = 0;
   while (seg < segLens.length - 1 && half > segLens[seg]) {
     half -= segLens[seg];

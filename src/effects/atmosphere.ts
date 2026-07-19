@@ -127,6 +127,7 @@ export class Atmosphere {
    * @param daylight head above water AND under the open cenote sky (false in
    *   underground air: bells, dry passages, the slide)
    * @param reveal noclip map-survey mode: no fog, bright flat light (debug)
+   * @param siltThickness 0..1 silt at the camera — thickens the mote field
    */
   update(
     dt: number,
@@ -138,6 +139,7 @@ export class Atmosphere {
     current: THREE.Vector3,
     daylight: boolean,
     reveal = false,
+    siltThickness = 0,
   ): void {
     const V = TUNING.visibility;
     const A = TUNING.atmosphere;
@@ -200,7 +202,12 @@ export class Atmosphere {
       this.moteColor.lerp(this.targetMote, k);
       (this.moteMat.uniforms.uColor.value as THREE.Color).copy(this.moteColor);
       const depthFrac = THREE.MathUtils.clamp(-cam.y / A.particulateFullDepthM, 0, 1);
-      const density = THREE.MathUtils.lerp(A.particulateDepthMinFrac, 1, depthFrac);
+      // silt-outs thicken the water itself (user 2026-07-19): the base field
+      // uses ~2/3 of the buffer so silt has real headroom to fill
+      const density = Math.min(
+        1,
+        THREE.MathUtils.lerp(A.particulateDepthMinFrac, A.particulateBaseMaxFrac, depthFrac) * (1 + siltThickness * 1.2),
+      );
       const half = A.particulateBoxM / 2;
       const size = A.particulateBoxM;
       const n = A.particulateCount;

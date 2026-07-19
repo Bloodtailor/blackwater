@@ -59,6 +59,13 @@ export interface CaveNode {
   /** Local water surface (absolute y, authored scale) for dry regions. */
   waterY?: number;
   /**
+   * DECEPTION (user 2026-07-19): this region's "up" is a lie. The flat floor
+   * tilts to this vector, spikes grow along it, and the camera orients itself
+   * to it — the room looks level while the water surface and bubbles (which
+   * stay honest) look wrong. Unit-ish vector, normalized at build.
+   */
+  falseUp?: [number, number, number];
+  /**
    * Flat(ter) floor: carve the room's bottom at pos.y − ry*floor with a soft
    * smooth-max blend (user 2026-07-18: rooms — especially air rooms — must
    * not read as spheres; flatter floors, curved soft edges).
@@ -89,12 +96,16 @@ export interface CaveEdge {
   tilt?: { maxDeg: number };
   door?: { cost: number; kind: 'debris' | 'grate' | 'hatch'; at?: number }; // at: arc fraction along the passage (default 0.5)
   powerGate?: boolean; // PaP grate: opens with power, not points
+  gateAt?: number; // powerGate arc fraction along the passage (default 0.5)
   /** Wet one-way slide (user 2026-07-18): walking here loses all traction and
    *  gravity hauls you down the shaft; you cannot climb back up. */
   slide?: boolean;
   /** Water surface override for this passage (absolute y, authored scale) —
-   *  e.g. where a slide plunges into its pool. */
+   *  e.g. where a slide plunges into its pool, or a thin breathing gap along
+   *  the top of a tunnel (user 2026-07-19). */
   waterY?: number;
+  /** Deceptive reference-up for this passage (see CaveNode.falseUp). */
+  falseUp?: [number, number, number];
 }
 
 export const NODES: CaveNode[] = [
@@ -143,8 +154,9 @@ export const NODES: CaveNode[] = [
   { id: 'dry-slide-top', pos: [-20, -10.5, -20], radius: 2, stretch: [1.2, 0.8, 1.2], dry: true, waterY: -12.5,
     floor: 0.79, spikes: 3, zone: 'galleries', tags: [] },
   { id: 'slide-pool', pos: [-14, -22.5, -24], radius: 2.4, zone: 'galleries', tags: [] },
-  // turnaround bulb at the end of the long dead-end squeeze (user 2026-07-18)
-  { id: 'gal-turn', pos: [17, -10, -14], radius: 1.5, zone: 'galleries', tags: [] },
+  // turnaround bulb at the end of the long dead-end squeeze (user 2026-07-18;
+  // enlarged 2026-07-19 — "not big enough to turn around in")
+  { id: 'gal-turn', pos: [17, -10, -14], radius: 2.2, zone: 'galleries', tags: [] },
   { id: 'gal-berthing', pos: [-14, -18, -4], radius: 3.5, stretch: [1.6, 0.55, 0.9], zone: 'galleries',
     tags: ['perk', 'wallBuy', 'poster', 'tieOff'],
     contents: { perk: 'secondWind', vendor: 'reel', poster: 'G3' } },
@@ -192,8 +204,14 @@ export const NODES: CaveNode[] = [
   { id: 'mz-infirm', pos: [-6, -38, 30], radius: 3, zone: 'maze',
     tags: ['perk', 'wallBuy', 'tape', 'poster'],
     contents: { perk: 'ironLungs', vendor: 'chemlights', tape: 'T4', poster: 'G6' } },
-  { id: 'mz-air2', pos: [-6, -32.9, 30], radius: 4, stretch: [1.5, 0.75, 1.4], dry: true, waterY: -33.84,
-    floor: 0.32, spikes: 5, zone: 'maze', tags: ['airPocket', 'ambushPocket'] },
+  // THE LISTING ROOM (user 2026-07-19): the big maze bell is SIDEWAYS. Its
+  // floor, spikes, and unreachable tunnels all tilt to a false up, and the
+  // camera orients to the room — so the room looks level and the (honest,
+  // horizontal) pool surface looks insane. Trust the water, not the walls.
+  { id: 'mz-air2', pos: [-6, -31.2, 30], radius: 5, stretch: [1.2, 0.9, 1.2], dry: true, waterY: -32.29,
+    floor: 0.32, spikes: 8, falseUp: [0.5, 0.866, 0], zone: 'maze', tags: ['airPocket', 'ambushPocket'] },
+  { id: 'mz-air2-t1', pos: [-2.5, -27.5, 30.5], radius: 1.3, dry: true, waterY: -32.29, zone: 'maze', tags: [] },
+  { id: 'mz-air2-t2', pos: [-9, -27.2, 32.5], radius: 1.2, dry: true, waterY: -32.29, zone: 'maze', tags: [] },
   { id: 'mz-stores', pos: [4, -39, 33], radius: 3.5, stretch: [1.4, 0.7, 1.2], pillars: 2, zone: 'maze',
     tags: ['boxSpot', 'perk', 'wallBuy', 'poster'],
     contents: { perk: 'steadyHands', vendor: 'battery', poster: 'G4' } },
@@ -208,7 +226,7 @@ export const NODES: CaveNode[] = [
     tags: ['toy'], contents: { toyColor: 'blue' } },
   { id: 'mz-d2', pos: [14, -33, 25], radius: 1.8, zone: 'maze',
     tags: ['cache'], contents: { cache: 'battery' } },
-  { id: 'mz-turn', pos: [18, -30, 20], radius: 1.5, zone: 'maze', tags: [] },
+  { id: 'mz-turn', pos: [18, -30, 20], radius: 2.2, zone: 'maze', tags: [] },
   { id: 'mz-d3', pos: [-11, -42, 33], radius: 1.8, zone: 'maze',
     tags: ['poster'], contents: { poster: 'G8' } },
   { id: 'mz-d4', pos: [16, -39, 31], radius: 1.8, zone: 'maze', tags: ['siltyFloor', 'chalkMound'] },
@@ -242,7 +260,9 @@ export const NODES: CaveNode[] = [
     tags: ['landmark', 'perk', 'guardianPost', 'tieOff'],
     contents: { landmarkName: 'The Cathedral', perk: 'catEyes' } },
   { id: 'abyss-air', pos: [-6, -72, 55], radius: 1.5, dry: true, waterY: -72, zone: 'abyss', tags: ['airPocket'] },
-  { id: 'pap-chamber', pos: [-7, -75, 48], radius: 3, zone: 'abyss',
+  // moved west 2026-07-19: it used to sit INSIDE the Cathedral's ellipsoid,
+  // so its power gate floated in open water nowhere near a passage
+  { id: 'pap-chamber', pos: [-16, -76, 45], radius: 3, zone: 'abyss',
     tags: ['pap', 'perk'], contents: { perk: 'deepPockets' } },
   { id: 'drill-head', pos: [2, -79, 57], radius: 3, stretch: [1.3, 0.7, 1.3], zone: 'abyss',
     tags: ['guardianPost', 'tape', 'poster'], contents: { tape: 'T6', poster: 'G13' } },
@@ -317,17 +337,21 @@ export const EDGES: CaveEdge[] = [
   // Maze lattice (look-alike junctions)
   { a: 'mz-gate', b: 'mz-c', width: 'normal' },
   { a: 'mz-west', b: 'mz-a', width: 'normal' },
-  { a: 'mz-a', b: 'mz-b', width: 'normal' },
+  // thin breathing gap along the tunnel ceiling (user 2026-07-19) — a sliver
+  // of air at the top, with a DECEPTIVE up so surfacing rolls you off-true
+  { a: 'mz-a', b: 'mz-b', width: 'normal', waterY: -30.26, falseUp: [-0.14, 0.87, 0.47] },
   { a: 'mz-b', b: 'mz-c', width: 'normal' },
   { a: 'mz-b', b: 'mz-air1', width: 'open' },
   { a: 'mz-a', b: 'mz-organ', width: 'normal' },
   { a: 'mz-b', b: 'mz-e', width: 'normal' },
   { a: 'mz-c', b: 'mz-f', width: 'squeeze' },
   { a: 'mz-organ', b: 'mz-e', width: 'normal' },
-  { a: 'mz-e', b: 'mz-f', width: 'normal' },
+  { a: 'mz-e', b: 'mz-f', width: 'normal', waterY: -35.3, falseUp: [0.16, 0.82, -0.55] },
   { a: 'mz-organ', b: 'mz-infirm', width: 'normal' },
   { a: 'mz-e', b: 'mz-infirm', width: 'normal', tilt: { maxDeg: 90 } },
   { a: 'mz-infirm', b: 'mz-air2', width: 'normal' },
+  { a: 'mz-air2', b: 'mz-air2-t1', width: 'normal' },
+  { a: 'mz-air2', b: 'mz-air2-t2', width: 'normal' },
   { a: 'mz-f', b: 'mz-stores', width: 'normal' },
   { a: 'mz-infirm', b: 'mz-chapel', width: 'normal' },
   { a: 'mz-stores', b: 'mz-chapel', width: 'normal' },
@@ -372,7 +396,7 @@ export const EDGES: CaveEdge[] = [
   { a: 'abyss-hall', b: 'abyss-toy', width: 'normal' },
   { a: 'abyss-hall', b: 'cathedral', width: 'open' },
   { a: 'cathedral', b: 'abyss-air', width: 'squeeze', waypoints: [[-5, -74, 54]] },
-  { a: 'cathedral', b: 'pap-chamber', width: 'normal', powerGate: true },
+  { a: 'cathedral', b: 'pap-chamber', width: 'normal', powerGate: true, gateAt: 0.75 },
   { a: 'cathedral', b: 'drill-head', width: 'open' },
   { a: 'drill-head', b: 'heart-apse', width: 'normal' },
   { a: 'cathedral', b: 'abyss-b1', width: 'squeeze' },
@@ -385,15 +409,21 @@ export const EDGES: CaveEdge[] = [
 // Positions scale uniformly; radii scale progressively (big rooms grow more);
 // burrows shrink to cracks.
 const S = 1.7;
+const norm = (v: [number, number, number]): [number, number, number] => {
+  const l = Math.hypot(...v) || 1;
+  return [v[0] / l, v[1] / l, v[2] / l];
+};
 for (const n of NODES) {
   n.pos = [n.pos[0] * S, n.pos[1] * S, n.pos[2] * S];
   n.radius *= n.radius >= 3 ? 1.35 : n.radius >= 1.8 ? 1.15 : 1;
   if (n.tags.includes('burrow')) n.radius = 1.0;
   if (n.waterY !== undefined) n.waterY *= S;
+  if (n.falseUp) n.falseUp = norm(n.falseUp); // direction: normalize, no scale
 }
 for (const e of EDGES) {
   if (e.waypoints) e.waypoints = e.waypoints.map((w) => [w[0] * S, w[1] * S, w[2] * S] as [number, number, number]);
   if (e.waterY !== undefined) e.waterY *= S;
+  if (e.falseUp) e.falseUp = norm(e.falseUp);
 }
 
 // ── Helpers (graph utilities shared by all systems) ──
@@ -463,6 +493,15 @@ export function buildAirWaterMap(): Map<string, number> {
     else if (b.dry && b.waterY !== undefined) map.set(ref, b.waterY);
   }
   return map;
+}
+
+/** Region ref → deceptive reference-up (the camera orients to it; water and
+ *  bubbles stay honest). Regions absent from the map use true world up. */
+export function buildFalseUpMap(): Map<string, [number, number, number]> {
+  const m = new Map<string, [number, number, number]>();
+  for (const n of NODES) if (n.falseUp) m.set(n.id, n.falseUp);
+  for (const e of EDGES) if (e.falseUp) m.set(`${e.a}~${e.b}`, e.falseUp);
+  return m;
 }
 
 /** Edge ref (`a~b`, as regionAt reports) → full polyline. Used by the squeeze

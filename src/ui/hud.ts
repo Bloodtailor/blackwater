@@ -16,6 +16,8 @@ export class Hud {
   private depthEl: HTMLElement;
   private pointsEl: HTMLElement;
   private kitEl!: HTMLElement;
+  private toastEl!: HTMLElement;
+  private toastTimer: number | null = null;
   private vignette: HTMLElement;
   private deathEl: HTMLElement;
   private lastDepth = 0;
@@ -49,6 +51,7 @@ export class Hud {
     const ammo = make('hud-ammo');
     ammo.textContent = '—/—';
     this.kitEl = make('hud-kit');
+    this.toastEl = make('hud-toast');
     this.deathEl = make('hud-death');
     this.deathEl.innerHTML = '<div class="big">RECOVERY INCOMPLETE</div><div class="small">the site keeps its complement</div><div class="small">press R to dive again</div>';
     this.deathEl.classList.add('hidden');
@@ -97,13 +100,36 @@ export class Hud {
     this.pointsEl.textContent = String(p);
   }
 
-  /** Guide line + chemlight readout (M4 kit). */
-  updateKit(line: GuideLine, chems: Chemlights, following: boolean): void {
+  /** Guide line + chemlight readout with a CLEAR line state (user 2026-07-19:
+   *  laying vs stopped vs reeling must be unmistakable). */
+  updateKit(line: GuideLine, chems: Chemlights, following: boolean, grabbing: boolean, tieFrac: number): void {
     const parts = [`REEL ${line.reelM.toFixed(0)}m`];
-    if (line.deployed) parts.push(`OUT ${line.deployedLengthM.toFixed(0)}m${line.reeling ? ' ⟲' : ''}`);
-    if (following) parts.push('ON LINE');
+    if (line.deployed) parts.push(`OUT ${line.deployedLengthM.toFixed(0)}m`);
+    const state =
+      tieFrac > 0
+        ? `TYING ${(tieFrac * 100).toFixed(0)}%`
+        : following
+          ? 'ON LINE'
+          : grabbing
+            ? 'GRABBING'
+            : line.mode === 'laying'
+              ? '● LAYING'
+              : line.mode === 'reeling'
+                ? '⟲ REELING'
+                : line.mode === 'stopped'
+                  ? 'LINE STOPPED'
+                  : '';
+    if (state) parts.push(state);
     parts.push(`GLO ${chems.count}`);
     this.kitEl.textContent = parts.join(' · ');
-    this.kitEl.classList.toggle('online', following);
+    this.kitEl.classList.toggle('online', following || grabbing || tieFrac > 0 || line.mode === 'laying' || line.mode === 'reeling');
+  }
+
+  /** Big center-screen confirmation flash (probes, line actions). */
+  toast(msg: string): void {
+    this.toastEl.textContent = msg;
+    this.toastEl.classList.add('show');
+    if (this.toastTimer !== null) clearTimeout(this.toastTimer);
+    this.toastTimer = window.setTimeout(() => this.toastEl.classList.remove('show'), 1900);
   }
 }

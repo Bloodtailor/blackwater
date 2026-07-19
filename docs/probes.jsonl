@@ -1,1 +1,7 @@
 {"t":"2026-07-19T13:07:21.177Z","pos":["15.7","-30.3","14.6"],"look":["-0.34","0.00","-0.94"],"collisionWallAt":"3.92","visualWallAt":"3.85","region":{"zone":"galleries","width":"chamber","ref":"gal-ring-e"}}
+{"t":"2026-07-19T19:36:52.184Z","pos":["0.3","-30.9","6.5"],"look":["-0.31","-0.69","0.66"],"collisionWallAt":"0.00","visualWallAt":"5.22","region":{"zone":"galleries","width":"squeeze","ref":"gal-berthing~gal-ring-e"}}
+{"t":"2026-07-19T19:36:55.306Z","pos":["0.3","-30.9","6.5"],"look":["-0.30","-0.70","0.65"],"collisionWallAt":"0.00","visualWallAt":"5.25","region":{"zone":"galleries","width":"squeeze","ref":"gal-berthing~gal-ring-e"}}
+{"t":"2026-07-19T19:37:39.336Z","pos":["15.0","-122.9","73.3"],"look":["-0.92","0.35","-0.14"],"collisionWallAt":"2.18","visualWallAt":"1.97","region":{"zone":"throat","width":"squeeze","ref":"throat-bottom~abyss-hall"}}
+{"t":"2026-07-19T19:38:29.075Z","pos":["1.4","-68.2","64.5"],"look":["0.34","-0.40","-0.85"],"collisionWallAt":"1.65","visualWallAt":"1.69","region":{"zone":"throat","width":"chamber","ref":"throat-rim-air"}}
+{"t":"2026-07-19T19:38:31.893Z","pos":["7.4","-67.5","61.5"],"look":["0.68","-0.24","-0.70"],"collisionWallAt":"6.59","visualWallAt":"6.52","region":{"zone":"throat","width":"chamber","ref":"throat-rim-air"}}
+{"t":"2026-07-19T19:39:12.179Z","pos":["-14.6","-55.9","44.3"],"look":["-0.80","-0.26","-0.53"],"collisionWallAt":"4.77","visualWallAt":"4.83","region":{"zone":"maze","width":"chamber","ref":"mz-organ"}}

@@ -75,6 +75,8 @@ export const TUNING = {
     freeflySpeed: 8.0, // debug noclip camera
     radius: 0.42, // collision clearance from cave walls
     eyeHeight: 1.05, // camera above the body point when walking
+    manualRollDegPerSec: 70, // Q/E camera roll (user 2026-07-19; X removed)
+    grabWallDistM: 0.55, // Ctrl grabs the wall when rock is this close
   },
   hr: {
     rest: 60, // bpm
@@ -149,8 +151,9 @@ export const TUNING = {
     lerpPerSec: 1.2, // how fast fog chases its target (zone/silt transitions)
   },
   atmosphere: {
-    particulateCount: 6000, // ambient motes riding the current near the camera
-    particulateDepthMinFrac: 0.35, // fraction of motes rendered at the surface
+    particulateCount: 9000, // mote buffer; base density uses ~2/3, silt-outs fill the rest
+    particulateBaseMaxFrac: 0.66, // deep-water base fraction (silt boost can exceed)
+    particulateDepthMinFrac: 0.24, // fraction of motes rendered at the surface
     particulateFullDepthM: 55, // full mote density at/below this depth
     particulateBoxM: 10, // they wrap inside a box this wide around the camera
     particulateFadeNearM: 1.6, // full brightness inside this camera distance…
@@ -206,8 +209,8 @@ export const TUNING = {
     maxDeployedM: 400,
     followSpeed: 3.5,
     grabRadiusM: 1.5,
+    tieSeconds: 4, // hold F while wall-grabbing to set an anchor/tie-off
     pointSpacingM: 1.0, // line vertices laid this far apart while paying out
-    tieOffRadiusM: 2.0, // anchor/tie-off must be within this of a tie-off spot
     reelInRadiusM: 2.2, // walking the line back re-reels points inside this
     followPullPerSec: 3, // how hard follow mode pulls you onto the line
   },

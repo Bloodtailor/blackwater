@@ -75,7 +75,7 @@ describe('cave SDF traversability', () => {
   // there must be real air space above the line (or above the flat floor),
   // and where the line cuts the cavity, swimmable water below it.
   it('air regions hold air above their line and water below where it cuts', () => {
-    for (const n of NODES.filter((n) => n.dry)) {
+    for (const n of NODES.filter((n) => n.dry && !n.falseUp)) {
       expect(n.waterY, `${n.id} declares waterY`).toBeDefined();
       const w = n.waterY!;
       const ry = n.radius * (n.stretch?.[1] ?? 1);
@@ -90,10 +90,18 @@ describe('cave SDF traversability', () => {
         expect(sdf(n.pos[0], w - 0.6, n.pos[2], false), `${n.id} pool below line`).toBeLessThan(-0.15);
       }
     }
+    // the Listing Room (falseUp): air above its tilted floor near center, and
+    // its horizontal pool line must cut the cavity on the downhill side
+    for (const n of NODES.filter((n) => n.dry && n.falseUp)) {
+      const u = n.falseUp!;
+      expect(sdf(n.pos[0] + u[0], n.pos[1] + u[1], n.pos[2] + u[2], false), `${n.id} air along falseUp`).toBeLessThan(-0.15);
+      expect(n.waterY, `${n.id} declares waterY`).toBeDefined();
+    }
   });
 
   it('flat-floored rooms really are flat: floor height varies little across the room', () => {
-    for (const n of NODES.filter((n) => n.floor !== undefined)) {
+    // falseUp rooms are DELIBERATELY tilted (the Listing Room) — skip
+    for (const n of NODES.filter((n) => n.floor !== undefined && !n.falseUp)) {
       const s = n.stretch ?? [1, 1, 1];
       const ry = n.radius * s[1];
       const floorY = n.pos[1] - ry * n.floor!;
@@ -104,9 +112,10 @@ describe('cave SDF traversability', () => {
         const pz = n.pos[2] + dz * n.radius * s[2];
         let y = n.pos[1];
         while (y > floorY - 3 && sdf(px, y - 0.2, pz, false) < -0.25) y -= 0.2;
-        if (Math.abs(y - floorY) >= 1.1) {
-          // a deep spot is fine ONLY if it's a passage mouth (entrance shaft,
-          // slide chute) cutting through the floor
+        // bumps above the floor are stalagmites/formations — fine; only DEEP
+        // spots matter, and those are fine ONLY if they're passage mouths
+        // (entrance shafts, slide chutes) cutting through the floor
+        if (floorY - y >= 1.1) {
           const reg = regionAt(px, y + 0.4, pz);
           expect(reg?.ref.includes('~'), `${n.id} floor @(${dx},${dz}) found ${y.toFixed(1)} vs ${floorY.toFixed(1)} and not a passage mouth (${reg?.ref})`).toBe(true);
         }

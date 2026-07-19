@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import './style.css';
 import { DebugPanel } from './debug/panel';
-import { EDGES, NODES, buildAirWaterMap, getNode, type Zone } from './cave/data';
+import { EDGES, NODES, buildAirWaterMap, buildFalseUpMap, getNode, type Zone } from './cave/data';
 import { initSdf, regionAt, resolveCollision, sdf } from './cave/sdf';
 import { buildCaveMesh } from './cave/mesh';
 import { buildDoors, openAllDoors, openDoor } from './cave/doors';
@@ -86,6 +86,7 @@ function initGame(): void {
   // only where the geometry actually traps a bubble — no more water floating
   // beside air with nothing in between.
   const airWater = buildAirWaterMap();
+  const falseUps = buildFalseUpMap();
   const waterLevelAt = (x: number, y: number, z: number): number | null => {
     if (Math.hypot(x, z) < 18 && y > -16) return WATER_Y; // open cenote water
     const ref = regionAt(x, y, z)?.ref;
@@ -146,21 +147,6 @@ function initGame(): void {
   if (!ui) throw new Error('#ui missing');
   const hud = new Hud(ui);
 
-  // tie-off proximity (anchor/pin the guide line): inside a tieOff node's
-  // ellipsoid, padded by the tie-off reach
-  const tieOffNodes = NODES.filter((n) => n.tags.includes('tieOff')).map((n) => {
-    const s = n.stretch ?? [1, 1, 1];
-    const pad = TUNING.guideLine.tieOffRadiusM;
-    return { rx: n.radius * s[0] + pad, ry: n.radius * s[1] + pad, rz: n.radius * s[2] + pad, c: n.pos };
-  });
-  const nearTieOff = (p: THREE.Vector3): boolean =>
-    tieOffNodes.some((t) => {
-      const dx = (p.x - t.c[0]) / t.rx;
-      const dy = (p.y - t.c[1]) / t.ry;
-      const dz = (p.z - t.c[2]) / t.rz;
-      return dx * dx + dy * dy + dz * dz <= 1;
-    });
-
   const teleport = (nodeId: string): void => {
     const n = getNode(nodeId);
     camera.position.set(n.pos[0], n.pos[1] + Math.min(1, n.radius * 0.25), n.pos[2]);
@@ -177,29 +163,35 @@ function initGame(): void {
   spawn();
 
   // ── hotkeys & debug ──
+  // shared control state (tick writes, hotkeys read)
+  const ctl = { grabbing: false, tieTimer: 0 };
   debug.hotkey('KeyH', 'Hide UI (screenshot mode)', () => ui.classList.toggle('hidden'));
-  debug.hotkey('KeyF', 'Flashlight', () => {
+  debug.hotkey('KeyF', 'Flashlight (anchor/tie while grabbing)', () => {
+    if (ctl.grabbing) return; // F is the tie-off ceremony while wall-grabbing
     if (vitals.battery > 0) vitals.flashlightOn = !vitals.flashlightOn;
-  });
-  debug.hotkey('KeyQ', 'Line: anchor / tie-off / reel', () => {
-    if (vitals.dead || player.mode === 'noclip') return;
-    const p = camera.position;
-    const hand: [number, number, number] = [p.x, p.y - 0.25, p.z];
-    const r = guideLine.pressQ(hand, nearTieOff(p));
-    if (r) flashStatus(`line: ${r} (${guideLine.reelM.toFixed(0)} m on reel)`);
   });
   debug.hotkey('KeyG', 'Toss chemlight', () => {
     if (vitals.dead || player.mode === 'noclip') return;
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
     const p = camera.position;
-    if (chems.toss([p.x, p.y - 0.15, p.z], [dir.x, dir.y, dir.z])) flashStatus(`chemlight away (${chems.count} left)`);
+    if (chems.toss([p.x, p.y - 0.15, p.z], [dir.x, dir.y, dir.z])) hud.toast(`CHEMLIGHT AWAY · ${chems.count} LEFT`);
   });
-  debug.hotkey('KeyN', 'Noclip (debug)', () => {
+  debug.hotkey('KeyN', 'Noclip survey (debug)', () => {
     player.mode = player.mode === 'noclip' ? 'swim' : 'noclip';
+    if (player.mode === 'noclip') vitals.god = true; // user: noclip implies god
   });
-  debug.hotkey('KeyR', 'Restart (when dead)', () => {
-    if (vitals.dead) location.reload();
+  debug.hotkey('KeyR', 'Lay/stop line (restart when dead)', () => {
+    if (vitals.dead) {
+      location.reload();
+      return;
+    }
+    if (player.mode === 'noclip') return;
+    const p = camera.position;
+    const r = guideLine.toggleLaying([p.x, p.y - 0.25, p.z]);
+    hud.toast(
+      r === 'started' || r === 'resumed' ? 'LAYING LINE' : r === 'stopped' ? 'LINE STOPPED' : 'LINE ENDS ELSEWHERE',
+    );
   });
   // Ghost-wall probe: press P where collision feels wrong; records the spot
   // and the field-vs-mesh mismatch along your view for later diagnosis.
@@ -246,6 +238,7 @@ function initGame(): void {
     };
     probes.push(entry);
     persistProbe(entry);
+    hud.toast(`PROBE #${probes.length} SAVED`); // visible confirmation (user)
     console.warn('[ghost-wall probe]', JSON.stringify(entry));
     flashStatus(`probe #${probes.length}: collision ${entry.collisionWallAt} m vs visual ${entry.visualWallAt} m`);
   });
@@ -350,6 +343,8 @@ function initGame(): void {
   let frames = 0;
   let fpsTime = 0;
   let time = 0;
+  let fPrev = false;
+  let cPrev = false;
   const exhaleOrigin = new THREE.Vector3();
   const lookDir = new THREE.Vector3();
   const beamDir = new THREE.Vector3();
@@ -366,34 +361,86 @@ function initGame(): void {
     const region = regionAt(p.x, p.y, p.z);
     const zone: Zone = region?.zone ?? 'sinkhole';
 
-    // tilt drifts only while swimming below the surface; X re-levels, and
-    // breaking into air auto-levels you (user 2026-07-18: hitting an air
-    // pocket fixes your roll — the surface hands you your orientation back).
-    // Free-look model: the tilt system steps the camera's MEASURED roll and
-    // the controller applies the delta about the view axis.
+    // reference up: regions can LIE about which way is up (the Listing Room,
+    // deceptive tunnel air gaps) — the camera orients to the lie, the water
+    // surface and bubbles stay honest (user 2026-07-19)
+    const falseUp = region ? falseUps.get(region.ref) : undefined;
+    player.setReferenceUp(player.mode === 'noclip' ? null : falseUp ?? null);
+
+    // tilt drifts only while swimming below the surface; breaking into air
+    // (or noclip) auto-levels toward the reference up. X is gone — Q/E are
+    // the player's manual roll now (user 2026-07-19). Gated at the gimbal
+    // pole where roll is undefined (the max-tilt-0 spin bug).
     const tiltRef = player.mode === 'swim' && !headAbove ? (region?.ref ?? null) : null;
-    const measuredRoll = player.measuredRollDeg;
-    const newRoll = tilt.update(dt, tiltRef, player.keyDown('KeyX') || headAbove, time, measuredRoll);
-    player.applyRollDelta(newRoll - measuredRoll);
+    if (!player.nearGimbalPole) {
+      const rollKeys = player.keyDown('KeyQ') || player.keyDown('KeyE');
+      const relevel = (headAbove || player.mode === 'noclip') && !rollKeys;
+      const measuredRoll = player.measuredRollDeg;
+      const newRoll = tilt.update(dt, tiltRef, relevel, time, measuredRoll);
+      player.applyRollDelta(newRoll - measuredRoll);
+    }
     sampleCurrent(p.x, p.y, p.z, time, currentVec);
 
-    // follow mode (hold T near the line): hand-over-hand glide — works blind
+    const hand: [number, number, number] = [p.x, p.y - 0.25, p.z];
+    // wall grab (hold Ctrl near rock, user 2026-07-19): freeze in place —
+    // the current can't move you, and the tie ceremony happens here
+    ctl.grabbing =
+      !vitals.dead &&
+      player.mode === 'swim' &&
+      (player.keyDown('ControlLeft') || player.keyDown('ControlRight')) &&
+      sdf(p.x, p.y, p.z) > -(TUNING.player.radius + TUNING.player.grabWallDistM);
+    if (ctl.grabbing) player.vel.set(0, 0, 0);
+
+    // follow mode (hold T near the line): direction LATCHES on engage so you
+    // can look around freely while hand-over-handing (user 2026-07-19)
     let following = false;
-    if (!vitals.dead && player.mode === 'swim' && !headAbove && player.keyDown('KeyT')) {
-      camera.getWorldDirection(lookDir);
-      const fv = guideLine.followVelocity([p.x, p.y, p.z], [lookDir.x, lookDir.y, lookDir.z]);
-      if (fv) {
-        following = true;
-        player.vel.set(fv[0], fv[1], fv[2]);
-        p.addScaledVector(player.vel, dt);
-        resolveCollision(p, TUNING.player.radius);
+    const tHeld = player.keyDown('KeyT');
+    if (!tHeld) {
+      guideLine.followEnd();
+    } else if (!ctl.grabbing && player.mode === 'swim') {
+      // engage (or keep trying to) while held; direction latches once
+      if (!guideLine.followingActive) {
+        camera.getWorldDirection(lookDir);
+        guideLine.followBegin(hand, [lookDir.x, lookDir.y, lookDir.z]);
+      }
+      if (!vitals.dead && !headAbove) {
+        const fv = guideLine.followVelocity(hand);
+        if (fv) {
+          following = true;
+          player.vel.set(fv[0], fv[1], fv[2]);
+          p.addScaledVector(player.vel, dt);
+          resolveCollision(p, TUNING.player.radius);
+        }
       }
     }
-    if (!vitals.dead && !following) player.update(dt, lvl);
+    if (!vitals.dead && !following && !ctl.grabbing) player.update(dt, lvl);
+
+    // the anchor/tie ceremony: HOLD F for 4 s while wall-grabbing; tap F at a
+    // stopped line's end to resume laying; tap C there to reel in
+    const fHeld = player.keyDown('KeyF');
+    const cHeld = player.keyDown('KeyC');
+    if (ctl.grabbing && fHeld) {
+      if (!fPrev && guideLine.resumeLaying(hand)) {
+        hud.toast('LAYING LINE');
+        ctl.tieTimer = 0;
+      } else if (guideLine.mode === 'laying' || !guideLine.deployed) {
+        ctl.tieTimer += dt;
+        if (ctl.tieTimer >= TUNING.guideLine.tieSeconds) {
+          const r = guideLine.pin(hand);
+          hud.toast(r === 'anchored' ? 'ANCHOR SET — LAYING LINE' : 'TIE-OFF SET');
+          ctl.tieTimer = 0;
+        }
+      }
+    } else {
+      ctl.tieTimer = 0;
+    }
+    if (ctl.grabbing && cHeld && !cPrev && guideLine.beginReel(hand)) hud.toast('REELING IN');
+    fPrev = fHeld;
+    cPrev = cHeld;
 
     // guide line pays out behind the hand (never in noclip, not while
     // hand-over-handing the line itself)
-    if (player.mode !== 'noclip') guideLine.update([p.x, p.y - 0.25, p.z], !following);
+    if (player.mode !== 'noclip') guideLine.update(hand, !following);
     lineFx.update();
     chems.update(dt);
     chemFx.update(p);
@@ -459,10 +506,11 @@ function initGame(): void {
     headlamp.intensity = vitals.flashlightOn ? headlampBase * exposure * lightFactor(vitals.battery, Math.random()) : 0;
     const clearVis = TUNING.visibility.clearVisM[zone];
     const siltout = silt.siltoutAt(chamber);
+    const siltThickness = silt.thicknessAt(chamber);
     const daylight = headAbove && Math.hypot(p.x, p.z) < 18 && p.y > -16; // open cenote only
     // noclip = debug map survey: full visibility and brightness (user)
-    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis), siltout, currentVec, daylight, player.mode === 'noclip');
-    siltFx.update(dt, p, silt.thicknessAt(chamber), !headAbove, currentVec);
+    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis), siltout, currentVec, daylight, player.mode === 'noclip', siltThickness);
+    siltFx.update(dt, p, siltThickness, !headAbove, currentVec);
     // squeeze claustrophobia: modest FOV pull-in
     const targetFov = player.mode !== 'noclip' && player.inSqueeze ? 64 : 75;
     if (Math.abs(camera.fov - targetFov) > 0.1) {
@@ -474,7 +522,7 @@ function initGame(): void {
     exhaleOrigin.y -= 0.18;
     bubbles.update(dt, exhaleOrigin, !headAbove && player.mode !== 'noclip', time, vitals.hr);
     hud.update(dt, vitals, -p.y);
-    hud.updateKit(guideLine, chems, following);
+    hud.updateKit(guideLine, chems, following, ctl.grabbing, ctl.tieTimer / TUNING.guideLine.tieSeconds);
     if (statusFlash > 0) statusFlash -= dt;
   };
 
