@@ -6,6 +6,7 @@
 // self-clean when the envelope dies. Loops return a stop() handle.
 
 import { TUNING } from '../tuning';
+import { SAMPLES } from './samples';
 
 export type StopFn = () => void;
 
@@ -93,6 +94,11 @@ function tone(ctx: BaseAudioContext, out: AudioNode, o: ToneOpts): void {
 // ── weapons (one voice per gun family; papped adds a bright zing) ──
 export function gunShot(ctx: BaseAudioContext, out: AudioNode, gunId: string, papped: boolean): void {
   const v = TUNING.audio.sfxGain;
+  const sampleId = gunId === 'twinfish' ? 'gun-speargun' : `gun-${gunId}`;
+  if (SAMPLES.play(ctx, out, sampleId, { gain: 0.8 * v, rateJitter: 0.05 })) {
+    if (papped) tone(ctx, out, { hz: 1568, hzEnd: 2093, release: 0.1, gain: 0.08 * v });
+    return;
+  }
   switch (gunId) {
     case 'wristDart':
       noiseBurst(ctx, out, { hz: 2400, q: 2, release: 0.06, gain: 0.25 * v });
@@ -137,18 +143,24 @@ export function gunShot(ctx: BaseAudioContext, out: AudioNode, gunId: string, pa
 
 export function knifeSwing(ctx: BaseAudioContext, out: AudioNode, hit: boolean): void {
   const v = TUNING.audio.sfxGain;
+  if (SAMPLES.play(ctx, out, 'knife-swing', { gain: 0.6 * v, rateJitter: 0.08 })) {
+    if (hit && !SAMPLES.play(ctx, out, 'knife-hit', { gain: 0.8 * v })) noiseBurst(ctx, out, { filter: 'lowpass', hz: 500, release: 0.12, gain: 0.4 * v });
+    return;
+  }
   noiseBurst(ctx, out, { hz: 1600, q: 0.8, attack: 0.02, release: 0.1, gain: 0.2 * v, rate: 1.4 });
   if (hit) noiseBurst(ctx, out, { filter: 'lowpass', hz: 500, release: 0.12, gain: 0.4 * v });
 }
 
 export function reloadClack(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.sfxGain;
+  if (SAMPLES.play(ctx, out, 'reload', { gain: 0.5 * v })) return;
   noiseBurst(ctx, out, { hz: 2800, q: 6, release: 0.04, gain: 0.18 * v });
   setTimeout(() => noiseBurst(ctx, out, { hz: 2200, q: 6, release: 0.05, gain: 0.22 * v }), 140);
 }
 
 // ── the body ──
 export function heartThump(ctx: BaseAudioContext, out: AudioNode, intensity: number): void {
+  if (SAMPLES.play(ctx, out, 'heartbeat', { gain: intensity })) return;
   tone(ctx, out, { hz: 55, hzEnd: 38, release: 0.12, gain: 0.5 * intensity });
   setTimeout(() => tone(ctx, out, { hz: 48, hzEnd: 34, release: 0.1, gain: 0.32 * intensity }), 180);
 }
@@ -157,6 +169,7 @@ export function heartThump(ctx: BaseAudioContext, out: AudioNode, intensity: num
  *  director to the same clock as the visible bubble stream. */
 export function breathCycle(ctx: BaseAudioContext, out: AudioNode, panic: number): void {
   const v = TUNING.audio.breathGain * (0.6 + 0.4 * panic);
+  if (SAMPLES.play(ctx, out, panic > 0.45 ? 'breath-panic' : 'breath-calm', { gain: 0.55 * v, rateJitter: 0.04 })) return;
   noiseBurst(ctx, out, { filter: 'bandpass', hz: 1100 + panic * 500, q: 0.7, attack: 0.15, hold: 0.35 - panic * 0.15, release: 0.25, gain: 0.16 * v });
   const exhaleDelay = (0.9 - panic * 0.35) * 1000;
   setTimeout(() => {
@@ -169,6 +182,7 @@ export function breathCycle(ctx: BaseAudioContext, out: AudioNode, panic: number
 }
 
 export function drownPulse(ctx: BaseAudioContext, out: AudioNode): void {
+  if (SAMPLES.play(ctx, out, 'drown-pulse', { gain: 0.7 })) return;
   tone(ctx, out, { hz: 220, hzEnd: 90, attack: 0.02, release: 0.5, gain: 0.25 });
   noiseBurst(ctx, out, { filter: 'lowpass', hz: 400, attack: 0.05, release: 0.5, gain: 0.3 });
 }
@@ -176,11 +190,13 @@ export function drownPulse(ctx: BaseAudioContext, out: AudioNode): void {
 // ── the world ──
 export function grabImpact(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.sfxGain;
+  if (SAMPLES.play(ctx, out, 'grab', { gain: 0.9 * v, rateJitter: 0.06 })) return;
   noiseBurst(ctx, out, { filter: 'lowpass', hz: 350, release: 0.25, gain: 0.7 * v });
   tone(ctx, out, { hz: 90, hzEnd: 50, release: 0.25, gain: 0.4 * v });
 }
 
 export function moan(ctx: BaseAudioContext, out: AudioNode): void {
+  if (SAMPLES.play(ctx, out, `moan-${1 + Math.floor(Math.random() * 3)}`, { gain: TUNING.audio.moanGain * 2.2, rateJitter: 0.07 })) return;
   // wet, muffled: two detuned saws through a slow-swept vowel-ish bandpass
   const t = ctx.currentTime;
   const dur = 1.4 + Math.random() * 1.2;
@@ -214,6 +230,8 @@ export function moan(ctx: BaseAudioContext, out: AudioNode): void {
  *  interval that never resolves — LORE: subtly wrong color temperature,
  *  but for the ear). Loop until stopped. */
 export function anglerHum(ctx: BaseAudioContext, out: AudioNode): StopFn {
+  const sampled = SAMPLES.loop(ctx, out, 'angler-hum', { gain: TUNING.audio.anglerGain * 2, fadeSec: 2 });
+  if (sampled) return sampled;
   const g = ctx.createGain();
   g.gain.value = 0;
   g.gain.setTargetAtTime(TUNING.audio.anglerGain, ctx.currentTime, 1.2);
@@ -245,6 +263,8 @@ export function anglerHum(ctx: BaseAudioContext, out: AudioNode): StopFn {
 
 /** Guardian presence: sub-bass breathing loop + slow metallic groan. */
 export function guardianPresence(ctx: BaseAudioContext, out: AudioNode): StopFn {
+  const sampled = SAMPLES.loop(ctx, out, 'guardian-presence', { gain: TUNING.audio.guardianGain * 1.5, fadeSec: 2.5 });
+  if (sampled) return sampled;
   const g = ctx.createGain();
   g.gain.value = 0;
   g.gain.setTargetAtTime(TUNING.audio.guardianGain, ctx.currentTime, 1.5);
@@ -279,6 +299,7 @@ export function guardianPresence(ctx: BaseAudioContext, out: AudioNode): StopFn 
 }
 
 export function siltWhump(ctx: BaseAudioContext, out: AudioNode): void {
+  if (SAMPLES.play(ctx, out, 'silt-whump', { gain: 1.1 })) return;
   // the whump + the tinnitus dip's ring (§14)
   noiseBurst(ctx, out, { filter: 'lowpass', hz: 220, attack: 0.01, hold: 0.15, release: 0.9, gain: 0.9 });
   tone(ctx, out, { hz: 46, hzEnd: 28, release: 1.0, gain: 0.5 });
@@ -291,6 +312,7 @@ const ST = { d3: 146.8, f3: 174.6, gs3: 207.7, a3: 220, c4: 261.6, d4: 293.7, e4
 /** Round-change stinger: somber low horn, minor second bloom. */
 export function roundStinger(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
+  if (SAMPLES.play(ctx, out, 'stinger-round', { gain: v })) return;
   for (const [hz, delay, gain] of [
     [ST.d3, 0, 0.3],
     [ST.a3, 0.05, 0.2],
@@ -304,6 +326,7 @@ export function roundStinger(ctx: BaseAudioContext, out: AudioNode): void {
 /** The Cave Stirs: a rising unresolved swell. */
 export function stirsStinger(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
+  if (SAMPLES.play(ctx, out, 'stinger-stirs', { gain: v })) return;
   tone(ctx, out, { type: 'sawtooth', hz: ST.d3, hzEnd: ST.f3, attack: 1.2, hold: 1.2, release: 1.2, gain: 0.22 * v });
   tone(ctx, out, { type: 'sine', hz: ST.d4, hzEnd: ST.e4, attack: 1.4, hold: 1.0, release: 1.2, gain: 0.12 * v });
 }
@@ -311,6 +334,7 @@ export function stirsStinger(ctx: BaseAudioContext, out: AudioNode): void {
 /** Perk jingle: four dark music-box notes (short, dark-goofy, §14). */
 export function perkJingle(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
+  if (SAMPLES.play(ctx, out, 'perk-jingle', { gain: v })) return;
   const seq = [ST.d4, ST.f4, ST.a4, ST.d5];
   seq.forEach((hz, i) => setTimeout(() => tone(ctx, out, { type: 'triangle', hz, attack: 0.005, hold: 0.05, release: 0.6, gain: 0.2 * v }), i * 190));
   setTimeout(() => tone(ctx, out, { type: 'triangle', hz: ST.c4, attack: 0.005, hold: 0.08, release: 1.0, gain: 0.16 * v }), 4 * 190 + 120);
@@ -319,6 +343,7 @@ export function perkJingle(ctx: BaseAudioContext, out: AudioNode): void {
 /** Requisition Roulette tease: a little cranked music-box turn. */
 export function boxTease(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
+  if (SAMPLES.play(ctx, out, 'box-tease', { gain: 0.9 * v })) return;
   const seq = [ST.a4, ST.f4, ST.e4, ST.f4, ST.a4, ST.d5];
   seq.forEach((hz, i) => setTimeout(() => tone(ctx, out, { type: 'triangle', hz, attack: 0.004, hold: 0.03, release: 0.4, gain: 0.14 * v }), i * 150));
 }
@@ -326,6 +351,7 @@ export function boxTease(ctx: BaseAudioContext, out: AudioNode): void {
 /** PaP motif: a slow choir-ish groan bloom (detuned voices through lowpass). */
 export function papMotif(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
+  if (SAMPLES.play(ctx, out, 'pap-motif', { gain: v })) return;
   for (const [hz, det] of [
     [ST.d3, 0],
     [ST.d3, 12],
@@ -339,18 +365,21 @@ export function papMotif(ctx: BaseAudioContext, out: AudioNode): void {
 
 export function dropChime(ctx: BaseAudioContext, out: AudioNode, good: boolean): void {
   const v = TUNING.audio.sfxGain;
+  if (good && SAMPLES.play(ctx, out, 'drop-chime', { gain: 0.7 * v })) return;
   tone(ctx, out, { type: 'triangle', hz: good ? ST.a4 : ST.gs3, attack: 0.005, hold: 0.05, release: 0.5, gain: 0.25 * v });
   setTimeout(() => tone(ctx, out, { type: 'triangle', hz: good ? ST.d5 : ST.d3, attack: 0.005, hold: 0.06, release: 0.7, gain: 0.22 * v }), 130);
 }
 
 export function doorGrind(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.sfxGain;
+  if (SAMPLES.play(ctx, out, 'door-grind', { gain: 0.9 * v })) return;
   noiseBurst(ctx, out, { filter: 'lowpass', hz: 300, attack: 0.1, hold: 1.2, release: 0.8, gain: 0.6 * v });
   noiseBurst(ctx, out, { filter: 'bandpass', hz: 900, q: 3, attack: 0.2, hold: 1.0, release: 0.6, gain: 0.2 * v, rate: 0.7 });
   tone(ctx, out, { hz: 60, hzEnd: 40, attack: 0.1, hold: 1.2, release: 0.8, gain: 0.3 * v });
 }
 
 export function buyClick(ctx: BaseAudioContext, out: AudioNode, ok: boolean): void {
+  if (SAMPLES.play(ctx, out, ok ? 'buy-accept' : 'buy-deny', { gain: 0.5 * TUNING.audio.sfxGain })) return;
   const v = TUNING.audio.sfxGain;
   if (ok) {
     tone(ctx, out, { type: 'square', hz: 660, release: 0.06, gain: 0.08 * v });
@@ -362,11 +391,13 @@ export function buyClick(ctx: BaseAudioContext, out: AudioNode, ok: boolean): vo
 
 /** Geiger crackle near the Pile (flavor ONLY — no mechanic, §14). */
 export function geigerTick(ctx: BaseAudioContext, out: AudioNode): void {
+  if (SAMPLES.play(ctx, out, 'geiger', { gain: 0.45, rateJitter: 0.1 })) return;
   noiseBurst(ctx, out, { filter: 'highpass', hz: 3000, attack: 0.001, hold: 0.004, release: 0.015, gain: 0.12 });
 }
 
 export function powerOnThunk(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.sfxGain;
+  if (SAMPLES.play(ctx, out, 'power-on', { gain: 0.9 * v })) return;
   noiseBurst(ctx, out, { filter: 'lowpass', hz: 200, release: 0.4, gain: 0.7 * v });
   tone(ctx, out, { hz: 50, hzEnd: 60, attack: 0.2, hold: 1.5, release: 1.5, gain: 0.2 * v });
   setTimeout(() => tone(ctx, out, { type: 'sine', hz: 120, attack: 0.5, hold: 2.0, release: 2.0, gain: 0.06 * v }), 400);
@@ -374,6 +405,7 @@ export function powerOnThunk(ctx: BaseAudioContext, out: AudioNode): void {
 
 export function deathSting(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
+  if (SAMPLES.play(ctx, out, 'death-sting', { gain: v })) return;
   tone(ctx, out, { type: 'sawtooth', hz: ST.d3, hzEnd: ST.d3 * 0.5, attack: 0.05, hold: 1.0, release: 2.5, gain: 0.3 * v });
   tone(ctx, out, { type: 'sawtooth', hz: ST.gs3, hzEnd: ST.gs3 * 0.5, attack: 0.05, hold: 1.0, release: 2.5, gain: 0.2 * v });
 }
@@ -381,6 +413,7 @@ export function deathSting(ctx: BaseAudioContext, out: AudioNode): void {
 /** Fallback VO marker: a soft radio squelch + breathy crackle so subtitle
  *  changes are audible before generated voice assets exist. */
 export function radioSquelch(ctx: BaseAudioContext, out: AudioNode, vol = 1): void {
+  if (SAMPLES.play(ctx, out, 'radio-squelch', { gain: 0.6 * vol })) return;
   noiseBurst(ctx, out, { filter: 'bandpass', hz: 1900, q: 5, attack: 0.005, hold: 0.03, release: 0.08, gain: 0.12 * vol });
   setTimeout(() => noiseBurst(ctx, out, { filter: 'bandpass', hz: 1400, q: 2, attack: 0.02, hold: 0.25, release: 0.3, gain: 0.05 * vol }), 90);
 }
@@ -388,6 +421,7 @@ export function radioSquelch(ctx: BaseAudioContext, out: AudioNode, vol = 1): vo
 /** Tape handling: the pickup clunk + reel squeak. */
 export function tapeClick(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.sfxGain;
+  if (SAMPLES.play(ctx, out, 'tape-click', { gain: 0.6 * v })) return;
   noiseBurst(ctx, out, { hz: 2400, q: 7, release: 0.04, gain: 0.2 * v });
   setTimeout(() => tone(ctx, out, { type: 'triangle', hz: 1100, hzEnd: 1500, release: 0.12, gain: 0.06 * v }), 110);
 }
@@ -395,6 +429,8 @@ export function tapeClick(ctx: BaseAudioContext, out: AudioNode): void {
 /** The toy divers' music-box shimmer (LORE §4: findability ≤8 m). Sparse,
  *  detuned, slightly wrong — loops until wound. */
 export function toyShimmer(ctx: BaseAudioContext, out: AudioNode): StopFn {
+  const sampled = SAMPLES.loop(ctx, out, 'toy-shimmer', { gain: 0.5, fadeSec: 1.5 });
+  if (sampled) return sampled;
   const g = ctx.createGain();
   g.gain.value = 0.5;
   g.connect(out);
@@ -418,6 +454,7 @@ export function toyShimmer(ctx: BaseAudioContext, out: AudioNode): StopFn {
 /** Winding a toy: ratchet clicks then a spring release. */
 export function toyWind(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.sfxGain;
+  if (SAMPLES.play(ctx, out, 'toy-wind', { gain: 0.7 * v })) return;
   for (let i = 0; i < 6; i++) {
     setTimeout(() => noiseBurst(ctx, out, { hz: 3000 - i * 120, q: 8, release: 0.03, gain: 0.1 * v }), i * 90);
   }
@@ -426,6 +463,7 @@ export function toyWind(ctx: BaseAudioContext, out: AudioNode): void {
 
 export function winSting(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
+  if (SAMPLES.play(ctx, out, 'win-sting', { gain: v })) return;
   const seq = [ST.d3, ST.a3, ST.d4, ST.f4, ST.a4];
   seq.forEach((hz, i) => setTimeout(() => tone(ctx, out, { type: 'triangle', hz, attack: 0.02, hold: 0.4, release: 2.0, gain: 0.2 * v }), i * 260));
 }

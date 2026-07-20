@@ -35,6 +35,7 @@ import { MysteryBox } from './economy/mysteryBox';
 import { PapBench } from './economy/pap';
 import { Drops, type DropId } from './economy/drops';
 import { AudioDirector } from './audio/director';
+import { SAMPLES } from './audio/samples';
 import { loadManifest, VoicePlayer, VoiceQueue, type VoManifest } from './audio/voice';
 import { TAPES } from './audio/lines';
 import { TapeDeck, TapeProps, tapeSafe } from './game/tapes';
@@ -138,6 +139,7 @@ function initGame(): void {
   // same first click that enters fullscreen (autoplay policy) ──
   const pileNode = NODES.find((n) => n.tags.includes('power'));
   const audio = new AudioDirector(pileNode ? [...pileNode.pos] : null);
+  void SAMPLES.init(); // generated-SFX manifest (absent → all-synth)
 
   const kb = (navigator as { keyboard?: { lock?: (keys?: string[]) => Promise<void> } }).keyboard;
   let played = false;

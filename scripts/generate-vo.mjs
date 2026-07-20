@@ -31,7 +31,8 @@ const DRY = process.argv.includes('--dry');
 // ── env ──
 for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split(/\r?\n/)) {
   const m = line.match(/^([A-Z_]+)=(.*)$/);
-  if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  // values may be quoted (KEY="value") — strip the wrapping, it is not part of the key
+  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
 }
 const KEY = process.env.ELEVENLABS_API_KEY;
 if (!KEY) {
@@ -53,19 +54,33 @@ const api = async (url, opts = {}) => {
   return res;
 };
 
-// ── casting ──
+// ── casting (deliberate, by name — LORE §2 direction; falls back to a
+// heuristic if a named voice leaves the library) ──
+//   Lowe: the only OLD American male — soft, unhurried, courteous.
+//   T6 is cast NEUTRAL and affectless on purpose: the voice is not in the
+//   crew book, and it should not quite sit among the men either.
+const CAST = {
+  lowe: 'Bill',
+  t1: 'Adam', // quartermaster — firm, done arguing with the count
+  t2: 'Chris', // morale officer — mild, filing it under morale
+  t3: 'Eric', // reactor engineer — smooth, enjoys being believed
+  t4: 'Brian', // site physician — deep calm, calm failing
+  t5: 'Roger', // dive supervisor — flat from re-measuring nine times
+  t6: 'River', // the roster reader (void #3 — cast wrong on purpose)
+};
+
 async function cast() {
   const { voices } = await (await api('/v1/voices')).json();
+  const byName = (n) => voices.find((v) => v.name.split(' ')[0].toLowerCase() === n.toLowerCase());
   const males = voices.filter((v) => (v.labels?.gender ?? '').includes('male') && !(v.labels?.gender ?? '').includes('female'));
   const older = males.filter((v) => /old|middle/.test(v.labels?.age ?? ''));
   const lowe = process.env.LOWE_VOICE_ID
     ? { voice_id: process.env.LOWE_VOICE_ID, name: '(pinned via LOWE_VOICE_ID)' }
-    : (older.find((v) => /american/.test(v.labels?.accent ?? '')) ?? older[0] ?? males[0] ?? voices[0]);
-  // six distinct tape voices, Lowe excluded; T6 wants the calmest read
+    : (byName(CAST.lowe) ?? older.find((v) => /american/.test(v.labels?.accent ?? '')) ?? older[0] ?? males[0] ?? voices[0]);
   const pool = males.filter((v) => v.voice_id !== lowe.voice_id);
   const tapeVoices = {};
   LINES.tapes.forEach((t, i) => {
-    tapeVoices[t.id] = pool[i % Math.max(1, pool.length)] ?? lowe;
+    tapeVoices[t.id] = byName(CAST[t.id]) ?? pool[i % Math.max(1, pool.length)] ?? lowe;
   });
   return { lowe, tapeVoices };
 }

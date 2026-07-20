@@ -10,6 +10,7 @@
 import type * as THREE from 'three';
 import { TUNING } from '../tuning';
 import { AudioEngine, type PositionalHandle } from './engine';
+import { SAMPLES } from './samples';
 import * as sfx from './sfx';
 
 export interface AudioSnapshot {
@@ -68,6 +69,9 @@ export class AudioDirector {
   ensure(): AudioEngine {
     if (!this.engine) this.engine = new AudioEngine();
     this.engine.resume();
+    // decode the generated ElevenLabs samples for this context up front —
+    // otherwise each sound's first occurrence falls back to synth
+    SAMPLES.warm(this.engine.ctx);
     return this.engine;
   }
 

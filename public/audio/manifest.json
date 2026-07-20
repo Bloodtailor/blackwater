@@ -1,0 +1,169 @@
+{
+  "vo": {
+    "surface.1": "/audio/vo/surface.1.mp3",
+    "surface.2": "/audio/vo/surface.2.mp3",
+    "surface.3": "/audio/vo/surface.3.mp3",
+    "surface.4": "/audio/vo/surface.4.mp3",
+    "surface.5": "/audio/vo/surface.5.mp3",
+    "tally.100": "/audio/vo/tally.100.mp3",
+    "tally.300": "/audio/vo/tally.300.mp3",
+    "pocket.1": "/audio/vo/pocket.1.mp3",
+    "pocket.2": "/audio/vo/pocket.2.mp3",
+    "pocket.3": "/audio/vo/pocket.3.mp3",
+    "pocket.4": "/audio/vo/pocket.4.mp3",
+    "closecall.1": "/audio/vo/closecall.1.mp3",
+    "closecall.2": "/audio/vo/closecall.2.mp3",
+    "closecall.3": "/audio/vo/closecall.3.mp3",
+    "round.1": "/audio/vo/round.1.mp3",
+    "round.2": "/audio/vo/round.2.mp3",
+    "stirs.1": "/audio/vo/stirs.1.mp3",
+    "power.1": "/audio/vo/power.1.mp3",
+    "tape.t1": "/audio/vo/tape.t1.mp3",
+    "tape.t2": "/audio/vo/tape.t2.mp3",
+    "tape.t3": "/audio/vo/tape.t3.mp3",
+    "tape.t4": "/audio/vo/tape.t4.mp3",
+    "tape.t5": "/audio/vo/tape.t5.mp3",
+    "tape.t6": "/audio/vo/tape.t6.mp3",
+    "toy.1": "/audio/vo/toy.1.mp3",
+    "toy.2": "/audio/vo/toy.2.mp3",
+    "toy.3": "/audio/vo/toy.3.mp3",
+    "jukebox.1": "/audio/vo/jukebox.1.mp3",
+    "secondwind.1": "/audio/vo/secondwind.1.mp3",
+    "idle.1": "/audio/vo/idle.1.mp3",
+    "idle.2": "/audio/vo/idle.2.mp3",
+    "win.1": "/audio/vo/win.1.mp3"
+  },
+  "tapes": {
+    "t1": "/audio/tapes/t1.mp3",
+    "t2": "/audio/tapes/t2.mp3",
+    "t3": "/audio/tapes/t3.mp3",
+    "t4": "/audio/tapes/t4.mp3",
+    "t5": "/audio/tapes/t5.mp3",
+    "t6": "/audio/tapes/t6.mp3"
+  },
+  "sfx": {
+    "gun-wristDart": {
+      "url": "/audio/sfx/gun-wristDart.mp3"
+    },
+    "gun-pneuDriver": {
+      "url": "/audio/sfx/gun-pneuDriver.mp3"
+    },
+    "gun-speargun": {
+      "url": "/audio/sfx/gun-speargun.mp3"
+    },
+    "gun-flechette": {
+      "url": "/audio/sfx/gun-flechette.mp3"
+    },
+    "gun-harpoon": {
+      "url": "/audio/sfx/gun-harpoon.mp3"
+    },
+    "gun-arcProjector": {
+      "url": "/audio/sfx/gun-arcProjector.mp3"
+    },
+    "gun-vortexMaw": {
+      "url": "/audio/sfx/gun-vortexMaw.mp3"
+    },
+    "gun-sonicLance": {
+      "url": "/audio/sfx/gun-sonicLance.mp3"
+    },
+    "gun-bangStick": {
+      "url": "/audio/sfx/gun-bangStick.mp3"
+    },
+    "knife-swing": {
+      "url": "/audio/sfx/knife-swing.mp3"
+    },
+    "knife-hit": {
+      "url": "/audio/sfx/knife-hit.mp3"
+    },
+    "reload": {
+      "url": "/audio/sfx/reload.mp3"
+    },
+    "breath-calm": {
+      "url": "/audio/sfx/breath-calm.mp3"
+    },
+    "breath-panic": {
+      "url": "/audio/sfx/breath-panic.mp3"
+    },
+    "heartbeat": {
+      "url": "/audio/sfx/heartbeat.mp3"
+    },
+    "drown-pulse": {
+      "url": "/audio/sfx/drown-pulse.mp3"
+    },
+    "moan-1": {
+      "url": "/audio/sfx/moan-1.mp3"
+    },
+    "moan-2": {
+      "url": "/audio/sfx/moan-2.mp3"
+    },
+    "moan-3": {
+      "url": "/audio/sfx/moan-3.mp3"
+    },
+    "grab": {
+      "url": "/audio/sfx/grab.mp3"
+    },
+    "angler-hum": {
+      "url": "/audio/sfx/angler-hum.mp3",
+      "loop": true
+    },
+    "guardian-presence": {
+      "url": "/audio/sfx/guardian-presence.mp3",
+      "loop": true
+    },
+    "silt-whump": {
+      "url": "/audio/sfx/silt-whump.mp3"
+    },
+    "door-grind": {
+      "url": "/audio/sfx/door-grind.mp3"
+    },
+    "power-on": {
+      "url": "/audio/sfx/power-on.mp3"
+    },
+    "geiger": {
+      "url": "/audio/sfx/geiger.mp3"
+    },
+    "buy-accept": {
+      "url": "/audio/sfx/buy-accept.mp3"
+    },
+    "buy-deny": {
+      "url": "/audio/sfx/buy-deny.mp3"
+    },
+    "drop-chime": {
+      "url": "/audio/sfx/drop-chime.mp3"
+    },
+    "tape-click": {
+      "url": "/audio/sfx/tape-click.mp3"
+    },
+    "toy-wind": {
+      "url": "/audio/sfx/toy-wind.mp3"
+    },
+    "toy-shimmer": {
+      "url": "/audio/sfx/toy-shimmer.mp3",
+      "loop": true
+    },
+    "radio-squelch": {
+      "url": "/audio/sfx/radio-squelch.mp3"
+    },
+    "stinger-round": {
+      "url": "/audio/sfx/stinger-round.mp3"
+    },
+    "stinger-stirs": {
+      "url": "/audio/sfx/stinger-stirs.mp3"
+    },
+    "perk-jingle": {
+      "url": "/audio/sfx/perk-jingle.mp3"
+    },
+    "box-tease": {
+      "url": "/audio/sfx/box-tease.mp3"
+    },
+    "pap-motif": {
+      "url": "/audio/sfx/pap-motif.mp3"
+    },
+    "death-sting": {
+      "url": "/audio/sfx/death-sting.mp3"
+    },
+    "win-sting": {
+      "url": "/audio/sfx/win-sting.mp3"
+    }
+  }
+}
