@@ -254,6 +254,8 @@ export type WaterSurface =
 /** Effectively "no water below you anywhere in this region". Finite so the
  *  physics (buoyancy distances, splash checks) stay well-behaved. */
 export const AIR_LEVEL_Y = -100000;
+/** Effectively "you are fully submerged here" (the level is far overhead). */
+export const SUBMERGED_LEVEL_Y = 100000;
 
 /** The plane of a dry room's pool: point + normal, from its `water` fraction
  *  along its (false) up. Null when the room holds no water. */
@@ -275,8 +277,16 @@ export function edgeRadius(width: CaveEdge['width']): number {
 export function waterSurfaceLevel(ws: WaterSurface, x: number, y: number, z: number): number {
   if (ws.kind === 'air') return AIR_LEVEL_Y;
   if (ws.kind === 'plane') {
-    if (Math.abs(ws.up[1]) < 0.2) return ws.y; // near-horizontal "up": treat as flat
-    return ws.y - (ws.up[0] * (x - ws.c[0]) + ws.up[2] * (z - ws.c[1])) / ws.up[1];
+    // signed distance to the plane along its normal: positive = air side.
+    // "head above" everywhere reduces to y > level ⇔ s/up[1] > 0, so the
+    // plane formula is exact while up[1] is meaningfully positive…
+    const s = ws.up[0] * (x - ws.c[0]) + ws.up[1] * (y - ws.y) + ws.up[2] * (z - ws.c[1]);
+    if (ws.up[1] >= 0.05) return y - s / ws.up[1];
+    // …but at/near 90° (or inverted) there IS no y-level: a vertical surface
+    // splits the room sideways. Classify by the signed distance directly —
+    // the old flat fallback here drowned players standing in the air half
+    // of a 90°-listed room (user bug report 2026-07-19).
+    return s > 0 ? AIR_LEVEL_Y : SUBMERGED_LEVEL_Y;
   }
   // gap: nearest polyline point → local ceiling minus the air gap
   let best = Infinity;
