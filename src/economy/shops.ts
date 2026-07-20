@@ -64,8 +64,9 @@ function labelTexture(lines: string[], accent = '#e8f0e6'): THREE.CanvasTexture 
 
 /** Nearest wall from a node center (16 horizontal probes), for mounting
  *  lockers/vendors flush to real rock. `exclude` keeps a second fixture off
- *  the first one's wall. */
-function wallSpot(n: CaveNode, exclude?: THREE.Vector3): { pos: THREE.Vector3; inward: THREE.Vector3 } {
+ *  the first one's wall. (Exported: the photograph and future props mount
+ *  the same way.) */
+export function wallSpot(n: CaveNode, exclude?: THREE.Vector3): { pos: THREE.Vector3; inward: THREE.Vector3 } {
   const maxR = n.radius * Math.max(...(n.stretch ?? [1, 1, 1])) * 1.4;
   let bestT = Infinity;
   let bestDir: THREE.Vector3 | null = null;
@@ -90,7 +91,7 @@ function wallSpot(n: CaveNode, exclude?: THREE.Vector3): { pos: THREE.Vector3; i
   return { pos, inward: dir.clone().negate() };
 }
 
-function orientToWall(g: THREE.Object3D, spot: { pos: THREE.Vector3; inward: THREE.Vector3 }): void {
+export function orientToWall(g: THREE.Object3D, spot: { pos: THREE.Vector3; inward: THREE.Vector3 }): void {
   g.position.copy(spot.pos);
   g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), spot.inward);
 }

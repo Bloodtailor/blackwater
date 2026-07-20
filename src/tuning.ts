@@ -396,6 +396,58 @@ export const TUNING = {
     pressureWaveAward: 400, // flat points for the room-clear (BO1 nuke custom)
     weights: { maxAmmo: 22, doublePoints: 22, instaKill: 22, clearWaters: 14, batterySurge: 14, pressureWave: 6 },
   },
+  specials: {
+    // The Angler (DESIGN §8.2): a lure that reads as somebody's chemlight.
+    angler: {
+      fromRound: 8,
+      spawnChanceAtRoundStart: 0.5, // if none alive, dark zones only
+      minSpawnDistM: 25,
+      hp: 600,
+      cruiseSpeed: 1.1, // idle drift around the lure spot
+      lungeSpeed: 7.5,
+      lungeTriggerM: 4.5, // takes you when you commit to the light
+      lungeWindupSec: 0.35,
+      damage: 45,
+      killPoints: 200,
+      lureBobAmp: 0.35,
+    },
+    // The Silt Shade (DESIGN §8.2): lives exactly as long as the silt-out.
+    shade: {
+      hp: 250,
+      speed: 3.6,
+      damage: 25,
+      spawnDelaySec: 3, // the cloud thickens, then something is in it
+      grabCooldownSec: 1.6,
+      killPoints: 100,
+    },
+    // Guardians (DESIGN §8.3): the condemned suits still walking their posts.
+    guardian: {
+      hp: 4000, // killable, barely worth it — they walk again next round
+      patrolSpeed: 1.3,
+      aggroSpeed: 4.8,
+      damage: 60, // the heavy hit
+      hitShove: 5,
+      hitAirLoss: 6,
+      proximityAggroM: 4, // tier 1: you brushed the post
+      lightAggroM: 14, // tier 2: your lamp at range
+      sprintLightAggroM: 22, // tier 3: loud AND lit
+      calmSec: 6, // loses you, walks back
+      leashM: 32,
+      attackRangeM: 2.2,
+      attackWindupSec: 0.7,
+      killPoints: 500,
+    },
+    biolum: { count: 900, sizeM: 0.06 }, // the Cathedral's own faint light
+  },
+  ascent: {
+    // Grab the Heart → the site objects, all the way up (DESIGN §11).
+    grabHoldSec: 1.5,
+    zombieSpeedCapMult: 0.76, // ascent zombies stay outswimmable
+    spawnEverySec: 3.5, // global pressure, alive cap still rules
+    visMult: 0.75, // one grade darker on the way out
+    heartLightIntensity: 9,
+    heartLightRadiusM: 13,
+  },
   interact: {
     reachM: 2.7, // how close E can act from
     coneDeg: 42, // how far off view center a target can sit

@@ -663,3 +663,72 @@ canvas {
   font-size: 13px;
   opacity: 0.75;
 }
+#hud-death .ledger,
+#hud-win .ledger {
+  font: 14px Consolas, monospace;
+  line-height: 1.7;
+  color: #bfe8dc;
+  opacity: 0.9;
+  text-align: left;
+}
+#hud-win {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(2, 8, 10, 0.92);
+  pointer-events: auto;
+}
+#hud-win .big {
+  font-size: 28px;
+  letter-spacing: 6px;
+  color: #7ce8a9;
+}
+#hud-win .small {
+  font-size: 13px;
+  opacity: 0.75;
+}
+#hud-win .beat {
+  margin-top: 10px;
+  color: #c9a05a;
+  opacity: 0.95;
+}
+#hud-ascent {
+  position: absolute;
+  top: 7%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  letter-spacing: 6px;
+  color: #d8452a;
+  text-shadow: 0 0 8px #200;
+  animation: bw-stirs 1.2s infinite;
+  white-space: nowrap;
+}
+#hud-inspect {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(2, 5, 7, 0.93);
+}
+#hud-inspect img {
+  max-width: 62vmin;
+  max-height: 62vmin;
+  border: 1px solid #3a3a30;
+}
+#hud-inspect .caption {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #d8d2c0;
+}
+#hud-inspect .small {
+  font-size: 12px;
+  opacity: 0.6;
+}

@@ -92,8 +92,67 @@ export class Hud {
     this.kitEl = make('hud-kit');
     this.toastEl = make('hud-toast');
     this.deathEl = make('hud-death');
-    this.deathEl.innerHTML = '<div class="big">RECOVERY INCOMPLETE</div><div class="small">the site keeps its complement</div><div class="small">press R to dive again</div>';
+    this.deathEl.innerHTML =
+      '<div class="big">RECOVERY INCOMPLETE</div><div class="small">the site keeps its complement</div><pre class="ledger"></pre><div class="small">press R to dive again</div>';
     this.deathEl.classList.add('hidden');
+    this.winEl = make('hud-win');
+    this.winEl.innerHTML =
+      '<div class="big">RECOVERY COMPLETE</div><div class="small">item lifted to surface. ascent logged.</div><pre class="ledger"></pre>' +
+      '<div class="small beat">headcount on the ascent: forty-two.</div><div class="small">press R to dive again</div>';
+    this.winEl.classList.add('hidden');
+    this.ascentEl = make('hud-ascent');
+    this.ascentEl.textContent = 'ASCEND — THE SITE OBJECTS';
+    this.ascentEl.classList.add('hidden');
+    this.inspectEl = make('hud-inspect');
+    this.inspectEl.innerHTML = '<img alt="" /><div class="caption"></div><div class="small">E to put it back</div>';
+    this.inspectEl.classList.add('hidden');
+  }
+
+  private winEl!: HTMLElement;
+  private ascentEl!: HTMLElement;
+  private inspectEl!: HTMLElement;
+  inspectOpen = false;
+
+  /** Lowe's ledger block (DESIGN §12) — shared by the win and death screens. */
+  setLedger(stats: { recovered: number; rounds: number; timeSec: number; draughts: number; spent: number }): void {
+    const row = (label: string, val: string): string => `${(label + ' ').padEnd(15, '.')} ${val}`;
+    const mm = Math.floor(stats.timeSec / 60);
+    const ss = Math.floor(stats.timeSec % 60).toString().padStart(2, '0');
+    const disc = stats.recovered - 41;
+    const text = [
+      row('RECOVERED', String(stats.recovered)),
+      row('ROSTER', '41'),
+      row('DISCREPANCY', (disc >= 0 ? '+' : '') + disc),
+      row('SHIFTS', String(stats.rounds)),
+      row('TIME UNDER', `${mm}:${ss}`),
+      row('DRAUGHTS', String(stats.draughts)),
+      row('SPENT', String(stats.spent)),
+    ].join('\n');
+    for (const el of [this.deathEl, this.winEl]) {
+      const pre = el.querySelector('.ledger') as HTMLElement;
+      if (pre) pre.textContent = text;
+    }
+  }
+
+  showWin(): void {
+    this.winEl.classList.remove('hidden');
+  }
+
+  setAscent(on: boolean): void {
+    this.ascentEl.classList.toggle('hidden', !on);
+  }
+
+  /** Fullscreen inspect (G13 and, come M8, every poster). */
+  showInspect(dataUrl: string, caption: string): void {
+    (this.inspectEl.querySelector('img') as HTMLImageElement).src = dataUrl;
+    (this.inspectEl.querySelector('.caption') as HTMLElement).textContent = caption;
+    this.inspectEl.classList.remove('hidden');
+    this.inspectOpen = true;
+  }
+
+  closeInspect(): void {
+    this.inspectEl.classList.add('hidden');
+    this.inspectOpen = false;
   }
 
   update(dt: number, v: Vitals, depth: number): void {

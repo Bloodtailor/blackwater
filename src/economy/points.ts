@@ -20,9 +20,13 @@ export class Points {
     return this.balance >= n;
   }
 
+  /** Lifetime spend — Lowe's ledger reads it at the end. */
+  totalSpent = 0;
+
   spend(n: number): boolean {
     if (!this.canAfford(n)) return false;
     this.balance -= n;
+    this.totalSpent += n;
     this.onChange?.(this.balance, -n);
     return true;
   }

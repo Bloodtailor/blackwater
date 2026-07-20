@@ -22,6 +22,9 @@ import { SiltSystem, chambersFromNodes } from './effects/silt';
 import { SiltParticles } from './effects/siltParticles';
 import { RoundSystem } from './zombies/rounds';
 import { ZombieManager } from './zombies/zombies';
+import { SpecialManager } from './zombies/specials';
+import { HeartRun, photographDataUrl } from './game/heart';
+import { wallSpot, orientToWall } from './economy/shops';
 import { Weapons, TracerFx, ImpactGlow, WALL_GUNS, BOX_GUNS, type WeaponSlot, type GunId } from './player/weapons';
 import { ViewModel } from './player/viewmodel';
 import { Points } from './economy/points';
@@ -204,6 +207,7 @@ function initGame(): void {
     toast: (msg) => hud.toast(msg),
     onPerkBought: (id) => {
       applyPerkEffects();
+      run.draughts++;
       if (id === 'barnacleHide') vitals.hp = perks.mods.maxHp; // the dose heals whole
     },
     onVendor: (v) => {
@@ -242,6 +246,64 @@ function initGame(): void {
     applyClearWaters: () => silt.clearAll(),
     setPointsMultiplier: (m) => (points.multiplier = m),
   });
+
+  // ── M7: the specials, the Heart, the Ascent, the ledger ──
+  const takeSpecialHit = (damage: number, fromDir: THREE.Vector3, airLoss: number): void => {
+    vitals.damage(damage);
+    if (airLoss > 0 && !vitals.god && !vitals.infiniteAir) vitals.air = Math.max(0, vitals.air - airLoss);
+    hud.damageFlash();
+    player.vel.addScaledVector(fromDir, 3.5);
+  };
+  const specials = new SpecialManager(scene, silt, {
+    toast: (m) => hud.toast(m),
+    award: (n) => points.award(n),
+    dropBattery: (pos) => drops.spawn('batterySurge', pos),
+  });
+  const run = { timeSec: 0, draughts: 0, ascentSpawnT: 0 };
+  const heart = new HeartRun(scene, interact, camera, {
+    toast: (m) => hud.toast(m),
+    onFirstGrab: () => {
+      rounds.paused = true; // the Ascent supersedes the shift bell
+      zombies.ascentSpeedCap = TUNING.zombies.speedCap * TUNING.ascent.zombieSpeedCapMult;
+      hud.setAscent(true);
+      hud.toast('ASCEND.');
+      flashStatus('THE ASCENT — get to the surface');
+    },
+  });
+  const runStats = () => ({
+    recovered: zombies.recovered,
+    rounds: rounds.round,
+    timeSec: run.timeSec,
+    draughts: run.draughts,
+    spent: points.totalSpent,
+  });
+  // G13: the photograph, pinned at the drill head (LORE §7 — the print IS
+  // the fallback art; the date is the wrongness)
+  {
+    const dh = NODES.find((n) => n.id === 'drill-head');
+    if (dh) {
+      const spot = wallSpot(dh);
+      const frame = new THREE.Group();
+      const backing = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.04), new THREE.MeshStandardMaterial({ color: 0x3a3a30, roughness: 0.8 }));
+      frame.add(backing);
+      const printTex = new THREE.TextureLoader().load(photographDataUrl());
+      printTex.colorSpace = THREE.SRGBColorSpace;
+      const print = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.33), new THREE.MeshBasicMaterial({ map: printTex }));
+      print.position.z = 0.025;
+      frame.add(print);
+      orientToWall(frame, spot);
+      scene.add(frame);
+      interact.add({
+        id: 'photo-g13',
+        pos: [spot.pos.x, spot.pos.y, spot.pos.z],
+        prompt: () => ({ text: hud.inspectOpen ? 'PUT IT BACK' : 'THE PHOTOGRAPH', holdSec: 0, enabled: true }),
+        execute: () => {
+          if (hud.inspectOpen) hud.closeInspect();
+          else hud.showInspect(photographDataUrl(), 'B-DECK — DRILL HEAD — MARCH 1971');
+        },
+      });
+    }
+  }
 
   // Second Wind (§10.5): blackout → wake at the last-used air pocket with the
   // sidearm → the perk is spent. Non-stackable, re-buyable.
@@ -285,6 +347,12 @@ function initGame(): void {
         zombies.knockback(t, shotDir, def.id === 'bangStick' ? 7 : 5);
         hitZombie(t, def.damage, false, true);
       }
+      const sp = specials.nearestInArc(camera.position, lookDir, def.stabRangeM, TUNING.weapons.knife.arcDeg);
+      if (sp) {
+        specials.applyDamage(sp, def.damage);
+        points.award(E.hit);
+        hud.hitmark(false);
+      }
       return;
     }
     beamRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
@@ -299,7 +367,19 @@ function initGame(): void {
           shotDir.addScaledVector(beamRight, (Math.random() * 2 - 1) * s).addScaledVector(beamUp, (Math.random() * 2 - 1) * s);
         }
         shotDir.normalize();
+        muzzle.copy(camera.position).addScaledVector(lookDir, 0.35).addScaledVector(beamRight, 0.14).addScaledVector(beamUp, -0.12);
         const res = zombies.raycastPierce(camera.position, shotDir, def.rangeM, def.pierce);
+        // a special in front of the first zombie absorbs the pellet
+        // (insta-kill does not touch the specials — they are not roster)
+        const sp = specials.raycastShot(camera.position, shotDir, def.rangeM);
+        if (sp && (res.hits.length === 0 || sp.dist < res.hits[0].dist)) {
+          specials.applyDamage(sp.special, def.damage);
+          points.award(E.hit);
+          hud.hitmark(false);
+          tracers.spawn(muzzle, sp.point, def.tracer, def.tracerLifeSec);
+          if (def.papped) impactGlow.spawn(sp.point);
+          continue;
+        }
         const endDist = Math.hypot(res.end[0] - camera.position.x, res.end[1] - camera.position.y, res.end[2] - camera.position.z);
         checkMounds(camera.position.x, camera.position.y, camera.position.z, shotDir.x, shotDir.y, shotDir.z, endDist);
         for (const h of res.hits) hitZombie(h.zombie, def.damage * (h.head ? def.headshotMult : 1), h.head, false);
@@ -321,7 +401,6 @@ function initGame(): void {
           if (caught > 0) flashStatus(`vortex: ${caught} caught`);
         }
         if (def.papped) impactGlow.spawn(res.end); // the universal rule: light
-        muzzle.copy(camera.position).addScaledVector(lookDir, 0.35).addScaledVector(beamRight, 0.14).addScaledVector(beamUp, -0.12);
         tracers.spawn(muzzle, res.end, def.tracer, def.tracerLifeSec);
       }
     }
@@ -329,14 +408,22 @@ function initGame(): void {
   const doMelee = (): void => {
     camera.getWorldDirection(lookDir);
     viewModel.swingKnife(); // the swing (and its reach arc) shows even on air
-    const target = zombies.meleeTarget(camera.position, lookDir);
-    if (!target) return;
     // the Bang Stick upgrades your melee to its one-hit shell while owned
     const bang = weapons.owns('bangStick');
     const dmg = bang ? TUNING.weapons.bangStick.damage : TUNING.weapons.knife.damage;
-    shotDir.copy(target.pos).sub(camera.position).normalize();
-    zombies.knockback(target, shotDir, bang ? 7 : 4); // the shove (user 2026-07-20)
-    hitZombie(target, dmg, false, true);
+    const target = zombies.meleeTarget(camera.position, lookDir);
+    if (target) {
+      shotDir.copy(target.pos).sub(camera.position).normalize();
+      zombies.knockback(target, shotDir, bang ? 7 : 4); // the shove (user 2026-07-20)
+      hitZombie(target, dmg, false, true);
+      return;
+    }
+    const sp = specials.nearestInArc(camera.position, lookDir, TUNING.weapons.knife.rangeM, TUNING.weapons.knife.arcDeg);
+    if (sp) {
+      specials.applyDamage(sp, dmg);
+      points.award(E.hit);
+      hud.hitmark(false);
+    }
   };
 
   const teleport = (nodeId: string): void => {
@@ -397,9 +484,9 @@ function initGame(): void {
     if (player.mode === 'noclip') vitals.god = true; // user: noclip implies god
   });
   // R = reload (the shooter set; line moved to T/X, user 2026-07-19 round
-  // 12). When dead it restarts the dive instead.
-  debug.hotkey('KeyR', 'Reload / restart when dead', () => {
-    if (vitals.dead) location.reload();
+  // 12). When dead OR won it restarts the dive instead.
+  debug.hotkey('KeyR', 'Reload / restart when dead or won', () => {
+    if (vitals.dead || heart.won) location.reload();
     else if (player.mode !== 'noclip') weapons.startReload({ reloadMult: perks.mods.reloadMult, fireDelayMult: 1 });
   });
   // knife: RMB (bound in weapons) or V — instant, clear of every line key
@@ -619,6 +706,15 @@ function initGame(): void {
   debug.button(econSec, 'Spawn selected drop at player', () => {
     const q = camera.position;
     drops.spawn(dropSelect.value as DropId, new THREE.Vector3(q.x, q.y - 0.4, q.z - 1.5));
+  });
+
+  const m7Sec = debug.section('Specials & Ascent');
+  debug.button(m7Sec, 'Spawn Angler at selected node', () => specials.spawnAngler(select.value));
+  debug.button(m7Sec, 'Kill all specials', () => specials.killAllSpecials());
+  debug.button(m7Sec, 'Grab the Heart (start Ascent)', () => heart.grab());
+  debug.button(m7Sec, 'Show win screen (preview)', () => {
+    hud.setLedger(runStats());
+    hud.showWin();
   });
 
   const doorSec = debug.section('Doors');
@@ -875,8 +971,9 @@ function initGame(): void {
     const siltThickness = silt.thicknessAt(chamber);
     const daylight = headAbove && Math.hypot(p.x, p.z) < 18 && p.y > -16; // open cenote only
     // noclip = debug map survey: full visibility and brightness (user);
-    // Cat Eyes and the Clear Waters drop both lift the final visibility
-    const visMult = perks.mods.visMult * (drops.clearWaters ? TUNING.drops.clearWatersVisMult : 1);
+    // Cat Eyes and Clear Waters lift visibility; the Ascent pulls it down
+    const visMult =
+      perks.mods.visMult * (drops.clearWaters ? TUNING.drops.clearWatersVisMult : 1) * (heart.ascentActive ? TUNING.ascent.visMult : 1);
     atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis) * visMult, siltout, currentVec, daylight, player.mode === 'noclip', siltThickness);
     siltFx.update(dt, p, siltThickness, !headAbove, currentVec);
     // squeeze claustrophobia: modest FOV pull-in
@@ -907,6 +1004,8 @@ function initGame(): void {
         perks.consumeSecondWind();
         applyPerkEffects();
         weapons.stripToSidearm();
+        // carrying the Heart? it stays where you died (DESIGN §11)
+        if (heart.held) heart.drop(p.clone());
         vitals.dead = false;
         vitals.hp = perks.mods.maxHp;
         vitals.air = perks.mods.airCap;
@@ -916,15 +1015,32 @@ function initGame(): void {
       }
     }
 
-    // ── combat: rounds, zombies, weapons (M5) ──
+    // ── combat: rounds, zombies, weapons (M5) + specials & the Ascent (M7) ──
     // noclip is a survey mode — the site ignores the surveyor; death freezes
-    // the run (R restarts)
-    const combatFrozen = vitals.dead || player.mode === 'noclip';
+    // the run (R restarts); the win freezes it kindly
+    const combatFrozen = vitals.dead || player.mode === 'noclip' || heart.won;
     if (!combatFrozen) {
+      run.timeSec += dt;
       const ev = rounds.update(dt, zombies.aliveCount);
       if (ev.roundStarted) {
         hud.setRound(ev.roundStarted);
+        specials.onRoundStart(ev.roundStarted, p);
         flashStatus(`round ${ev.roundStarted} begins`);
+      }
+      // the Ascent: global pressure on a flat clock, alive cap still rules
+      if (heart.ascentActive) {
+        run.ascentSpawnT -= dt;
+        if (run.ascentSpawnT <= 0 && zombies.aliveCount < TUNING.rounds.aliveCap) {
+          zombies.spawnNearPlayer(p, Math.max(1, rounds.round));
+          run.ascentSpawnT = TUNING.ascent.spawnEverySec;
+        }
+        // surfacing with it = the recovery is complete
+        if (heart.held && daylight && headAbove) {
+          heart.won = true;
+          hud.setAscent(false);
+          hud.setLedger(runStats());
+          hud.showWin();
+        }
       }
       const acts = weapons.update(dt, { reloadMult: perks.mods.reloadMult, fireDelayMult: perks.mods.fireDelayMult });
       if (acts.fire) {
@@ -933,6 +1049,16 @@ function initGame(): void {
       }
       if (acts.melee) doMelee();
     }
+    specials.update(dt, {
+      playerPos: p,
+      playerDead: combatFrozen,
+      time,
+      lampOn: vitals.flashlightOn,
+      sprinting: player.sprinting,
+      onHit: takeSpecialHit,
+    });
+    heart.update(dt, time);
+    if (vitals.dead && !revive.active) hud.setLedger(runStats());
     // viewmodel: current gun in hand, bob/kick/reload, knife-ready crosshair
     viewModel.setWeapon(weapons.current.def.id, weapons.current.def.papped);
     viewModel.update(dt, {
@@ -1013,6 +1139,9 @@ function initGame(): void {
     box,
     pap,
     drops,
+    specials,
+    heart,
+    runStats,
     applyPerkEffects,
     doShot,
     doMelee,

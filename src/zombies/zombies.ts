@@ -71,6 +71,8 @@ export class ZombieManager {
   readonly zombies: Zombie[] = [];
   /** Kills this run (Lowe's ledger — the stats screens read it). */
   recovered = 0;
+  /** The Ascent (DESIGN §11): a hard speed ceiling — pursuit, not capture. */
+  ascentSpeedCap: number | null = null;
   private nextId = 1;
   private graph: GraphPath;
   private burrows: CaveNode[];
@@ -99,6 +101,13 @@ export class ZombieManager {
 
   get aliveCount(): number {
     return this.zombies.filter((z) => z.state !== 'dead').length;
+  }
+
+  /** Ascent spawner: any burrow, round gates ignored — the site empties
+   *  everything it has (DESIGN §11). Same burrow-choice rules otherwise. */
+  spawnNearPlayer(playerPos: THREE.Vector3, round: number): Zombie | null {
+    const burrow = this.pickBurrow(playerPos, 999);
+    return burrow ? this.spawnAt(burrow, round) : null;
   }
 
   /** Spawn one Drowned at a node (burrow spawning + the debug button). */
@@ -391,6 +400,7 @@ export class ZombieManager {
       // Each body keeps its own pace (speedScale) so the pack strings out —
       // capped at speedCap so the fastest stays outswimmable.
       let speed = inSqueeze ? Math.min(z.speed, Z.squeezeSpeed) : Math.min(z.speed * z.speedScale, Z.speedCap);
+      if (this.ascentSpeedCap !== null) speed = Math.min(speed, this.ascentSpeedCap);
       if (headAbove) speed *= Z.landSpeedFactor;
       this.vTmp.set(target[0] - z.pos.x, target[1] - z.pos.y, target[2] - z.pos.z).normalize();
       // wall-slide: near rock, strip the into-wall component of the intent so
