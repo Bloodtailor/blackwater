@@ -7,8 +7,15 @@
   </head>
   <body>
     <div id="ui">
-      <div id="fps"></div>
-      <div id="hint">CLICK TO LOOK &middot; WASD swim &middot; SPACE / C up-down &middot; SHIFT sprint &middot; Q / E roll &middot; LMB fire &middot; RMB / V knife &middot; R reload &middot; 1 / 2 / 3 swap &middot; E buy &middot; CTRL grab &middot; F lamp &middot; T line: lay / fork &mdash; hold ride &middot; X line: tie / cut &mdash; hold reel &middot; G chemlight &middot; ` debug</div>
+      <!-- the GAME hud: always on while playing (user 2026-07-20: H must not
+           take the real HUD with it) -->
+      <div id="hud">
+        <div id="hint">CLICK TO LOOK &middot; WASD swim &middot; SPACE / C up-down &middot; SHIFT sprint &middot; Q / E roll &middot; LMB fire &middot; RMB / V knife &middot; R reload &middot; 1 / 2 / 3 swap &middot; E buy &middot; CTRL grab &middot; F lamp &middot; T line: lay / fork &mdash; hold ride &middot; X line: tie / cut &mdash; hold reel &middot; G chemlight &middot; ` debug</div>
+      </div>
+      <!-- the DEBUG layer: fps + panel; H toggles only this -->
+      <div id="dbg">
+        <div id="fps"></div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

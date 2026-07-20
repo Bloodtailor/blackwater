@@ -23,9 +23,10 @@ export class DebugPanel {
     });
     // Panel always exists so F1/backquote work from any URL; it starts hidden
     // unless ?debug=1. (F1 without a registered handler fell through to
-    // Chrome's help page.)
-    const ui = document.getElementById('ui');
-    if (!ui) throw new Error('#ui missing');
+    // Chrome's help page.) Lives in the DEBUG layer (#dbg) — the game HUD is
+    // its own layer and H never touches it (user 2026-07-20).
+    const ui = document.getElementById('dbg') ?? document.getElementById('ui');
+    if (!ui) throw new Error('#dbg missing');
     this.root = document.createElement('div');
     this.root.id = 'debug-panel';
     if (!enabled) this.root.classList.add('hidden');

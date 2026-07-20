@@ -19,6 +19,13 @@ canvas {
   color: #9fd8cf;
   z-index: 10;
 }
+/* two layers: the game HUD (always on in play) and the debug layer (H) */
+#hud,
+#dbg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 #fps {
   position: absolute;
   top: 8px;
@@ -526,6 +533,11 @@ canvas {
   font-size: 22px;
   opacity: 0.55;
   text-shadow: 0 0 3px #000;
+}
+#hud-cross.knife {
+  font-size: 16px;
+  color: #ffe9a8;
+  opacity: 0.95;
 }
 #hud-hitmark {
   position: absolute;

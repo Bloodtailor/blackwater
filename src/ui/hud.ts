@@ -212,6 +212,17 @@ export class Hud {
     this.suppressDeath = on;
   }
 
+  /** Crosshair flips to the knife glyph when a body is in melee reach —
+   *  the range is readable BEFORE you commit (user 2026-07-20). */
+  setKnifeReady(ready: boolean): void {
+    if (ready === this.knifeReady) return;
+    this.knifeReady = ready;
+    this.crossEl.textContent = ready ? '✕' : '·';
+    this.crossEl.classList.toggle('knife', ready);
+  }
+
+  private knifeReady = false;
+
   /** Subtle hitmarker; red-tinged on headshot (DESIGN §12: subtle). */
   hitmark(head: boolean): void {
     this.hitmarkEl.classList.remove('show', 'head');

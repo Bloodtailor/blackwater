@@ -205,6 +205,15 @@ export const TUNING = {
     stuckRepathSec: 2.5, // no progress for this long = force repath + wall nudge
     minSpawnDistM: 12, // burrows closer than this to the player are skipped
     emergeSec: 1.1, // rising out of the burrow crack
+    // ── crowd behavior (user 2026-07-20: no clumping into one point, no
+    // synchronized hit-bursts, stuck bodies must recycle) ──
+    speedVariance: 0.15, // per-zombie ±15% — the pack strings out
+    separationRadiusM: 0.95, // bodies shoulder each other apart inside this
+    separationPush: 2.4, // how hard they jostle
+    maxConcurrentAttackers: 3, // the rest crowd and wait their turn
+    grabWindupJitterSec: 0.4, // extra random windup per attack (desyncs hits)
+    stuckDespawnSec: 12, // no progress this long → burrow back down…
+    stuckDespawnMinDistM: 8, // …but never vanish in front of the player
     // ── the grab (procedural handling, DESIGN §8.1) ──
     grabRangeM: 1.35,
     grabWindupSec: 0.55, // firm, unhurried reach before the grab lands

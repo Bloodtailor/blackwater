@@ -38,6 +38,15 @@ export interface Zombie {
   /** Vortex Maw: seconds left being dragged toward pullPoint. */
   pulledT: number;
   pullPoint: THREE.Vector3;
+  /** This body's own pace (±speedVariance) — the pack strings out. */
+  speedScale: number;
+  /** This attack's total windup (base + jitter) — hits desync. */
+  windupTotal: number;
+  /** Cumulative no-progress time → burrow-back recycle. */
+  noProgressT: number;
+  /** Closest it has ever been to the player (progress metric). */
+  bestDist: number;
+  prevPathIdx: number;
 }
 
 export interface ShotResult {
@@ -123,6 +132,11 @@ export class ZombieManager {
       fading: false,
       pulledT: 0,
       pullPoint: new THREE.Vector3(),
+      speedScale: 1 + (Math.random() * 2 - 1) * TUNING.zombies.speedVariance,
+      windupTotal: TUNING.zombies.grabWindupSec,
+      noProgressT: 0,
+      bestDist: Infinity,
+      prevPathIdx: -1,
     };
     this.zombies.push(z);
     for (const m of rig.meshes) {
@@ -292,13 +306,13 @@ export class ZombieManager {
         continue;
       }
       if (z.state === 'attacking') {
-        // firm, unhurried reach; the grab lands after the windup if you're
-        // still in hand
+        // firm, unhurried reach; the grab lands after THIS body's windup
+        // (base + per-attack jitter — a crowd never hits in unison)
         this.face(z, ctx.playerPos, dt);
         z.vel.multiplyScalar(Math.max(0, 1 - 3 * dt));
         z.pos.addScaledVector(z.vel, dt);
         resolveCollision(z.pos, Z.radius);
-        if (z.stateT >= Z.grabWindupSec) {
+        if (z.stateT >= z.windupTotal) {
           if (distToPlayer <= Z.grabRangeM * 1.4) {
             this.vTmp.copy(ctx.playerPos).sub(z.pos).normalize();
             ctx.onGrab(this.vTmp.clone());
@@ -330,10 +344,15 @@ export class ZombieManager {
       }
 
       // ── pursuing ──
+      // only a few may attack at once; the rest crowd in and jostle
       if (distToPlayer <= Z.grabRangeM && z.grabCooldown <= 0) {
-        z.state = 'attacking';
-        z.stateT = 0;
-        continue;
+        const attackers = this.zombies.filter((x) => x.state === 'attacking').length;
+        if (attackers < Z.maxConcurrentAttackers) {
+          z.state = 'attacking';
+          z.stateT = 0;
+          z.windupTotal = Z.grabWindupSec + Math.random() * Z.grabWindupJitterSec;
+          continue;
+        }
       }
       // workstation pause: drifting past an old post, they sometimes stop —
       // as if remembering a task
@@ -368,8 +387,10 @@ export class ZombieManager {
         if (t) target = t;
       }
 
-      // steering: velocity chases the desired direction; squeezes force slow
-      let speed = inSqueeze ? Math.min(z.speed, Z.squeezeSpeed) : z.speed;
+      // steering: velocity chases the desired direction; squeezes force slow.
+      // Each body keeps its own pace (speedScale) so the pack strings out —
+      // capped at speedCap so the fastest stays outswimmable.
+      let speed = inSqueeze ? Math.min(z.speed, Z.squeezeSpeed) : Math.min(z.speed * z.speedScale, Z.speedCap);
       if (headAbove) speed *= Z.landSpeedFactor;
       this.vTmp.set(target[0] - z.pos.x, target[1] - z.pos.y, target[2] - z.pos.z).normalize();
       // wall-slide: near rock, strip the into-wall component of the intent so
@@ -403,7 +424,7 @@ export class ZombieManager {
       z.pos.addScaledVector(z.vel, dt);
       resolveCollision(z.pos, Z.radius);
 
-      // anti-stuck: no progress → force repath + a sideways nudge
+      // anti-stuck: displacement-based repath + wall nudge (the unstick tool)
       z.stuckT += dt;
       if (z.stuckT >= Z.stuckRepathSec) {
         if (z.lastPos.distanceTo(z.pos) < 0.5 && !direct) {
@@ -418,10 +439,55 @@ export class ZombieManager {
         z.lastPos.copy(z.pos);
         z.stuckT = 0;
       }
+      // recycle: PROGRESS means getting closer to the player or advancing
+      // along the path — the nudge jiggle must not count (it defeated the
+      // displacement version). A body without progress for too long burrows
+      // back down and returns its ticket, so stuck zombies can never starve
+      // the spawner (user 2026-07-20).
+      if (distToPlayer < z.bestDist - 0.5 || z.pathIdx !== z.prevPathIdx) {
+        z.bestDist = Math.min(z.bestDist, distToPlayer);
+        z.prevPathIdx = z.pathIdx;
+        z.noProgressT = 0;
+      } else {
+        z.noProgressT += dt;
+      }
+      if (z.noProgressT >= Z.stuckDespawnSec && distToPlayer > Z.stuckDespawnMinDistM) {
+        this.rounds.toSpawn++; // the site keeps its complement — it re-emerges
+        this.remove(z, i);
+        continue;
+      }
 
       this.face(z, this.vTmp2.copy(z.pos).add(z.vel), dt);
       const pose: DrownedPose = headAbove ? 'crawl' : 'swim';
       animateDrowned(z.rig, ctx.time + z.phase, Math.min(1, z.vel.length() / 4), pose, dt);
+    }
+
+    // ── separation: bodies are BODIES (user 2026-07-20 — no stacking into
+    // one point). Positional push-apart between live pairs, capped per frame
+    // so it reads as shouldering, not popping. O(n²), n ≤ 9. ──
+    const Zt = TUNING.zombies;
+    // emerging bodies separate too — debug can spawn nine into one crack
+    const live = this.zombies.filter((z) => z.state !== 'dead');
+    const maxShove = 3.2 * dt; // m this frame
+    for (let a = 0; a < live.length; a++) {
+      for (let b = a + 1; b < live.length; b++) {
+        const za = live[a];
+        const zb = live[b];
+        this.vTmp.copy(zb.pos).sub(za.pos);
+        let d = this.vTmp.length();
+        if (d >= Zt.separationRadiusM) continue;
+        if (d < 1e-3) {
+          // perfectly stacked: split along a random horizontal
+          this.vTmp.set(Math.random() - 0.5, 0.1, Math.random() - 0.5);
+          d = this.vTmp.length();
+        }
+        this.vTmp.normalize();
+        const push = Math.min(((Zt.separationRadiusM - d) / 2) * Zt.separationPush * dt, maxShove);
+        za.pos.addScaledVector(this.vTmp, -push);
+        zb.pos.addScaledVector(this.vTmp, push);
+        resolveCollision(za.pos, Zt.radius);
+        resolveCollision(zb.pos, Zt.radius);
+      }
     }
   }
 
@@ -580,6 +646,18 @@ export class ZombieManager {
       bestD = d;
     }
     return best;
+  }
+
+  /** Melee knockback (user 2026-07-20): shove the body away, break any
+   *  attack in progress. */
+  knockback(z: Zombie, fromDir: THREE.Vector3, strength: number): void {
+    if (z.state === 'dead') return;
+    z.vel.addScaledVector(fromDir, strength);
+    if (z.state === 'attacking') {
+      z.state = 'pursuing';
+      z.stateT = 0;
+      z.grabCooldown = Math.max(z.grabCooldown, 0.7); // staggered, re-approaches
+    }
   }
 
   /** Vortex Maw impact: drag every live body near the point toward it. */

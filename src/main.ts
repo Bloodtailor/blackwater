@@ -23,6 +23,7 @@ import { SiltParticles } from './effects/siltParticles';
 import { RoundSystem } from './zombies/rounds';
 import { ZombieManager } from './zombies/zombies';
 import { Weapons, TracerFx, ImpactGlow, WALL_GUNS, BOX_GUNS, type WeaponSlot, type GunId } from './player/weapons';
+import { ViewModel } from './player/viewmodel';
 import { Points } from './economy/points';
 import { Perks, ALL_PERKS } from './economy/perks';
 import { InteractSystem } from './economy/interact';
@@ -153,9 +154,10 @@ function initGame(): void {
   const lineFx = new LineRender(scene, guideLine);
   const chems = new Chemlights();
   const chemFx = new ChemlightRender(scene, chems);
-  const ui = document.getElementById('ui');
-  if (!ui) throw new Error('#ui missing');
-  const hud = new Hud(ui);
+  const hudLayer = document.getElementById('hud');
+  const dbgLayer = document.getElementById('dbg');
+  if (!hudLayer || !dbgLayer) throw new Error('#hud / #dbg missing');
+  const hud = new Hud(hudLayer);
 
   // ── zombies, rounds, combat (M5) ──
   const points = new Points();
@@ -176,6 +178,7 @@ function initGame(): void {
   );
   const weapons = new Weapons();
   const tracers = new TracerFx(scene);
+  const viewModel = new ViewModel(camera);
   weapons.bindMouse(renderer.domElement, () => !vitals.dead && player.mode !== 'noclip');
   const E = TUNING.economy;
 
@@ -277,7 +280,11 @@ function initGame(): void {
     // stab weapons (Line Lance, Bang Stick): a fast close sweep, not a ray
     if (def.stabRangeM !== undefined) {
       const targets = zombies.meleeTargets(camera.position, lookDir, def.stabRangeM, TUNING.weapons.knife.arcDeg, def.stabPierce ?? 1);
-      for (const t of targets) hitZombie(t, def.damage, false, true);
+      for (const t of targets) {
+        shotDir.copy(t.pos).sub(camera.position).normalize();
+        zombies.knockback(t, shotDir, def.id === 'bangStick' ? 7 : 5);
+        hitZombie(t, def.damage, false, true);
+      }
       return;
     }
     beamRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
@@ -321,10 +328,14 @@ function initGame(): void {
   };
   const doMelee = (): void => {
     camera.getWorldDirection(lookDir);
+    viewModel.swingKnife(); // the swing (and its reach arc) shows even on air
     const target = zombies.meleeTarget(camera.position, lookDir);
     if (!target) return;
     // the Bang Stick upgrades your melee to its one-hit shell while owned
-    const dmg = weapons.owns('bangStick') ? TUNING.weapons.bangStick.damage : TUNING.weapons.knife.damage;
+    const bang = weapons.owns('bangStick');
+    const dmg = bang ? TUNING.weapons.bangStick.damage : TUNING.weapons.knife.damage;
+    shotDir.copy(target.pos).sub(camera.position).normalize();
+    zombies.knockback(target, shotDir, bang ? 7 : 4); // the shove (user 2026-07-20)
     hitZombie(target, dmg, false, true);
   };
 
@@ -368,7 +379,9 @@ function initGame(): void {
   // ── hotkeys & debug ──
   // shared control state (tick writes, hotkeys read)
   const ctl = { grabbing: false, tTime: 0, xTime: 0, lineWasDeployed: false, reelBlockToasted: false };
-  debug.hotkey('KeyH', 'Hide UI (screenshot mode)', () => ui.classList.toggle('hidden'));
+  // H toggles the DEBUG layer only — the game HUD stays up (user 2026-07-20:
+  // "move all the required hud items to the game hud")
+  debug.hotkey('KeyH', 'Toggle debug layer (fps/panel)', () => dbgLayer.classList.toggle('hidden'));
   debug.hotkey('KeyF', 'Flashlight', () => {
     if (vitals.battery > 0) vitals.flashlightOn = !vitals.flashlightOn;
   });
@@ -444,6 +457,7 @@ function initGame(): void {
   });
 
   const view = debug.section('View');
+  debug.button(view, 'Toggle game HUD (screenshots)', () => hudLayer.classList.toggle('hidden'));
   debug.button(view, 'Reset to spawn', spawn);
   debug.button(view, 'Open map viewer', () => {
     location.search = '?view=map&debug=1';
@@ -913,9 +927,21 @@ function initGame(): void {
         flashStatus(`round ${ev.roundStarted} begins`);
       }
       const acts = weapons.update(dt, { reloadMult: perks.mods.reloadMult, fireDelayMult: perks.mods.fireDelayMult });
-      if (acts.fire) doShot(acts.fire, acts.rays);
+      if (acts.fire) {
+        doShot(acts.fire, acts.rays);
+        viewModel.kick(Math.min(1.6, 0.5 + acts.fire.def.fireDelaySec)); // heavier guns shove harder
+      }
       if (acts.melee) doMelee();
     }
+    // viewmodel: current gun in hand, bob/kick/reload, knife-ready crosshair
+    viewModel.setWeapon(weapons.current.def.id, weapons.current.def.papped);
+    viewModel.update(dt, {
+      reloading: weapons.reloading,
+      speedM: player.vel.length(),
+      time,
+      hidden: player.mode === 'noclip' || vitals.dead,
+    });
+    hud.setKnifeReady(!combatFrozen && zombies.meleeTarget(p, lookDir) !== null);
     box.update(dt, time);
     pap.update(dt, time);
     drops.update(dt, p, time);
