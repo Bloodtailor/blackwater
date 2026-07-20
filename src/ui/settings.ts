@@ -16,11 +16,30 @@ export interface Settings {
   volumeMusic: number;
   /** Subtitles for VO and tapes (default ON — the fallback voice IS text). */
   subtitles: boolean;
+  /** Mouse look sensitivity multiplier (M8c settings menu). */
+  mouseSens: number;
+  /** Invert vertical mouse look. */
+  invertY: boolean;
+  /** Base field of view (squeeze pull-in subtracts from this). */
+  fov: number;
+  /** Brightness (renderer exposure multiplier). */
+  brightness: number;
 }
 
 const KEY = 'bw-settings';
 
-const DEFAULTS: Settings = { maxTiltDeg: 180, fullscreenOnPlay: true, volumeMaster: 0.8, volumeVo: 1, volumeMusic: 1, subtitles: true };
+const DEFAULTS: Settings = {
+  maxTiltDeg: 180,
+  fullscreenOnPlay: true,
+  volumeMaster: 0.8,
+  volumeVo: 1,
+  volumeMusic: 1,
+  subtitles: true,
+  mouseSens: 1,
+  invertY: false,
+  fov: 75,
+  brightness: 1,
+};
 
 function load(): Settings {
   try {

@@ -40,7 +40,10 @@ import { loadManifest, VoicePlayer, VoiceQueue, type VoManifest } from './audio/
 import { TAPES } from './audio/lines';
 import { TapeDeck, TapeProps } from './game/tapes';
 import { Toys } from './game/toys';
+import { loadImageManifest } from './game/media';
+import { buildPosters } from './game/posters';
 import { Hud } from './ui/hud';
+import { Menus } from './ui/menus';
 import { SETTINGS, saveSettings } from './ui/settings';
 import { TUNING } from './tuning';
 
@@ -143,7 +146,7 @@ function initGame(): void {
 
   const kb = (navigator as { keyboard?: { lock?: (keys?: string[]) => Promise<void> } }).keyboard;
   let played = false;
-  renderer.domElement.addEventListener('click', () => {
+  const engagePlay = (): void => {
     played = true;
     audio.ensure();
     if (SETTINGS.fullscreenOnPlay && !document.fullscreenElement) {
@@ -152,7 +155,9 @@ function initGame(): void {
         .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyX', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'KeyV', 'KeyB', 'Digit1', 'Digit2', 'Digit3', 'Space']))
         .catch(() => {});
     }
-  });
+    renderer.domElement.requestPointerLock();
+  };
+  renderer.domElement.addEventListener('click', engagePlay);
   window.addEventListener('beforeunload', (e) => {
     // accidental close → confirm (never during an editor playtest round-trip)
     if (played && !vitals.dead && !params.has('playtest')) e.preventDefault();
@@ -339,6 +344,33 @@ function initGame(): void {
     voice.request(tape.reactionId); // queued; plays while he's still surfaced
   };
   const toys = new Toys(scene, interact, () => audio.engine);
+  // ── M8c: posters/labels in-world + the menus ──
+  buildPosters(scene, interact, hud);
+  const applyDisplay = (): void => {
+    renderer.domElement.style.filter = `brightness(${SETTINGS.brightness})`;
+  };
+  applyDisplay();
+  const menus = new Menus({
+    engage: engagePlay,
+    restart: () => location.reload(),
+    replayTape: (id) => {
+      const t = TAPES.find((t) => t.id === id);
+      if (t) deck.pending.push(t); // plays via the normal deck path
+    },
+    collectedTapes: () => [...deck.collected],
+    setDucked: (on) => audio.engine?.setMasterVolume(SETTINGS.volumeMaster * (on ? 0.25 : 1)),
+    applyDisplay,
+  });
+  // title at startup (playtest goes straight in); art waits for the manifest
+  void loadImageManifest().then(() => {
+    if (!params.has('playtest')) menus.show('title');
+  });
+  document.addEventListener('pointerlockchange', () => {
+    // Esc during play = pause. Death/win keep their own screens.
+    if (document.pointerLockElement === null && played && !vitals.dead && !heart.won && !menus.blocking && !params.has('playtest')) {
+      menus.onUnlock();
+    }
+  });
   toys.onWind = (n) => {
     voice.request(`toy.${n}`);
     if (n < 3) hud.toast(`THE DIVER WINDS — ${n} OF 3`);
@@ -541,6 +573,7 @@ function initGame(): void {
     tally100: false,
     tally300: false,
     ePrev: false,
+    eSwallow: false,
   };
   // H toggles the DEBUG layer only — the game HUD stays up (user 2026-07-20:
   // "move all the required hud items to the game hud")
@@ -909,14 +942,20 @@ function initGame(): void {
     // inspect overlay escape hatch (user bug 2026-07-20: drift away from the
     // photograph while inspecting → the interact prompt is gone and the
     // overlay could never close). While it's open, E ALWAYS closes it —
-    // proximity no longer matters. Esc works too.
+    // proximity no longer matters. Esc works too. The closing press is
+    // SWALLOWED until release, or the interact under the crosshair would
+    // re-open the same overlay on the same key press (M8c fix).
     const eNow = player.keyDown('KeyE');
-    if (hud.inspectOpen && ((eNow && !ctl.ePrev) || player.keyDown('Escape'))) hud.closeInspect();
+    if (hud.inspectOpen && ((eNow && !ctl.ePrev) || player.keyDown('Escape'))) {
+      hud.closeInspect();
+      ctl.eSwallow = true;
+    }
     ctl.ePrev = eNow;
+    if (!eNow) ctl.eSwallow = false;
 
     // ── buy prompts (M6a): E belongs to a live prompt, not to camera roll ──
     camera.getWorldDirection(lookDir);
-    interact.update(dt, p, lookDir, !vitals.dead && player.mode !== 'noclip' && !hud.inspectOpen && player.keyDown('KeyE'));
+    interact.update(dt, p, lookDir, !vitals.dead && player.mode !== 'noclip' && !hud.inspectOpen && !ctl.eSwallow && eNow);
     player.suppressRollE = interact.target !== null;
     hud.updatePrompt(player.mode === 'noclip' ? null : interact.targetPrompt, interact.progress);
     shops.update(dt);
@@ -1110,8 +1149,8 @@ function initGame(): void {
       perks.mods.visMult * (drops.clearWaters ? TUNING.drops.clearWatersVisMult : 1) * (heart.ascentActive ? TUNING.ascent.visMult : 1);
     atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis) * visMult, siltout, currentVec, daylight, player.mode === 'noclip', siltThickness);
     siltFx.update(dt, p, siltThickness, !headAbove, currentVec);
-    // squeeze claustrophobia: modest FOV pull-in
-    const targetFov = player.mode !== 'noclip' && player.inSqueeze ? 64 : 75;
+    // squeeze claustrophobia: modest FOV pull-in (relative to the settings base)
+    const targetFov = player.mode !== 'noclip' && player.inSqueeze ? SETTINGS.fov - 11 : SETTINGS.fov;
     if (Math.abs(camera.fov - targetFov) > 0.1) {
       camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, Math.min(1, dt * 4));
       camera.updateProjectionMatrix();
@@ -1311,7 +1350,8 @@ function initGame(): void {
 
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1);
-    tick(dt);
+    // menus freeze the run (the harness calls tick directly and is unaffected)
+    if (!menus.blocking) tick(dt);
     renderer.render(scene, camera);
     frames++;
     fpsTime += dt;
@@ -1363,6 +1403,7 @@ function initGame(): void {
     voice,
     deck,
     toys,
+    menus,
     applyPerkEffects,
     doShot,
     doMelee,
@@ -1382,6 +1423,7 @@ function initGame(): void {
     },
     stats: { tris, genMs },
     caveMesh,
+    renderer,
     THREE,
     key: (code: string, down: boolean): void => {
       window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code }));

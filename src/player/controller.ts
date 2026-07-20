@@ -19,6 +19,7 @@ import { TUNING } from '../tuning';
 import { gradient, regionAt, resolveCollision, sdf } from '../cave/sdf';
 import { buildEdgePolylines, buildSlideRegions } from '../cave/data';
 import { sampleCurrent } from './current';
+import { SETTINGS } from '../ui/settings';
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const X_AXIS = new THREE.Vector3(1, 0, 0);
@@ -79,7 +80,9 @@ export class PlayerController {
     dom.addEventListener('click', () => dom.requestPointerLock());
     window.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== dom) return;
-      this.rotateLook(-e.movementX * 0.0022, -e.movementY * 0.0022);
+      // M8c settings: sensitivity + invert-Y
+      const s = 0.0022 * SETTINGS.mouseSens;
+      this.rotateLook(-e.movementX * s, -e.movementY * s * (SETTINGS.invertY ? -1 : 1));
     });
     window.addEventListener('keydown', (e) => this.keys.add(e.code));
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
