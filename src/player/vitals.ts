@@ -91,6 +91,13 @@ export class Vitals {
     this.spike = Math.min(this.spike + TUNING.hr.lungeSpike, TUNING.hr.spikeCap);
   }
 
+  /** A Drowned grab: 35 HP, the regulator rip (−8 air), HR spike (§6.2). */
+  grabbed(): void {
+    if (this.god || this.dead) return;
+    if (!this.infiniteAir) this.air = Math.max(0, this.air - TUNING.air.grabLoss);
+    this.damage(TUNING.health.grabDamage);
+  }
+
   damage(amount: number, hrSpike = true): void {
     if (this.god || this.dead) return;
     this.hp -= amount;

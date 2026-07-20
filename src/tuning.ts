@@ -176,10 +176,15 @@ export const TUNING = {
   },
   rounds: {
     intermissionSec: 40,
+    firstRoundDelaySec: 8, // grace before round 1 after the dive starts
     baseCount: 6,
     perRound: 4,
     countCap: 60,
     aliveCap: 9,
+    // spawn pacing: seconds between spawns, accelerating with the round
+    spawnEverySec: 2.4,
+    spawnEveryMinSec: 1.0,
+    spawnAccelPerRound: 0.08,
     caveStirs: { minRemaining: 3, fraction: 0.15, maxRemaining: 10, countdownSec: 45 },
   },
   zombies: {
@@ -190,6 +195,48 @@ export const TUNING = {
     hpGrowth: 1.12,
     hpGrowthLate: 1.18,
     lateRound: 20,
+    // ── body & movement ──
+    radius: 0.38, // collision clearance (fits squeezes; player is 0.42)
+    turnRatePerSec: 3.0, // how fast velocity chases the desired direction
+    squeezeSpeed: 1.9, // forced slow inside squeezes (player: 1.6)
+    landSpeedFactor: 0.65, // crawling out of the pool onto dry rock
+    directChaseM: 25, // clear line of sight closer than this = swim straight at you
+    repathSec: 2.0, // path recompute cadence while pursuing
+    stuckRepathSec: 2.5, // no progress for this long = force repath + wall nudge
+    minSpawnDistM: 12, // burrows closer than this to the player are skipped
+    emergeSec: 1.1, // rising out of the burrow crack
+    // ── the grab (procedural handling, DESIGN §8.1) ──
+    grabRangeM: 1.35,
+    grabWindupSec: 0.55, // firm, unhurried reach before the grab lands
+    grabCooldownSec: 1.9,
+    grabShoveSpeed: 2.5, // velocity kick into the player
+    grabTiltKickDeg: 22, // brief roll kick (the regulator rip)
+    // ── death & corpses (go limp and drift, DESIGN §8.1) ──
+    corpseDriftSec: 5.5,
+    corpseFadeSec: 2.0,
+    // ── workstation-pause idle (LORE §4: remembering a task) ──
+    pauseChance: 0.25, // chance to pause when drifting past an old station
+    pauseSec: 3.0,
+    pauseNearM: 3.5,
+    pauseCooldownSec: 20, // per-zombie, so nobody loops the same desk
+  },
+  weapons: {
+    // starter loadout (DESIGN §10.1): full arsenal + distinct-feel pass is M6
+    wristDart: {
+      damage: 20,
+      headshotMult: 3,
+      magSize: 8,
+      reserveMax: 80,
+      fireDelaySec: 0.32,
+      reloadSec: 1.6,
+      rangeM: 45,
+    },
+    knife: {
+      damage: 150, // one-knife at round 1 (BO1 tradition)
+      rangeM: 2.3,
+      arcDeg: 55, // swing catches targets this far off view center
+      cooldownSec: 0.85,
+    },
   },
   economy: {
     startPoints: 500,

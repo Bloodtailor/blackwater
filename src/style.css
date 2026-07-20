@@ -482,6 +482,98 @@ canvas {
 #editor-toast.show {
   opacity: 0.95;
 }
+#hud-round {
+  position: absolute;
+  top: 26px;
+  left: 10px;
+  font-size: 26px;
+  letter-spacing: 2px;
+  color: #b5493c;
+  text-shadow: 0 0 6px #200;
+}
+#hud-round.stinger {
+  animation: bw-stinger 2.2s;
+}
+@keyframes bw-stinger {
+  0% { opacity: 0; transform: scale(1.8); color: #ff8070; }
+  12% { opacity: 1; }
+  22% { opacity: 0.2; }
+  32% { opacity: 1; }
+  44% { opacity: 0.4; }
+  60% { opacity: 1; transform: scale(1); }
+}
+#hud-stirs {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  letter-spacing: 5px;
+  color: #c9a05a;
+  text-shadow: 0 0 8px #000;
+  animation: bw-stirs 1.6s infinite;
+  white-space: nowrap;
+}
+@keyframes bw-stirs {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+#hud-cross {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -52%);
+  font-size: 22px;
+  opacity: 0.55;
+  text-shadow: 0 0 3px #000;
+}
+#hud-hitmark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 15px;
+  color: #d8f2e8;
+  opacity: 0;
+  text-shadow: 0 0 4px #000;
+}
+#hud-hitmark.show {
+  opacity: 0.9;
+}
+#hud-hitmark.head {
+  color: #ff7a5c;
+}
+#hud-damage {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(160, 20, 12, 0.55) 100%);
+  opacity: 0;
+}
+#hud-damage.show {
+  animation: bw-damage 0.55s;
+}
+@keyframes bw-damage {
+  0% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+#hud-ptick {
+  position: absolute;
+  top: 30px;
+  right: 10px;
+  font-size: 13px;
+  color: #ffe9a8;
+  opacity: 0;
+}
+#hud-ptick.show {
+  animation: bw-ptick 0.9s;
+}
+@keyframes bw-ptick {
+  0% { opacity: 1; transform: translateY(6px); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+#hud-ammo.empty {
+  color: #e05545;
+}
 #hud-death {
   position: absolute;
   inset: 0;

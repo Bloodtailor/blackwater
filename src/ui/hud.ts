@@ -4,6 +4,7 @@
 import type { Vitals } from '../player/vitals';
 import type { GuideLine } from '../player/line';
 import type { Chemlights } from '../player/chemlights';
+import type { Weapons } from '../player/weapons';
 import { TUNING } from '../tuning';
 
 export class Hud {
@@ -20,6 +21,15 @@ export class Hud {
   private toastTimer: number | null = null;
   private vignette: HTMLElement;
   private deathEl: HTMLElement;
+  private roundEl: HTMLElement;
+  private stirsEl: HTMLElement;
+  private ammoEl: HTMLElement;
+  private crossEl: HTMLElement;
+  private hitmarkEl: HTMLElement;
+  private damageEl: HTMLElement;
+  private ptickEl: HTMLElement;
+  private hitmarkTimer: number | null = null;
+  private ptickTimer: number | null = null;
   private lastDepth = 0;
   private trendTimer = 0;
   private trend = '─';
@@ -48,8 +58,17 @@ export class Hud {
     const pts = make('hud-points');
     pts.textContent = String(TUNING.economy.startPoints);
     this.pointsEl = pts;
-    const ammo = make('hud-ammo');
-    ammo.textContent = '—/—';
+    this.ammoEl = make('hud-ammo');
+    this.ammoEl.textContent = '—/—';
+    this.roundEl = make('hud-round');
+    this.stirsEl = make('hud-stirs');
+    this.stirsEl.classList.add('hidden');
+    this.crossEl = make('hud-cross');
+    this.crossEl.textContent = '·';
+    this.hitmarkEl = make('hud-hitmark');
+    this.hitmarkEl.textContent = '✕';
+    this.damageEl = make('hud-damage');
+    this.ptickEl = make('hud-ptick');
     this.kitEl = make('hud-kit');
     this.toastEl = make('hud-toast');
     this.deathEl = make('hud-death');
@@ -98,6 +117,57 @@ export class Hud {
 
   setPoints(p: number): void {
     this.pointsEl.textContent = String(p);
+  }
+
+  /** Points delta tick (+60 floating by the balance, DESIGN §12). */
+  pointsTick(delta: number): void {
+    this.ptickEl.textContent = delta > 0 ? `+${delta}` : String(delta);
+    this.ptickEl.classList.remove('show');
+    void this.ptickEl.offsetWidth; // restart the CSS animation
+    this.ptickEl.classList.add('show');
+    if (this.ptickTimer !== null) clearTimeout(this.ptickTimer);
+    this.ptickTimer = window.setTimeout(() => this.ptickEl.classList.remove('show'), 900);
+  }
+
+  /** Round tally (top-left) with the BO1-homage flicker on change. */
+  setRound(n: number): void {
+    this.roundEl.textContent = String(n);
+    this.roundEl.classList.remove('stinger');
+    void this.roundEl.offsetWidth;
+    this.roundEl.classList.add('stinger');
+  }
+
+  /** The Cave Stirs countdown (DESIGN §9) — visible, or hidden when off. */
+  setCaveStirs(secondsLeft: number | null): void {
+    if (secondsLeft === null) {
+      this.stirsEl.classList.add('hidden');
+      return;
+    }
+    this.stirsEl.classList.remove('hidden');
+    this.stirsEl.textContent = `the cave stirs… ${Math.max(0, Math.ceil(secondsLeft))}`;
+  }
+
+  /** Ammo + reload state (bottom-right). */
+  updateWeapon(w: Weapons): void {
+    this.ammoEl.textContent = w.reloading ? `${w.def.name} · RELOADING` : `${w.def.name} · ${w.mag} / ${w.reserve}`;
+    this.ammoEl.classList.toggle('empty', !w.reloading && w.mag === 0 && w.reserve === 0);
+  }
+
+  /** Subtle hitmarker; red-tinged on headshot (DESIGN §12: subtle). */
+  hitmark(head: boolean): void {
+    this.hitmarkEl.classList.remove('show', 'head');
+    void this.hitmarkEl.offsetWidth;
+    this.hitmarkEl.classList.add('show');
+    if (head) this.hitmarkEl.classList.add('head');
+    if (this.hitmarkTimer !== null) clearTimeout(this.hitmarkTimer);
+    this.hitmarkTimer = window.setTimeout(() => this.hitmarkEl.classList.remove('show', 'head'), 220);
+  }
+
+  /** Red damage flash (the grab / regulator rip). */
+  damageFlash(): void {
+    this.damageEl.classList.remove('show');
+    void this.damageEl.offsetWidth;
+    this.damageEl.classList.add('show');
   }
 
   /** Guide line + chemlight readout with a CLEAR line state and the current

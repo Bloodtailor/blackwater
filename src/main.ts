@@ -20,6 +20,10 @@ import { ChemlightRender } from './player/chemlightRender';
 import { Atmosphere } from './effects/atmosphere';
 import { SiltSystem, chambersFromNodes } from './effects/silt';
 import { SiltParticles } from './effects/siltParticles';
+import { RoundSystem } from './zombies/rounds';
+import { ZombieManager } from './zombies/zombies';
+import { Weapons, TracerFx } from './player/weapons';
+import { Points } from './economy/points';
 import { Hud } from './ui/hud';
 import { SETTINGS, saveSettings } from './ui/settings';
 import { TUNING } from './tuning';
@@ -122,7 +126,7 @@ function initGame(): void {
     if (SETTINGS.fullscreenOnPlay && !document.fullscreenElement) {
       document.documentElement
         .requestFullscreen()
-        .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyX', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'Space']))
+        .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyX', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'KeyV', 'Space']))
         .catch(() => {});
     }
   });
@@ -147,6 +151,68 @@ function initGame(): void {
   if (!ui) throw new Error('#ui missing');
   const hud = new Hud(ui);
 
+  // ── zombies, rounds, combat (M5) ──
+  const points = new Points();
+  points.onChange = (balance, delta) => {
+    hud.setPoints(balance);
+    hud.pointsTick(delta);
+  };
+  const rounds = new RoundSystem();
+  const doorByEdge = new Map(doors.map((d) => [d.edge, d]));
+  const zombies = new ZombieManager(
+    scene,
+    rounds,
+    (e) => {
+      const d = doorByEdge.get(e);
+      return d ? d.open : true; // no door on the edge = always passable
+    },
+    (x, y, z) => waterLevelAt(x, y, z),
+  );
+  const weapons = new Weapons();
+  const tracers = new TracerFx(scene);
+  weapons.bindMouse(renderer.domElement, () => !vitals.dead && player.mode !== 'noclip');
+  const E = TUNING.economy;
+  const doShot = (): void => {
+    camera.getWorldDirection(lookDir);
+    const res = zombies.raycastShot(camera.position, lookDir, weapons.def.rangeM);
+    // darts burst chalk columns (§7.2 shot detonation — the M4 debt): sample
+    // the ray for armed columns up to the impact point
+    for (let t = 0.6; t < res.dist; t += 0.35) {
+      const px = camera.position.x + lookDir.x * t;
+      const py = camera.position.y + lookDir.y * t;
+      const pz = camera.position.z + lookDir.z * t;
+      let burst = false;
+      for (const m of moundSpots) {
+        if (columnDistSq(m, px, py, pz) < 0.9 && silt.detonate(m.nodeId)) {
+          flashStatus(`chalk column shot — ${m.nodeId}`);
+          burst = true;
+          break;
+        }
+      }
+      if (burst) break;
+    }
+    if (res.kind === 'zombie' && res.zombie) {
+      const dmg = weapons.def.damage * (res.head ? weapons.def.headshotMult : 1);
+      const outcome = zombies.applyDamage(res.zombie, dmg);
+      points.award(E.hit);
+      if (outcome === 'killed') points.award(res.head ? E.headshotKill : E.kill);
+      hud.hitmark(res.head === true);
+    }
+    // tracer from the wrist, just off-axis of the lens
+    beamRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    beamUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    exhaleOrigin.copy(camera.position).addScaledVector(lookDir, 0.35).addScaledVector(beamRight, 0.14).addScaledVector(beamUp, -0.12);
+    tracers.spawn(exhaleOrigin, res.point);
+  };
+  const doMelee = (): void => {
+    camera.getWorldDirection(lookDir);
+    const target = zombies.meleeTarget(camera.position, lookDir);
+    if (!target) return;
+    const outcome = zombies.applyDamage(target, TUNING.weapons.knife.damage);
+    points.award(outcome === 'killed' ? E.meleeKill : E.hit);
+    hud.hitmark(false);
+  };
+
   const teleport = (nodeId: string): void => {
     const n = getNode(nodeId);
     camera.position.set(n.pos[0], n.pos[1] + Math.min(1, n.radius * 0.25), n.pos[2]);
@@ -168,6 +234,7 @@ function initGame(): void {
   if (playtest) {
     player.mode = 'noclip';
     vitals.god = true;
+    rounds.paused = true; // map testing wants an empty cave
     try {
       const cam = JSON.parse(sessionStorage.getItem('bw-test-cam') ?? 'null') as { pos: [number, number, number]; yawDeg: number; pitchDeg: number } | null;
       if (cam) {
@@ -201,10 +268,15 @@ function initGame(): void {
     player.mode = player.mode === 'noclip' ? 'swim' : 'noclip';
     if (player.mode === 'noclip') vitals.god = true; // user: noclip implies god
   });
-  // R is reserved for the shooter (reload, M5/M6) — line moved to T/X
-  // (user 2026-07-19 round 12). When dead it restarts the dive.
-  debug.hotkey('KeyR', 'Restart (when dead)', () => {
+  // R = reload (the shooter set; line moved to T/X, user 2026-07-19 round
+  // 12). When dead it restarts the dive instead.
+  debug.hotkey('KeyR', 'Reload / restart when dead', () => {
     if (vitals.dead) location.reload();
+    else if (player.mode !== 'noclip') weapons.startReload();
+  });
+  // knife: RMB (bound in weapons) or V — instant, clear of every line key
+  debug.hotkey('KeyV', 'Knife', () => {
+    if (!vitals.dead && player.mode !== 'noclip') weapons.queueMelee();
   });
   // Ghost-wall probe: press P where collision feels wrong; records the spot
   // and the field-vs-mesh mismatch along your view for later diagnosis.
@@ -341,6 +413,27 @@ function initGame(): void {
   debug.button(siltSec, 'Give 10 chemlights', () => {
     chems.count += TUNING.chemlights.packSize;
   });
+
+  const zSec = debug.section('Zombies & Rounds');
+  debug.toggle(zSec, 'Rounds paused', () => rounds.paused, (v) => (rounds.paused = v));
+  const roundInput = document.createElement('input');
+  roundInput.type = 'number';
+  roundInput.min = '1';
+  roundInput.value = '1';
+  roundInput.style.width = '100%';
+  zSec.appendChild(roundInput);
+  debug.button(zSec, 'Start round N', () => {
+    const ev = rounds.startRound(Math.max(1, Number(roundInput.value) || 1));
+    if (ev.roundStarted) hud.setRound(ev.roundStarted);
+  });
+  debug.button(zSec, 'Spawn 1 at selected node', () => zombies.spawnAt(select.value, Math.max(1, rounds.round)));
+  debug.button(zSec, 'Spawn 5 at selected node', () => {
+    for (let i = 0; i < 5; i++) zombies.spawnAt(select.value, Math.max(1, rounds.round));
+  });
+  debug.button(zSec, 'Kill all', () => flashStatus(`recovered ${zombies.killAll()}`));
+  debug.button(zSec, 'Kill all but 2 (Cave Stirs test)', () => flashStatus(`recovered ${zombies.killAll(2)}`));
+  debug.button(zSec, 'Give 80 dart reserve', () => (weapons.reserve = weapons.def.reserveMax));
+  debug.button(zSec, 'Give 5000 points', () => points.award(5000));
 
   const doorSec = debug.section('Doors');
   debug.button(doorSec, 'Open ALL doors', () => openAllDoors(doors));
@@ -600,6 +693,37 @@ function initGame(): void {
     exhaleOrigin.set(0, 0, -1).applyQuaternion(camera.quaternion).multiplyScalar(0.4).add(p);
     exhaleOrigin.y -= 0.18;
     bubbles.update(dt, exhaleOrigin, !headAbove && player.mode !== 'noclip', time, vitals.hr);
+
+    // ── combat: rounds, zombies, weapons (M5) ──
+    // noclip is a survey mode — the site ignores the surveyor; death freezes
+    // the run (R restarts)
+    const combatFrozen = vitals.dead || player.mode === 'noclip';
+    if (!combatFrozen) {
+      const ev = rounds.update(dt, zombies.aliveCount);
+      if (ev.roundStarted) {
+        hud.setRound(ev.roundStarted);
+        flashStatus(`round ${ev.roundStarted} begins`);
+      }
+      const acts = weapons.update(dt);
+      if (acts.fire) doShot();
+      if (acts.melee) doMelee();
+    }
+    zombies.update(dt, {
+      playerPos: p,
+      playerDead: combatFrozen,
+      time,
+      onGrab: (fromDir) => {
+        // the grab: damage + regulator rip + a shove and a roll kick — the
+        // way a recovery diver takes hold of a body
+        vitals.grabbed();
+        hud.damageFlash();
+        player.vel.addScaledVector(fromDir, TUNING.zombies.grabShoveSpeed);
+        player.applyRollDelta((Math.random() < 0.5 ? -1 : 1) * TUNING.zombies.grabTiltKickDeg);
+      },
+    });
+    tracers.update(dt);
+    hud.setCaveStirs(rounds.caveStirsActive && !combatFrozen ? rounds.stirsT : null);
+    hud.updateWeapon(weapons);
     hud.update(dt, vitals, -p.y);
     hud.updateKit(guideLine, chems, following, ctl.grabbing, guideLine.nearEnd(hand));
     if (statusFlash > 0) statusFlash -= dt;
@@ -616,7 +740,7 @@ function initGame(): void {
       if (statusFlash <= 0) {
         const p = camera.position;
         const r = regionAt(p.x, p.y, p.z);
-        status.textContent = `${player.mode} | depth ${(-p.y).toFixed(1)} m | ${r ? `${r.zone}/${r.width}` : 'off-graph'} | vis ${atmo.visM.toFixed(0)} m | roll ${tilt.rollDeg.toFixed(0)}°`;
+        status.textContent = `${player.mode} | depth ${(-p.y).toFixed(1)} m | ${r ? `${r.zone}/${r.width}` : 'off-graph'} | vis ${atmo.visM.toFixed(0)} m | roll ${tilt.rollDeg.toFixed(0)}° | R${rounds.round} ${rounds.phase}${rounds.caveStirsActive ? ' STIRS' : ''} · ${zombies.aliveCount} alive / ${rounds.toSpawn} to come`;
       }
       frames = 0;
       fpsTime = 0;
@@ -640,6 +764,12 @@ function initGame(): void {
     chems,
     atmo,
     moundSpots,
+    rounds,
+    zombies,
+    weapons,
+    points,
+    doShot,
+    doMelee,
     teleport,
     spawn,
     doorOpen: (id: string) => openDoor(doors, id),

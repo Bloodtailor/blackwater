@@ -11,6 +11,28 @@ function tick(v: Vitals, env: VitalsEnv, seconds: number): void {
   for (let t = 0; t < seconds; t += dt) v.update(dt, env);
 }
 
+describe('the grab (M5)', () => {
+  it('costs 35 HP and 8 air; god mode shrugs it off', () => {
+    const v = new Vitals();
+    v.grabbed();
+    expect(v.hp).toBe(TUNING.health.max - TUNING.health.grabDamage);
+    expect(v.air).toBe(TUNING.air.capacity - TUNING.air.grabLoss);
+    const g = new Vitals();
+    g.god = true;
+    g.grabbed();
+    expect(g.hp).toBe(TUNING.health.max);
+    expect(g.air).toBe(TUNING.air.capacity);
+  });
+
+  it('three grabs without regen kill (35×3 > 100)', () => {
+    const v = new Vitals();
+    v.grabbed();
+    v.grabbed();
+    v.grabbed();
+    expect(v.dead).toBe(true);
+  });
+});
+
 describe('heart rate', () => {
   it('rests at 60 and climbs slowly under sustained sprint (with lag)', () => {
     const v = new Vitals();
