@@ -111,11 +111,13 @@ export class Hud {
       : line.mode === 'laying'
         ? '● LAYING · T stop · X tie'
         : line.mode === 'reeling'
-          ? '⟲ REELING'
-          : line.mode === 'stopped'
+          ? line.reelBlocked
+            ? '⟲ PINNED · tap X cuts the tie'
+            : '⟲ REELING'
+          : line.deployed
             ? nearEnd
               ? 'LINE END · T resume · hold X reel'
-              : 'LINE DOWN · hold T to ride'
+              : 'LINE DOWN · hold T ride · T at line forks'
             : 'T — lay line';
     parts.push(state);
     if (grabbing) parts.push('GRABBING');

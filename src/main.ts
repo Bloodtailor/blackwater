@@ -185,7 +185,7 @@ function initGame(): void {
 
   // ── hotkeys & debug ──
   // shared control state (tick writes, hotkeys read)
-  const ctl = { grabbing: false, tTime: 0, xTime: 0, lineWasDeployed: false };
+  const ctl = { grabbing: false, tTime: 0, xTime: 0, lineWasDeployed: false, reelBlockToasted: false };
   debug.hotkey('KeyH', 'Hide UI (screenshot mode)', () => ui.classList.toggle('hidden'));
   debug.hotkey('KeyF', 'Flashlight', () => {
     if (vitals.battery > 0) vitals.flashlightOn = !vitals.flashlightOn;
@@ -446,27 +446,30 @@ function initGame(): void {
       }
     } else {
       if (ctl.tTime > 0 && ctl.tTime < HOLD_S && !vitals.dead && player.mode !== 'noclip') {
-        // tap: context toggle
-        if (guideLine.mode === 'laying' || guideLine.mode === 'reeling') {
-          guideLine.toggleLaying(hand);
-          hud.toast('LINE STOPPED');
-        } else if (!guideLine.deployed) {
-          // starting: auto-anchor to the nearest rock in reach, else the
-          // line just trails from your hand
-          const d = sdf(hand[0], hand[1], hand[2]);
-          if (-d <= TUNING.guideLine.anchorReachM) {
-            gradient(hand[0], hand[1], hand[2], gradTmp);
-            const gl = Math.hypot(gradTmp[0], gradTmp[1], gradTmp[2]) || 1;
-            guideLine.pin([hand[0] - (gradTmp[0] / gl) * d, hand[1] - (gradTmp[1] / gl) * d, hand[2] - (gradTmp[2] / gl) * d]);
-            hud.toast('ANCHORED — LAYING LINE');
-          } else {
-            guideLine.toggleLaying(hand);
-            hud.toast('LAYING LINE (no rock in reach to anchor)');
-          }
-        } else {
-          const r = guideLine.toggleLaying(hand);
-          hud.toast(r === 'resumed' ? 'LAYING LINE' : 'LINE ENDS ELSEWHERE — HOLD T TO RIDE IT');
+        // tap: context toggle (line.ts owns the priority: stop → resume at an
+        // end → fork off a strand's middle → start fresh). Main's only job is
+        // finding a wall point so fresh starts auto-anchor to rock in reach.
+        let wallPoint: [number, number, number] | undefined;
+        const d = sdf(hand[0], hand[1], hand[2]);
+        if (-d <= TUNING.guideLine.anchorReachM) {
+          gradient(hand[0], hand[1], hand[2], gradTmp);
+          const gl = Math.hypot(gradTmp[0], gradTmp[1], gradTmp[2]) || 1;
+          wallPoint = [hand[0] - (gradTmp[0] / gl) * d, hand[1] - (gradTmp[1] / gl) * d, hand[2] - (gradTmp[2] / gl) * d];
         }
+        const r = guideLine.toggleLaying(hand, wallPoint);
+        hud.toast(
+          r === 'stopped'
+            ? 'LINE STOPPED'
+            : r === 'discarded'
+              ? 'LINE STOWED (never left the hand)'
+              : r === 'resumed'
+                ? 'LAYING LINE'
+                : r === 'forked'
+                  ? 'FORK — NEW LINE TIED ON HERE'
+                  : r === 'anchored'
+                    ? 'ANCHORED — LAYING LINE'
+                    : 'LAYING LINE (no rock in reach to anchor)',
+        );
       }
       guideLine.followEnd();
       ctl.tTime = 0;
@@ -476,6 +479,10 @@ function initGame(): void {
       ctl.xTime += dt;
       if (ctl.xTime >= HOLD_S) {
         if (guideLine.mode !== 'reeling' && guideLine.beginReel(hand)) hud.toast('REELING IN');
+        if (guideLine.reelBlocked && !ctl.reelBlockToasted) {
+          hud.toast('LINE PINNED — tap X at the tie to cut it');
+          ctl.reelBlockToasted = true;
+        }
         if (guideLine.mode === 'reeling' && player.mode === 'swim' && !ctl.grabbing && !headAbove) {
           const rv = guideLine.reelVelocity(hand);
           if (rv) {
@@ -488,12 +495,15 @@ function initGame(): void {
       }
     } else {
       if (ctl.xTime > 0 && ctl.xTime < HOLD_S && !vitals.dead && player.mode !== 'noclip') {
-        // tap: instant tie-off while laying
+        // tap: tie-off while laying; otherwise CUT the nearest tie (that's
+        // how you free a pinned line so reeling can continue past it)
         if (guideLine.mode === 'laying') {
           guideLine.pin(hand);
           hud.toast('TIE-OFF SET');
+        } else if (guideLine.unpin(hand)) {
+          hud.toast('TIE CUT — line is loose here');
         } else if (guideLine.deployed) {
-          hud.toast('HOLD X AT THE LINE END TO REEL IN');
+          hud.toast('HOLD X AT A LINE END TO REEL IN');
         }
       }
       if (guideLine.mode === 'reeling') {
@@ -501,6 +511,7 @@ function initGame(): void {
         hud.toast('REEL PAUSED — LINE STOPPED');
       }
       ctl.xTime = 0;
+      ctl.reelBlockToasted = false;
     }
     if (!vitals.dead && !following && !reeling && !ctl.grabbing) player.update(dt, lvl);
 
