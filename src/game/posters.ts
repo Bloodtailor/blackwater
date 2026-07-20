@@ -14,6 +14,7 @@ import { NODES, type CaveNode, type PerkId } from '../cave/data';
 import { orientToWall, wallSpot } from '../economy/shops';
 import type { InteractSystem } from '../economy/interact';
 import type { Hud } from '../ui/hud';
+import { GALLERY } from './gallery';
 import { CAPTIONS, imageUrl } from './media';
 
 // poster id → world size (meters, height) honoring the manifest aspects
@@ -61,7 +62,11 @@ export function buildPosters(scene: THREE.Scene, interact: InteractSystem, hud: 
       prompt: () => ({ text: hud.inspectOpen ? 'PUT IT BACK' : 'READ', holdSec: 0, enabled: true }),
       execute: () => {
         if (hud.inspectOpen) hud.closeInspect();
-        else hud.showInspect(url, caption);
+        else {
+          hud.showInspect(url, caption);
+          // looked at = collected: it joins the pause-menu photographs
+          if (GALLERY.unlock({ id, title: caption.split('—')[0].trim(), url, caption })) hud.toast('FILED — see PHOTOGRAPHS in the pause menu');
+        }
       },
     });
   };

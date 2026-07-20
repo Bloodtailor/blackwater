@@ -73,10 +73,12 @@ const SFX = {
   'toy-wind': { p: 'A small tin wind-up toy being cranked: fine ratchet clicks, then the spring releasing into a brief mechanical whir. Close, tiny, charming and slightly eerie. No music.', sec: 1.8 },
   'toy-shimmer': { p: 'A faint music box mechanism turning over sparsely in the dark: three or four tiny detuned notes with long gaps, distant, underwater, eerie and gentle, seamless loop.', sec: 8, loop: true },
   'radio-squelch': { p: 'A brief vintage radio squelch: short static crackle burst with a soft carrier pop, small, close. No music.', sec: 0.8 },
-  // ── depth ambience beds (user 2026-07-20: pressure rises with the bands) ──
+  // ── depth ambience beds (user 2026-07-20 ×2: pressure rises with the
+  // bands, and the lower two must be SCARIER — you should hear how strong
+  // the current is and how high the pressure is) ──
   'ambient-shallow': { p: 'Calm underwater cave ambience, shallow sunlit water: soft water movement, gentle distant bubbles, faint muffled surface shimmer, peaceful but enclosed, seamless loop. No music, no melody.', sec: 12, loop: true },
-  'ambient-mid': { p: 'Deep underwater cave ambience: heavier water pressure, slow currents pushing through rock passages, distant low groans of settling stone, occasional far-off bubble bursts, unsettling, seamless loop. No music.', sec: 12, loop: true },
-  'ambient-deep': { p: 'Crushing abyssal underwater ambience: intense low pressure drone, powerful current surging against rock, deep tectonic groans, oppressive darkness you can hear, dread, seamless loop. No music.', sec: 12, loop: true },
+  'ambient-mid': { p: 'Menacing deep underwater cave ambience: a strong current dragging and whooshing past rock, water pressure creaking and popping against stone, low turbulent rumble swelling and receding, distant groans of a settling flooded structure, heavy and unsettling, seamless loop. No music.', sec: 14, loop: true },
+  'ambient-deep': { p: 'Terrifying crushing abyssal ambience: a violent current roaring and shearing through a narrow rock channel, immense water pressure grinding and straining, deep tectonic groans and metallic strain like a hull about to fail, sub-bass throbbing like a slow pulse, hostile oppressive dread, seamless loop. No music.', sec: 14, loop: true },
   // ── audio-emitter node palette (behind-the-walls life; user 2026-07-20) ──
   'amb-machinery': { p: 'Old industrial machinery running behind a thick rock wall: muffled rhythmic mechanical thumping, distant motors and pumps cycling, pipes knocking, heard through stone underwater, seamless loop. No music.', sec: 10, loop: true },
   'amb-airflow': { p: 'Heavy air flowing through unseen cave passages: deep powerful rushing airflow, resonant like wind through a huge duct, rising and falling slowly, distant, seamless loop. No music.', sec: 10, loop: true },

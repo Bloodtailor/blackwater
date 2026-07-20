@@ -31,6 +31,9 @@ export interface TapeScript {
 
 export const LOWE_LINES: VoLine[] = DATA.lowe as VoLine[];
 export const TAPES: TapeScript[] = DATA.tapes as TapeScript[];
+/** The REMORA unit (user 2026-07-20, LORE §2.4): the client-supplied dive
+ *  monitor. Speaks only BELOW the surface — Lowe's exact complement. */
+export const REMORA_LINES: VoLine[] = DATA.remora as VoLine[];
 
 /** Subtitle pacing: rough seconds a line takes to say (fallback when no
  *  generated audio exists to measure). */

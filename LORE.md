@@ -89,6 +89,15 @@ Skippable styled text card at run start: a clinical contract page with Lowe's ow
 >
 > *(pencil, Lowe's hand:)* *Stamp is three years after the water. Asked. No answer. Fee cleared anyway. — V.L.*
 
+### 2.4 The REMORA unit (added 2026-07-20 — user request: underwater dialog)
+The client's enclosures included one more thing than the job sheet lists: a sealed instrument case stenciled **REMORA — TYPE R DIVE MONITOR**, with a chest strap and an earpiece. It reads depth, air, heading, and heart rate aloud in a woman's voice — flat, courteous, unhurried, a switchboard operator reading a tide table. Lowe wears it because the fee cleared and because it is rude to refuse a gift.
+
+- **REMORA speaks ONLY underwater** — Lowe's exact complement. The earpiece goes quiet the moment his head breaks the surface, the way a diving instrument should. Between the two of them, someone is always able to talk; between the two of them, neither ever answers the other.
+- **The wrongness (one per artifact, never explained):** no manufacturer's plate, no serial, no patent numbers — and nothing in 1971 talks. Lowe looked, once. Its occasional knowledge of things a gauge cannot know (the watch bill, the roster, what was struck from it in 1968) is delivered at the same clerical temperature as the depth readings, and is never remarked upon — least of all by her.
+- **Anti-spam:** same discipline as Lowe (§2.1) — every line once per run, ambient musings on the ≥120 s cooldown with the ~40% roll, priority to warnings. A gauge does not chatter.
+- **What she is for (gameplay):** honest-tells in words — depth bands (50/100/150 m), low air, reserve breath, failing lamp cell, silt-out, first contact, the Angler's lamp, the Guardian's post, the item's warmth, the Ascent clause. She states; the player decides.
+- Delivery: ElevenLabs, one consistent female voice, high stability, zero drama; subtitled as **REMORA**. Voids untouched: she names facts, never causes.
+
 ## 3. The setting — a facility fused through a cave
 
 The user asked: cave, or flooded nuclear facility? **Answer: both, deliberately.** The *cave* is the connective tissue (organic passages — silt, squeezes, disorientation — what procedural SDF geometry renders convincingly). The *facility* is threaded through it as man-made intrusions that grow denser with depth, because the site was built top-down along the dig. Intrusions are landmarks: isolated, readable, memorable — what navigation-as-a-skill needs, and what murk renders forgivingly. (A pure corridor-facility would demand clean architectural asset quality everywhere — the Venice Beach failure mode — and would cost us the cave-diving horror the whole game is built on.)
@@ -150,7 +159,7 @@ Each tape is mundane official business with **exactly one wrongness**. No tape m
 
 ## 6. Easter egg — the rec-room song
 
-**Mechanic (BO1 teddy-bear homage):** the three wind-up toy divers are hidden in three *dead ends* (data-tagged `toy`; rewarded exploration; audible shimmer ≤8 m). Interact to wind each (Lowe line per toy, §2.2). Winding all three wakes the rec-room **jukebox**: one song plays game-wide through the underwater DSP — muffled, far away, everywhere. Once per run.
+**Mechanic (BO1 teddy-bear homage):** the three wind-up toy divers are hidden in three *dead ends* (data-tagged `toy`; rewarded exploration; audible shimmer ≤8 m). Interact to wind each (Lowe line per toy, §2.2). Winding all three wakes the rec-room **jukebox** and a song starts game-wide. *(Reworked 2026-07-20, user direction: the woken jukebox stays a usable fixture — E plays/advances through the folder; dead, its prompt hints at the sleeping divers. Songs ride the music bus: full and bright in open air, muffled but never quiet underwater. Each toy wound also files a polaroid to the pause-menu photographs.)*
 
 **Music sourcing, in order:**
 1. **ElevenLabs Eleven Music** (API): full songs with lyrics. Attempt at M8 with the lyrics below. Quality gate: if it can't carry a rock vocal, don't ship it.

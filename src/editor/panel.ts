@@ -23,6 +23,7 @@ export interface PanelApi {
   setFilter(tag: string): void;
   getFilter(): string;
   toggleTeasers(): boolean;
+  toggleAudio(): boolean;
   previewRock(): void;
   hideRock(): void;
   toggleLabels(): void;
@@ -88,6 +89,10 @@ export function buildPanel(api: PanelApi): Panel {
     ghostBtn.classList.toggle('ed-on', api.toggleTeasers());
   });
   ghostBtn.title = 'Show/hide TEASER rooms (visible-but-unreachable dressing; outside all rule checks)';
+  const audioBtn = btn('♪', () => {
+    audioBtn.classList.toggle('ed-on', api.toggleAudio());
+  });
+  audioBtn.title = 'Show/hide AUDIO nodes (hidden by default — they clutter level work)';
 
   // ── node-type filter (user 2026-07-20: "just see all boxSpots") ──
   const filterRow = document.createElement('div');
@@ -245,9 +250,12 @@ export function buildPanel(api: PanelApi): Panel {
     r.appendChild(i);
     numField(form, 'radiusM (audible range)', () => a.radiusM, (v) => (a.radiusM = v ?? a.radiusM), 1);
     numField(form, 'falloff (higher = tighter)', () => a.falloff, (v) => (a.falloff = v ?? undefined), 0.5);
+    // zone SHAPE, exactly like rooms (user 2026-07-20): the audible zone is
+    // radiusM stretched per-axis — squash it flat along a corridor, etc.
+    vecField(form, 'stretch (zone shape)', () => n.stretch, (v) => (n.stretch = v ?? undefined));
     const note = document.createElement('div');
     note.className = 'ed-note';
-    note.textContent = 'Outer shell = audible limit (radiusM), inner shell = falloff knee (radiusM ÷ falloff). Rock between player and node muffles it honestly (SDF occlusion).';
+    note.textContent = 'Outer shell = audible limit (radiusM × stretch), inner shell = falloff knee (÷ falloff). Rock between player and node muffles it honestly (SDF occlusion).';
     form.appendChild(note);
   };
 

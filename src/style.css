@@ -156,6 +156,27 @@ canvas {
   opacity: 0;
   transition: opacity 0.4s;
 }
+/* BO-style death-proximity blood: edge bloom + corner splatter (user 2026-07-20) */
+#hud-blood {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 46% at 50% 48%, transparent 62%, rgba(122, 8, 4, 0.85) 100%),
+    radial-gradient(ellipse 34% 26% at 4% 8%, rgba(96, 6, 3, 0.55) 0%, transparent 70%),
+    radial-gradient(ellipse 30% 34% at 98% 14%, rgba(96, 6, 3, 0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 38% 30% at 8% 96%, rgba(110, 8, 4, 0.6) 0%, transparent 70%),
+    radial-gradient(ellipse 32% 28% at 94% 92%, rgba(110, 8, 4, 0.55) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+#hud-blood.critical {
+  animation: bw-blood-pulse 1.1s infinite;
+}
+@keyframes bw-blood-pulse {
+  0%, 100% { filter: saturate(1) brightness(1); }
+  45% { filter: saturate(1.5) brightness(1.35); }
+}
 #hud-hr {
   position: absolute;
   bottom: 40px;
@@ -362,6 +383,47 @@ canvas {
   background-position: center;
   opacity: 0.55;
   z-index: -1;
+}
+.menu-gallery {
+  max-width: 560px;
+  text-align: center;
+}
+.menu-gallery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.menu-gallery-grid img {
+  height: 72px;
+  border: 1px solid #3a5a52;
+  cursor: pointer;
+  filter: sepia(0.2) brightness(0.9);
+}
+.menu-gallery-grid img:hover {
+  filter: none;
+  border-color: #7ce8a9;
+}
+.menu-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(2, 8, 10, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.menu-lightbox img {
+  max-width: 72vw;
+  max-height: 74vh;
+  border: 2px solid #4a5a52;
+  box-shadow: 0 0 40px #000;
 }
 .menu-patch {
   width: 84px;

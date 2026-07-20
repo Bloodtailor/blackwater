@@ -505,6 +505,10 @@ export const TUNING = {
     geigerRangeM: 14, // crackle radius around the Pile (flavor only)
     ambienceGain: 0.35, // depth-bed loops (shallow/mid/deep crossfade) level
     emitterGain: 0.8, // audio-node loops (machinery/airflow behind walls) pre-positional level
+    musicLowpassHz: 1100, // music bus underwater tone (never ducks; open air = full bright)
+    lullAfterSec: 240, // this long with no dialog (tape/Lowe/REMORA) → the lull track may play
+    lullCooldownSec: 600, // minimum gap between lull plays
+    lullGain: 0.5, // lull track level on the music bus
   },
   guideLine: {
     reelLengthM: 200, // meters of line on a fresh reel

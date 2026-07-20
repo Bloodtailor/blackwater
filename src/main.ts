@@ -37,10 +37,11 @@ import { Drops, type DropId } from './economy/drops';
 import { AudioDirector } from './audio/director';
 import { SAMPLES } from './audio/samples';
 import { loadManifest, VoicePlayer, VoiceQueue, type VoManifest } from './audio/voice';
-import { TAPES } from './audio/lines';
+import { REMORA_LINES, TAPES } from './audio/lines';
 import { TapeDeck, TapeProps } from './game/tapes';
 import { Toys } from './game/toys';
 import { loadImageManifest } from './game/media';
+import { GALLERY } from './game/gallery';
 import { buildPosters } from './game/posters';
 import { Hud } from './ui/hud';
 import { Menus } from './ui/menus';
@@ -196,6 +197,7 @@ function initGame(): void {
       return d ? d.open : true; // no door on the edge = always passable
     },
     (x, y, z) => waterLevelAt(x, y, z),
+    (ref) => falseUps.get(ref),
   );
   const weapons = new Weapons();
   const tracers = new TracerFx(scene);
@@ -325,7 +327,10 @@ function initGame(): void {
         prompt: () => ({ text: hud.inspectOpen ? 'PUT IT BACK' : 'THE PHOTOGRAPH', holdSec: 0, enabled: true }),
         execute: () => {
           if (hud.inspectOpen) hud.closeInspect();
-          else hud.showInspect(photographDataUrl(), 'B-DECK — DRILL HEAD — MARCH 1971');
+          else {
+            hud.showInspect(photographDataUrl(), 'B-DECK — DRILL HEAD — MARCH 1971');
+            GALLERY.unlock({ id: 'photo-g13', title: 'THE PHOTOGRAPH', url: photographDataUrl(), caption: 'B-DECK — DRILL HEAD — MARCH 1971' });
+          }
         },
       });
     }
@@ -337,6 +342,13 @@ function initGame(): void {
   const voice = new VoiceQueue();
   const voicePlayer = new VoicePlayer(() => audio.engine, () => voManifest);
   voicePlayer.onEnded = () => voice.setSpeakSeconds(0);
+  // The REMORA unit (user 2026-07-20, LORE §2.4): the client-supplied dive
+  // monitor. Speaks only UNDERWATER (Lowe's exact complement), through the
+  // helmet speaker (master — the water never touches it). Same anti-spam
+  // queue rules as Lowe: silence is still the default.
+  const remora = new VoiceQueue(REMORA_LINES);
+  const remoraPlayer = new VoicePlayer(() => audio.engine, () => voManifest, 'master');
+  remoraPlayer.onEnded = () => remora.setSpeakSeconds(0);
   const deck = new TapeDeck();
   const tapeProps = new TapeProps(scene, interact, deck, () => audio.engine, () => voManifest, (m) => hud.toast(m));
   deck.onFinished = (tape) => {
@@ -366,8 +378,9 @@ function initGame(): void {
     if (!params.has('playtest')) menus.show('title');
   });
   document.addEventListener('pointerlockchange', () => {
-    // Esc during play = pause. Death/win keep their own screens.
-    if (document.pointerLockElement === null && played && !vitals.dead && !heart.won && !menus.blocking && !params.has('playtest')) {
+    // Esc during play = pause. Death/win keep their own screens. H's
+    // deliberate mouse-free (debug panel) is not a pause.
+    if (document.pointerLockElement === null && played && !vitals.dead && !heart.won && !menus.blocking && !params.has('playtest') && !ctl.dbgMouseFree) {
       menus.onUnlock();
     }
   });
@@ -379,6 +392,7 @@ function initGame(): void {
     voice.request('jukebox.1');
     hud.toast('SOMEWHERE ABOVE, THE REC ROOM WAKES');
   };
+  toys.onTrack = (name) => hud.toast(`NOW PLAYING — ${name.toUpperCase()}`);
   // one line of a set, chosen among the unsaid (rotation per LORE §2.2)
   const requestOneOf = (ids: string[]): void => {
     const fresh = ids.filter((id) => !voice.played.has(id));
@@ -574,10 +588,31 @@ function initGame(): void {
     tally300: false,
     ePrev: false,
     eSwallow: false,
+    // H freed the mouse for the debug panel — suppress the pause-on-unlock
+    dbgMouseFree: false,
+    // seconds since any dialog (tape / Lowe / REMORA) last held the screen —
+    // drives the sinister lull track (user 2026-07-20)
+    noDialogT: 0,
+    lullCooldown: 150, // initial grace: no lull in the first minutes
+    // REMORA pacing (event lines re-request harmlessly — the queue dedupes)
+    remAmbT: 0,
   };
+  const heartNode = NODES.find((n) => n.tags.includes('heart'));
   // H toggles the DEBUG layer only — the game HUD stays up (user 2026-07-20:
-  // "move all the required hud items to the game hud")
-  debug.hotkey('KeyH', 'Toggle debug layer (fps/panel)', () => dbgLayer.classList.toggle('hidden'));
+  // "move all the required hud items to the game hud"). Opening it also
+  // frees the mouse so the panel is clickable; closing re-locks (user
+  // 2026-07-20). dbgMouseFree keeps the pointer-lock-loss pause handler
+  // from reading the H-unlock as an Esc.
+  debug.hotkey('KeyH', 'Toggle debug layer (frees/locks the mouse)', () => {
+    const nowHidden = dbgLayer.classList.toggle('hidden');
+    if (!nowHidden) {
+      ctl.dbgMouseFree = true;
+      document.exitPointerLock();
+    } else {
+      ctl.dbgMouseFree = false;
+      if (played && !menus.blocking) renderer.domElement.requestPointerLock();
+    }
+  });
   debug.hotkey('KeyF', 'Flashlight', () => {
     if (vitals.battery > 0) vitals.flashlightOn = !vitals.flashlightOn;
   });
@@ -1308,6 +1343,41 @@ function initGame(): void {
     deck.update(dt);
     const startedLine = voice.update(dt, sustained, deck.playing !== null);
     if (startedLine) voicePlayer.play(startedLine);
+
+    // ── the REMORA unit (user 2026-07-20, LORE §2.4): dialog BELOW the
+    // surface, the exact complement of Lowe. Event triggers re-request
+    // freely — the queue's once-per-run/dedupe rules carry the anti-spam. ──
+    const submergedNow = !headAbove && player.mode !== 'noclip' && !vitals.dead;
+    const depth = -p.y;
+    if (submergedNow) {
+      remora.request('rem.hello.1'); // the first dive engages the monitor
+      if (depth > 50) remora.request('rem.depth.50');
+      if (depth > 100) remora.request('rem.depth.100');
+      if (depth > 150) remora.request('rem.depth.150');
+      if (vitals.lowAir && !vitals.inReserve) remora.request('rem.air.low');
+      if (vitals.inReserve) remora.request('rem.air.reserve');
+      if (vitals.battery < 0.2 && vitals.battery > 0) remora.request('rem.battery.low');
+      if (siltThickness > 0.6) remora.request('rem.silt.1');
+      if (zombies.aliveCount > 0) remora.request('rem.contact.1');
+      if (specials.specials.some((s) => s.kind === 'angler' && s.state !== 'dead')) remora.request('rem.angler.1');
+      if (specials.specials.some((s) => s.kind === 'guardian' && s.state !== 'dead' && s.pos.distanceTo(p) < 25)) remora.request('rem.guardian.1');
+      if (heartNode && !heart.held && !heart.won && Math.hypot(heartNode.pos[0] - p.x, heartNode.pos[1] - p.y, heartNode.pos[2] - p.z) < 12) remora.request('rem.heart.1');
+      if (heart.ascentActive) remora.request('rem.ascent.1');
+      if (shops.powered) remora.request('rem.power.1');
+      if (rounds.caveStirsActive) remora.request('rem.stirs.1');
+      if (zone === 'abyss') remora.request('rem.abyss.1');
+      // ambient musings: offer one every ~90 s under; the queue's cooldown
+      // and 40% roll still decide whether she actually says it
+      ctl.remAmbT += dt;
+      if (ctl.remAmbT > 90) {
+        ctl.remAmbT = 0;
+        const fresh = REMORA_LINES.filter((l) => l.cat === 'ambient' && !remora.played.has(l.id));
+        if (fresh.length > 0) remora.request(fresh[Math.floor(Math.random() * fresh.length)].id);
+      }
+    }
+    const remStarted = remora.update(dt, submergedNow, deck.playing !== null);
+    if (remStarted) remoraPlayer.play(remStarted);
+
     toys.update();
     // subtitles: the tape wins the screen; typewriter pace follows the reel
     if (!SETTINGS.subtitles) hud.subtitle(null);
@@ -1316,7 +1386,19 @@ function initGame(): void {
       const chars = Math.ceil(Math.min(1, tp.t / tp.durSec) * tp.tape.text.length);
       hud.subtitle(tp.tape.title, tp.tape.text.slice(0, chars), 'B skip');
     } else if (voice.current) hud.subtitle('LOWE', voice.current.text);
+    else if (remora.current) hud.subtitle('REMORA', remora.current.text);
     else hud.subtitle(null);
+
+    // ── the lull (user 2026-07-20): a long stretch with no dialog earns a
+    // one-minute calmer-but-sinister piece on the music bus ──
+    const dialogActive = deck.playing !== null || voice.current !== null || remora.current !== null;
+    ctl.noDialogT = dialogActive ? 0 : ctl.noDialogT + dt;
+    ctl.lullCooldown -= dt;
+    if (ctl.noDialogT > TUNING.audio.lullAfterSec && ctl.lullCooldown <= 0 && !vitals.dead && !heart.won) {
+      ctl.lullCooldown = TUNING.audio.lullCooldownSec;
+      ctl.noDialogT = 0;
+      audio.playMusic('/music/lull.mp3', TUNING.audio.lullGain);
+    }
 
     // ── audio (M8a): state edges + the per-tick snapshot ──
     const openNow = doors.filter((d) => d.open).length;
@@ -1401,6 +1483,7 @@ function initGame(): void {
     audio,
     audioVerify: () => import('./audio/verify'),
     voice,
+    remora,
     deck,
     toys,
     menus,

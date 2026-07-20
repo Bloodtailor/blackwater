@@ -78,10 +78,14 @@ export function initEditor(): void {
   scene.add(dragProxy);
 
   // ── view filters (user 2026-07-20) ──
-  //  tagFilter: show only nodes of one type (others ghosted, labels off)
+  //  tagFilter: show only nodes of one type (others ghosted, labels off,
+  //  and UNCLICKABLE — filtering means you want to grab what's left)
   //  showTeasers: teaser rooms are dressing — hidden by default
+  //  showAudio: audio nodes clutter level work — hidden by default; the ♪
+  //  toggle (or the audio filter) brings them back
   let tagFilter = 'all';
   let showTeasers = false;
+  let showAudio = false;
   const nodeMatchesFilter = (n: CaveNode): boolean => {
     if (tagFilter === 'all') return true;
     if (tagFilter === 'teaser') return !!n.teaser;
@@ -141,29 +145,46 @@ export function initEditor(): void {
       // shells that SHOW the sound's reach — outer = audible limit
       // (radiusM), inner = the falloff knee (refDist = radiusM / falloff)
       if (n.kind === 'audio') {
+        // hidden by default (user 2026-07-20) — ♪ toggle or the audio filter
+        if (!showAudio && tagFilter !== 'audio') continue;
         const core = new THREE.Mesh(
           new THREE.IcosahedronGeometry(0.9, 0),
           new THREE.MeshLambertMaterial({ color: 0xd946ef, emissive: selected ? 0xffffff : 0xd946ef, emissiveIntensity: selected ? 0.5 : 0.25, transparent: true, opacity: filtered ? 0.1 : 0.95 }),
         );
         core.position.set(...n.pos);
         core.userData.nodeId = n.id;
+        if (filtered) core.raycast = () => undefined; // filtered = unclickable
         nodeGroup.add(core);
         nodeMeshes.set(n.id, core);
         if (!filtered) {
+          // FAT invisible picker: the 0.9 m core was nearly impossible to
+          // click among room spheres (user 2026-07-20)
+          const picker = new THREE.Mesh(
+            sphereGeo,
+            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false }),
+          );
+          picker.position.set(...n.pos);
+          picker.scale.setScalar(2.4);
+          picker.userData.nodeId = n.id;
+          nodeGroup.add(picker);
           const a = n.audio ?? { sample: '?', radiusM: 10, falloff: 3 };
+          // zone shape = radiusM × stretch, same field rooms use (user
+          // 2026-07-20: "change the shape of the audio zones")
+          const st = n.stretch ?? [1, 1, 1];
           const range = new THREE.Mesh(
             sphereGeo,
             new THREE.MeshBasicMaterial({ color: 0xd946ef, wireframe: true, transparent: true, opacity: 0.14, depthWrite: false }),
           );
           range.position.set(...n.pos);
-          range.scale.setScalar(a.radiusM);
+          range.scale.set(a.radiusM * st[0], a.radiusM * st[1], a.radiusM * st[2]);
           range.raycast = () => undefined; // shells must not steal clicks
           const knee = new THREE.Mesh(
             sphereGeo,
             new THREE.MeshBasicMaterial({ color: 0xf0abfc, wireframe: true, transparent: true, opacity: 0.28, depthWrite: false }),
           );
           knee.position.set(...n.pos);
-          knee.scale.setScalar(a.radiusM / (a.falloff ?? 3));
+          const kf = a.falloff ?? 3;
+          knee.scale.set((a.radiusM / kf) * st[0], (a.radiusM / kf) * st[1], (a.radiusM / kf) * st[2]);
           knee.raycast = () => undefined;
           nodeGroup.add(range, knee);
           makeLabel(`♪ ${n.id} · ${a.sample} · ${a.radiusM}m`, n.pos, 1.2);
@@ -183,6 +204,9 @@ export function initEditor(): void {
       m.position.set(...n.pos);
       m.scale.set(n.radius * s[0], n.radius * s[1], n.radius * s[2]);
       m.userData.nodeId = n.id;
+      // filtered-out nodes are UNCLICKABLE (user 2026-07-20: filtering means
+      // "let me grab the ones that match" — ghosts must not steal the click)
+      if (filtered) m.raycast = () => undefined;
       nodeGroup.add(m);
       nodeMeshes.set(n.id, m);
       if (!filtered) makeLabel(n.teaser ? `👻 ${n.id}` : n.id, n.pos, n.radius * s[1]);
@@ -224,6 +248,7 @@ export function initEditor(): void {
           new THREE.CylinderGeometry(0.6, 0.6, len, 6),
           new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false }),
         );
+        if (dimmed) picker.raycast = () => undefined; // filtered = unclickable
         picker.position.copy(a).add(b).multiplyScalar(0.5);
         picker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
         picker.userData.edgeIndex = index;
@@ -575,6 +600,7 @@ export function initEditor(): void {
         audio: { sample: 'amb-machinery', radiusM: 15, falloff: 3 },
         tags: [],
       });
+      showAudio = true; // adding one implies you want to see them
       commit();
       select({ kind: 'node', id });
       panel.toast(`♪ ${id} — bury it in rock; the shells show its reach`);
@@ -589,6 +615,20 @@ export function initEditor(): void {
       rebuild();
       panel.toast(showTeasers ? 'TEASER ROOMS SHOWN (ghosts)' : 'TEASER ROOMS HIDDEN');
       return showTeasers;
+    },
+    toggleAudio: () => {
+      showAudio = !showAudio;
+      // deselect a now-hidden audio node so the gizmo doesn't drag a ghost
+      if (!showAudio && tagFilter !== 'audio' && selection?.kind === 'node') {
+        try {
+          if (getNode(selection.id).kind === 'audio') select(null);
+        } catch {
+          // gone already
+        }
+      }
+      rebuild();
+      panel.toast(showAudio ? 'AUDIO NODES SHOWN' : 'AUDIO NODES HIDDEN (♪ shows them; +♪ adds one)');
+      return showAudio;
     },
     deleteSelection: () => {
       if (selection?.kind === 'node') {

@@ -101,7 +101,14 @@ export class VoicePlayer {
   constructor(
     private getEngine: () => AudioEngine | null,
     private manifest: () => VoManifest | null,
+    /** 'surface' = Lowe (speaks only above water, through the air bus);
+     *  'master' = REMORA (in-helmet speaker — the water never touches it). */
+    private bus: 'surface' | 'master' = 'surface',
   ) {}
+
+  private out(e: AudioEngine): AudioNode {
+    return this.bus === 'master' ? e.master : e.surface;
+  }
 
   /** Start a line. Returns real duration when known (else null → caller keeps
    *  its estimate). */
@@ -116,14 +123,14 @@ export class VoicePlayer {
       const g = (e.ctx as AudioContext).createGain();
       g.gain.value = SETTINGS.volumeVo;
       src.connect(g);
-      g.connect(e.surface); // Lowe speaks only above water
+      g.connect(this.out(e));
       el.addEventListener('ended', () => this.onEnded?.());
       void el.play().catch(() => this.onEnded?.());
       this.el = el;
       return null; // duration via ended event
     }
     // fallback: a soft radio squelch marks the line; the subtitle carries it
-    if (e && e.running) radioSquelch(e.ctx, e.surface, SETTINGS.volumeVo);
+    if (e && e.running) radioSquelch(e.ctx, this.out(e), SETTINGS.volumeVo);
     return null;
   }
 

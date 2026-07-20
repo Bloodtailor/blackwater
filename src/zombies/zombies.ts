@@ -82,6 +82,7 @@ export class ZombieManager {
   private ray = new THREE.Raycaster();
   private vTmp = new THREE.Vector3();
   private vTmp2 = new THREE.Vector3();
+  private up = new THREE.Vector3(0, 1, 0);
   private qTmp = new THREE.Quaternion();
   private current = new THREE.Vector3();
 
@@ -90,6 +91,10 @@ export class ZombieManager {
     readonly rounds: RoundSystem,
     isEdgeOpen: (e: import('../cave/data').CaveEdge) => boolean,
     private waterLevelAt: (x: number, y: number, z: number) => number | null,
+    /** Region falseUp lookup — deceived rooms lie about up for BODIES too
+     *  (user bug 2026-07-20: zombies hauling out in a falseUp air room fell
+     *  along true down instead of the lie). */
+    private falseUpAt: (ref: string) => [number, number, number] | undefined = () => undefined,
   ) {
     this.graph = new GraphPath(isEdgeOpen);
     this.burrows = NODES.filter((n) => n.tags.includes('burrow'));
@@ -421,14 +426,17 @@ export class ZombieManager {
         // hauling out (surface decay §5.1): with rock underfoot it's a
         // grounded crawl — no gravity, slope-following climb (gravity was
         // pinning them at the waterline, 2.7 m short of the shore player);
-        // airborne (breaching) they fall like anything else
-        const grounded = sdf(z.pos.x, z.pos.y - 0.5, z.pos.z) > -0.3;
-        if (grounded) {
-          this.vTmp.y = Math.min(this.vTmp.y, 1.4);
-        } else {
-          this.vTmp.y = Math.min(this.vTmp.y, 0.5);
-          z.vel.y -= TUNING.player.gravity * 0.6 * dt;
-        }
+        // airborne (breaching) they fall like anything else. All of it runs
+        // along the REGION's up: falseUp rooms pull bodies along the lie,
+        // exactly like the player controller (user bug 2026-07-20).
+        const fu = region ? this.falseUpAt(region.ref) : undefined;
+        this.up.set(fu?.[0] ?? 0, fu?.[1] ?? 1, fu?.[2] ?? 0).normalize();
+        const grounded = sdf(z.pos.x - this.up.x * 0.5, z.pos.y - this.up.y * 0.5, z.pos.z - this.up.z * 0.5) > -0.3;
+        // clamp the intent's along-up component (climb rate)
+        const intentUp = this.vTmp.dot(this.up);
+        const capUp = grounded ? 1.4 : 0.5;
+        if (intentUp > capUp) this.vTmp.addScaledVector(this.up, capUp - intentUp);
+        if (!grounded) z.vel.addScaledVector(this.up, -TUNING.player.gravity * 0.6 * dt);
       }
       z.vel.lerp(this.vTmp, Math.min(1, Z.turnRatePerSec * dt));
       z.pos.addScaledVector(z.vel, dt);

@@ -35,6 +35,13 @@ export class AudioEngine {
   readonly underwater: GainNode;
   /** Head-above-water bus: bright, light room. */
   readonly surface: GainNode;
+  /** MUSIC bus (user 2026-07-20: "music in open air should sound normal").
+   *  Music used to ride the underwater bus, which ducks to 25% the moment
+   *  the head breaks water — songs went near-silent exactly where they
+   *  should shine. This bus never ducks: open air = full and bright,
+   *  submerged = muffled (low-pass) but at full level. */
+  readonly music: GainNode;
+  private musicFilter: BiquadFilterNode;
   /** Post-filter analyser for verification (RMS of what's actually audible). */
   readonly analyser: AnalyserNode;
   private uwFilter: BiquadFilterNode;
@@ -92,6 +99,15 @@ export class AudioEngine {
     sfVerb.connect(sfWet);
     sfWet.connect(this.sfGain);
     this.sfGain.connect(this.master);
+
+    // ── music bus: constant level, water only changes the TONE ──
+    this.music = this.ctx.createGain();
+    this.musicFilter = this.ctx.createBiquadFilter();
+    this.musicFilter.type = 'lowpass';
+    this.musicFilter.frequency.value = A.musicLowpassHz; // spawn is underwater-weighted
+    this.musicFilter.Q.value = 0.4;
+    this.music.connect(this.musicFilter);
+    this.musicFilter.connect(this.master);
   }
 
   /** Call from a real user gesture (the play click). */
@@ -121,6 +137,8 @@ export class AudioEngine {
     const t = this.ctx.currentTime;
     this.uwGain.gain.setTargetAtTime(above ? 0.25 : 1, t, 0.06);
     this.sfGain.gain.setTargetAtTime(above ? 1 : 0.02, t, 0.06);
+    // music never ducks — the surface just takes the pillow off the speaker
+    this.musicFilter.frequency.setTargetAtTime(above ? 20000 : TUNING.audio.musicLowpassHz, t, 0.1);
   }
 
   /** Silt-out muffle 0..1 → the world goes cottony. */

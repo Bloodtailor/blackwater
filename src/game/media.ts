@@ -409,6 +409,70 @@ function recSign(): string {
   return c.toDataURL('image/png');
 }
 
+// ── toy-diver polaroids (user 2026-07-20): filed to the pause-menu gallery
+// when a tin diver is wound. Mundane caption, one wrongness each. ──
+
+const TOY_PHOTO = [
+  { color: '#a03028', name: 'RED', note: 'Gallery spur, dead end. The key was already warm.' },
+  { color: '#2a4f9e', name: 'BLUE', note: 'Maze, low shelf. It faced the door before I did.' },
+  { color: '#c9a72c', name: 'YELLOW', note: 'Below. Tin should not survive that depth.' },
+];
+
+export const TOY_CAPTIONS = TOY_PHOTO.map((t) => `TIN DIVER — ${t.name} — ${t.note}`);
+
+export function toyPhotoDataUrl(i: number): string {
+  const t = TOY_PHOTO[i] ?? TOY_PHOTO[0];
+  const key = `toy-photo-${i}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+  // a polaroid: white frame, murky flash-lit photo, pencil note
+  const c = document.createElement('canvas');
+  c.width = 360;
+  c.height = 420;
+  const x = c.getContext('2d')!;
+  x.fillStyle = '#e8e4da';
+  x.fillRect(0, 0, 360, 420);
+  // photo area — flash falloff in dark water
+  const g = x.createRadialGradient(180, 170, 30, 180, 170, 210);
+  g.addColorStop(0, '#3d5a58');
+  g.addColorStop(1, '#0a1414');
+  x.fillStyle = g;
+  x.fillRect(20, 20, 320, 320);
+  // silt motes in the flash
+  for (let i2 = 0; i2 < 60; i2++) {
+    x.fillStyle = `rgba(200,220,210,${0.05 + Math.random() * 0.12})`;
+    x.fillRect(20 + Math.random() * 320, 20 + Math.random() * 320, 2, 2);
+  }
+  // the tin diver: body, brass helm, wind-up key
+  x.fillStyle = t.color;
+  x.fillRect(150, 160, 60, 110); // body
+  x.fillStyle = 'rgba(0,0,0,0.25)';
+  x.fillRect(196, 160, 14, 110); // shading
+  x.fillStyle = '#b8a25a';
+  x.beginPath();
+  x.arc(180, 140, 34, 0, Math.PI * 2); // helm
+  x.fill();
+  x.fillStyle = '#1a2a28';
+  x.beginPath();
+  x.arc(180, 140, 18, 0, Math.PI * 2); // faceplate — nothing readable inside
+  x.fill();
+  x.strokeStyle = '#b8a25a';
+  x.lineWidth = 6;
+  line(x, [[210, 200], [244, 200]], '#b8a25a', 6); // key shaft
+  x.strokeRect(244, 184, 10, 32); // key bow
+  x.fillStyle = t.color;
+  x.fillRect(138, 262, 34, 16); // little boots
+  x.fillRect(188, 262, 34, 16);
+  // pencil note on the frame
+  x.font = 'italic 19px Georgia, serif';
+  x.fillStyle = '#4a4438';
+  x.textAlign = 'center';
+  x.fillText(`the ${t.name.toLowerCase()} one — ${t.note.split('.')[0].toLowerCase()}.`, 180, 372);
+  const url = c.toDataURL('image/png');
+  cache.set(key, url);
+  return url;
+}
+
 function perkLabel(perkId: string): string {
   const s = PERK_STYLE[perkId] ?? { name: perkId.toUpperCase(), color: '#888' };
   const c = document.createElement('canvas');

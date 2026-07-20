@@ -9,6 +9,7 @@
 
 import type * as THREE from 'three';
 import { TUNING } from '../tuning';
+import { SETTINGS } from '../ui/settings';
 import { Ambience } from './ambience';
 import { AudioEngine, type PositionalHandle } from './engine';
 import { SAMPLES } from './samples';
@@ -262,5 +263,23 @@ export class AudioDirector {
   powerOn(): void {
     if (this.bus) sfx.powerOnThunk(this.engine!.ctx, this.bus);
     this.note('powerOnThunk');
+  }
+
+  /** One-shot music cue on the MUSIC bus (the sinister lull, user
+   *  2026-07-20): full in open air, muffled-not-quiet underwater. Missing
+   *  file = silence, no error — same rule as every generated asset. */
+  playMusic(url: string, gain: number): void {
+    const e = this.engine;
+    if (!e || !e.running) return;
+    this.note(`music ${url}`);
+    const ctx = e.ctx as AudioContext;
+    if (typeof ctx.createMediaElementSource !== 'function') return; // offline harness
+    const el = new Audio(url);
+    const src = ctx.createMediaElementSource(el);
+    const g = ctx.createGain();
+    g.gain.value = gain * SETTINGS.volumeMusic;
+    src.connect(g);
+    g.connect(e.music);
+    void el.play().catch(() => {});
   }
 }

@@ -23,6 +23,7 @@ export class Hud {
   private toastEl!: HTMLElement;
   private toastTimer: number | null = null;
   private vignette: HTMLElement;
+  private bloodEl: HTMLElement;
   private deathEl: HTMLElement;
   private roundEl: HTMLElement;
   private stirsEl: HTMLElement;
@@ -53,6 +54,9 @@ export class Hud {
       return d;
     };
     this.vignette = make('hud-vignette');
+    // BO-style hurt indicator (user 2026-07-20): blood creeps in from the
+    // screen edges as HP falls, pulsing when death is one grab away
+    this.bloodEl = make('hud-blood');
     const hr = make('hud-hr');
     hr.innerHTML = '<span class="beat">♥</span><span class="bpm"></span>';
     this.beatEl = hr.querySelector('.beat') as HTMLElement;
@@ -212,6 +216,13 @@ export class Hud {
     // low-air / drowning vignette
     const danger = v.air <= 0 ? 1 : v.lowAir ? 1 - v.air / TUNING.air.lowThreshold : 0;
     this.vignette.style.opacity = String(danger * 0.65);
+
+    // BO-style death proximity: blood blooms in from the edges below ~2/3 HP,
+    // pulses when one more hit ends the shift (user 2026-07-20)
+    const hpFrac = Math.max(0, Math.min(1, v.hp / v.mods.maxHp));
+    const blood = v.dead ? 1 : hpFrac >= 0.65 ? 0 : 1 - hpFrac / 0.65;
+    this.bloodEl.style.opacity = String(Math.min(1, blood * blood * 1.1));
+    this.bloodEl.classList.toggle('critical', !v.dead && hpFrac > 0 && hpFrac < 0.3);
 
     this.deathEl.classList.toggle('hidden', !v.dead || this.suppressDeath);
   }

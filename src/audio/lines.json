@@ -211,5 +211,118 @@
       "voice": "flat, unhurried, not in the crew book",
       "text": "…Albrecht, forward watch. Ames, galley. Barrow, lamps. Bell, stores. Calloway, drill. Carver, drill. Deem—"
     }
+  ],
+  "remora": [
+    {
+      "id": "rem.hello.1",
+      "cat": "event",
+      "text": "Monitor engaged. Type R dive monitor, client-supplied. The case stencil reads REMORA. Instruction one: keep the diver informed. Diving."
+    },
+    {
+      "id": "rem.depth.50",
+      "cat": "event",
+      "text": "Fifty meters. The current runs harder below this line. It is not personal."
+    },
+    {
+      "id": "rem.depth.100",
+      "cat": "event",
+      "text": "One hundred meters. Return-to-surface margin is now theoretical. Proceeding as instructed."
+    },
+    {
+      "id": "rem.depth.150",
+      "cat": "event",
+      "text": "One hundred fifty meters. This unit is rated to one hundred forty. We will not mention it again."
+    },
+    {
+      "id": "rem.air.low",
+      "cat": "event",
+      "text": "Air is low. The nearest ceiling with sky in it is the correct direction."
+    },
+    {
+      "id": "rem.air.reserve",
+      "cat": "event",
+      "text": "Reserve breath engaged. Breathe small. I will count the rest."
+    },
+    {
+      "id": "rem.battery.low",
+      "cat": "event",
+      "text": "Lamp cell failing. The dark down here is older than the site. Change the cell."
+    },
+    {
+      "id": "rem.silt.1",
+      "cat": "event",
+      "text": "Visibility zero. Hold the line. The line does not panic."
+    },
+    {
+      "id": "rem.contact.1",
+      "cat": "event",
+      "text": "Motion contact, multiple. The roster says forty-one. The contacts say otherwise. The roster is signed."
+    },
+    {
+      "id": "rem.angler.1",
+      "cat": "event",
+      "text": "A lamp is approaching. No lamp is assigned to this sector. Decline it politely."
+    },
+    {
+      "id": "rem.guardian.1",
+      "cat": "event",
+      "text": "Heavy suit on patrol ahead. Its post was struck from the watch bill in nineteen sixty-eight. It was not informed."
+    },
+    {
+      "id": "rem.heart.1",
+      "cat": "event",
+      "text": "The item is near, and warm. My thermistor reads it three different ways. I have logged the average."
+    },
+    {
+      "id": "rem.ascent.1",
+      "cat": "event",
+      "text": "Item lifted. Contract clause four: ascend. All further advice is suspended in favor of that one.",
+      "forced": true
+    },
+    {
+      "id": "rem.power.1",
+      "cat": "event",
+      "text": "Site power restored. Several systems have resumed. Several of them I do not recognize."
+    },
+    {
+      "id": "rem.stirs.1",
+      "cat": "event",
+      "text": "The site is re-tasking its complement. Inbound. All of them."
+    },
+    {
+      "id": "rem.abyss.1",
+      "cat": "event",
+      "text": "Entering the lower survey. My charts end here. The water does not."
+    },
+    {
+      "id": "rem.amb.1",
+      "cat": "ambient",
+      "text": "Depth and heading logged. Someone reads these logs. I have never been told who."
+    },
+    {
+      "id": "rem.amb.2",
+      "cat": "ambient",
+      "text": "Your heart rate is elevated. Mine would be too."
+    },
+    {
+      "id": "rem.amb.3",
+      "cat": "ambient",
+      "text": "Water temperature: four degrees. It was four degrees yesterday. It has been four degrees since nineteen sixty-eight."
+    },
+    {
+      "id": "rem.amb.4",
+      "cat": "ambient",
+      "text": "I count your breaths for the record. The record was printed with room for fewer than you would hope."
+    },
+    {
+      "id": "rem.amb.5",
+      "cat": "ambient",
+      "text": "The current changed direction just now. The tide tables disagree. The tide tables assume the sea is doing the pulling."
+    },
+    {
+      "id": "rem.amb.6",
+      "cat": "ambient",
+      "text": "Holding station. The site is also holding station. One of you should blink."
+    }
   ]
 }

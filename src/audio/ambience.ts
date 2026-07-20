@@ -100,19 +100,38 @@ export class Ambience {
     const shallow = 1 - smoothstep(D.shallowToMidM - half, D.shallowToMidM + half, depth);
     const mid = Math.max(0, 1 - shallow - deep);
     const base = A.ambienceGain * (submerged ? 1 : 0.25);
+    // deeper beds run HOTTER (user 2026-07-20: it should sound scarier the
+    // deeper you go — the pressure gets louder, not just darker)
+    const tierGain = [1, 1.2, 1.45];
     [shallow, mid, deep].forEach((w, i) => {
       this.weights[i] = w;
-      this.bedGains[i]?.gain.setTargetAtTime(Math.max(0.0001, w * base), e.ctx.currentTime, 0.8);
+      this.bedGains[i]?.gain.setTargetAtTime(Math.max(0.0001, w * base * tierGain[i]), e.ctx.currentTime, 0.8);
     });
 
-    // emitters: attach within earshot, follow position, detach far away
+    // emitters: attach within earshot, follow position, detach far away.
+    // A node's `stretch` shapes the zone (user 2026-07-20): distances are
+    // measured in stretched space, and the positional handle is fed a
+    // VIRTUAL source at that distance along the true direction — pan stays
+    // honest, gain follows the ellipsoid.
     for (const em of this.emitters) {
       const a = em.node.audio!;
       const [x, y, z] = em.node.pos;
-      const d = Math.hypot(x - px, y - py, z - pz);
+      const st = em.node.stretch;
+      const realD = Math.hypot(x - px, y - py, z - pz);
+      let d = realD;
+      let vx = x;
+      let vy = y;
+      let vz = z;
+      if (st && realD > 1e-4) {
+        d = Math.hypot((x - px) / st[0], (y - py) / st[1], (z - pz) / st[2]);
+        const k = d / realD;
+        vx = px + (x - px) * k;
+        vy = py + (y - py) * k;
+        vz = pz + (z - pz) * k;
+      }
       if (!em.handle && d < a.radiusM * 1.5) {
         const h = e.positional(a.radiusM / (a.falloff ?? 3));
-        h.setPosition(x, y, z);
+        h.setPosition(vx, vy, vz);
         // sample by name; unknown/missing name → the machinery-ish synth bed
         em.stop = SAMPLES.loop(e.ctx, h.input, a.sample, { gain: A.emitterGain, fadeSec: 1.5 }) ?? synthBed(e.ctx, h.input, 1);
         em.handle = h;
@@ -123,7 +142,7 @@ export class Ambience {
         em.handle = null;
         em.stop = null;
       } else if (em.handle) {
-        em.handle.setPosition(x, y, z);
+        em.handle.setPosition(vx, vy, vz);
       }
     }
   }

@@ -61,6 +61,9 @@ const api = async (url, opts = {}) => {
 //   crew book, and it should not quite sit among the men either.
 const CAST = {
   lowe: 'Bill',
+  // REMORA (LORE §2.4): the client-supplied dive monitor. A mid-century
+  // switchboard-operator calm — female, flat, courteous, unhurried.
+  remora: 'Sarah',
   t1: 'Adam', // quartermaster — firm, done arguing with the count
   t2: 'Chris', // morale officer — mild, filing it under morale
   t3: 'Eric', // reactor engineer — smooth, enjoys being believed
@@ -82,7 +85,11 @@ async function cast() {
   LINES.tapes.forEach((t, i) => {
     tapeVoices[t.id] = byName(CAST[t.id]) ?? pool[i % Math.max(1, pool.length)] ?? lowe;
   });
-  return { lowe, tapeVoices };
+  const females = voices.filter((v) => (v.labels?.gender ?? '').includes('female'));
+  const remora = process.env.REMORA_VOICE_ID
+    ? { voice_id: process.env.REMORA_VOICE_ID, name: '(pinned via REMORA_VOICE_ID)' }
+    : (byName(CAST.remora) ?? females.find((v) => /american/.test(v.labels?.accent ?? '')) ?? females[0] ?? voices[0]);
+  return { lowe, remora, tapeVoices };
 }
 
 async function tts(voiceId, text, outFile, settings) {
@@ -142,11 +149,18 @@ try {
   } else throw e;
 }
 if (casting) {
-  const { lowe, tapeVoices } = casting;
+  const { lowe, remora, tapeVoices } = casting;
   console.log(`Lowe voice: ${lowe.name ?? lowe.voice_id}`);
   console.log('Lowe lines:', LINES.lowe.length);
   for (const line of LINES.lowe) {
     await tts(lowe.voice_id, line.text, path.join(ROOT, 'public/audio/vo', `${line.id}.mp3`));
+  }
+  // REMORA reads flat and courteous — high stability, no drama; the unit
+  // is a gauge that talks, not an actress
+  console.log(`REMORA voice: ${remora.name ?? remora.voice_id}`);
+  console.log('REMORA lines:', (LINES.remora ?? []).length);
+  for (const line of LINES.remora ?? []) {
+    await tts(remora.voice_id, line.text, path.join(ROOT, 'public/audio/vo', `${line.id}.mp3`), { stability: 0.8, style: 0.05 });
   }
   console.log('Tapes:', LINES.tapes.length);
   for (const t of LINES.tapes) {
@@ -159,14 +173,24 @@ if (casting) {
 }
 
 if (!DRY && casting) {
-  const manifest = {
+  // merge into the existing manifest — generate-sfx.mjs owns the `sfx`
+  // section and a vo run must not wipe it
+  let manifest = {};
+  try {
+    manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/audio/manifest.json'), 'utf8'));
+  } catch {
+    // first run
+  }
+  Object.assign(manifest, {
     vo: Object.fromEntries(
-      LINES.lowe.filter((l) => fs.existsSync(path.join(ROOT, 'public/audio/vo', `${l.id}.mp3`))).map((l) => [l.id, `/audio/vo/${l.id}.mp3`]),
+      [...LINES.lowe, ...(LINES.remora ?? [])]
+        .filter((l) => fs.existsSync(path.join(ROOT, 'public/audio/vo', `${l.id}.mp3`)))
+        .map((l) => [l.id, `/audio/vo/${l.id}.mp3`]),
     ),
     tapes: Object.fromEntries(
       LINES.tapes.filter((t) => fs.existsSync(path.join(ROOT, 'public/audio/tapes', `${t.id}.mp3`))).map((t) => [t.id, `/audio/tapes/${t.id}.mp3`]),
     ),
-  };
+  });
   fs.mkdirSync(path.join(ROOT, 'public/audio'), { recursive: true });
   fs.writeFileSync(path.join(ROOT, 'public/audio/manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   console.log(`manifest.json: ${Object.keys(manifest.vo).length} vo + ${Object.keys(manifest.tapes).length} tapes`);

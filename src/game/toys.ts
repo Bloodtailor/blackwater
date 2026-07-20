@@ -1,10 +1,12 @@
-// The easter egg (M8b, LORE §6): three wind-up tin divers hidden in dead
-// ends, each with a faint music-box shimmer (≤8 m findability). Wind all
-// three and the rec-room jukebox wakes: ONE track, game-wide, through the
-// underwater DSP — muffled, far away, everywhere. Once per run.
+// The easter egg (M8b, LORE §6; reworked 2026-07-20 per user): three wind-up
+// tin divers hidden in dead ends, each with a faint music-box shimmer (≤8 m
+// findability). Wind all three and the rec-room jukebox wakes and starts a
+// track — and stays a usable fixture: E plays/advances through the folder.
+// Songs ride the MUSIC bus (full in open air, muffled-not-quiet underwater).
+// Dead, its prompt hints at the sleeping divers.
 //
-// Track source: a random file from public/music/easteregg/ (tracks.json is
-// listed live by the dev server / written at build — drop MP3s in, zero code).
+// Track source: files from public/music/easteregg/ (tracks.json is listed
+// live by the dev server / written at build — drop MP3s in, zero code).
 
 import * as THREE from 'three';
 import { TUNING } from '../tuning';
@@ -14,6 +16,8 @@ import { SETTINGS } from '../ui/settings';
 import type { AudioEngine, PositionalHandle } from '../audio/engine';
 import { toyShimmer, toyWind, type StopFn } from '../audio/sfx';
 import type { InteractSystem } from '../economy/interact';
+import { GALLERY } from './gallery';
+import { TOY_CAPTIONS, toyPhotoDataUrl } from './media';
 
 const TOY_COLORS = [0xa03028, 0x2a4f9e, 0xc9a72c]; // painted tin: red/blue/yellow
 const TOY_NODES = ['gal-spur-toy', 'mz-d1', 'abyss-toy'];
@@ -82,6 +86,8 @@ export class Toys {
           s.stop();
           s.handle.dispose();
         }
+        // the polaroid files itself (user 2026-07-20: toy photos in the menu)
+        GALLERY.unlock({ id: `toy-photo-${i}`, title: `TIN DIVER — ${['RED', 'BLUE', 'YELLOW'][i]}`, url: toyPhotoDataUrl(i), caption: TOY_CAPTIONS[i] });
         this.onWind?.(this.wound);
         if (this.wound >= 3) this.wakeJukebox();
       };
@@ -121,6 +127,21 @@ export class Toys {
     jg.add(chrome);
     jg.position.set(jb.pos[0] - jb.radius * 0.4, jy, jb.pos[2] - jb.radius * 0.3);
     scene.add(jg);
+
+    // The jukebox is a real fixture now (user 2026-07-20: "make the juke
+    // box"): dead until the three divers wake it (the egg stands — the
+    // disabled prompt is the hint), then E cycles through the folder.
+    interact.add({
+      id: 'jukebox',
+      pos: [jg.position.x, jg.position.y, jg.position.z],
+      prompt: () =>
+        this.jukeboxOn
+          ? { text: this.trackEl ? 'JUKEBOX — NEXT TRACK' : 'JUKEBOX — PLAY', holdSec: 0, enabled: true }
+          : { text: `DEAD — ${3 - this.wound} tin diver${3 - this.wound === 1 ? '' : 's'} still sleep${3 - this.wound === 1 ? 's' : ''}`, holdSec: 0, enabled: false },
+      execute: () => {
+        if (this.jukeboxOn) void this.playNextTrack(true);
+      },
+    });
   }
 
   /** Shimmer loops need a live engine — start them on the first update after
@@ -144,37 +165,55 @@ export class Toys {
     }
   }
 
+  /** Toast hook for "now playing" (main wires it). */
+  onTrack: ((name: string) => void) | null = null;
+  private tracks: string[] | null = null;
+  private trackIdx = -1;
+
   private wakeJukebox(): void {
     if (this.jukeboxOn) return;
     this.jukeboxOn = true;
     if (this.jukeboxGlow) this.jukeboxGlow.emissiveIntensity = 1.2;
     this.onJukebox?.();
-    void this.playRandomTrack();
+    void this.playNextTrack(false);
   }
 
-  private async playRandomTrack(): Promise<void> {
+  /** Play the next track in the folder (shuffled once, then cycles). The
+   *  song rides the MUSIC bus: full and bright in open air, muffled but
+   *  never quiet underwater (user 2026-07-20). */
+  private async playNextTrack(fromInteract: boolean): Promise<void> {
     const e = this.getEngine();
     if (!e || !e.running) return;
-    let tracks: string[] = [];
-    try {
-      const res = await fetch('/music/easteregg/tracks.json');
-      if (res.ok) tracks = (await res.json()) as string[];
-    } catch {
-      // no listing — the jukebox hums to itself
+    if (!this.tracks) {
+      try {
+        const res = await fetch('/music/easteregg/tracks.json');
+        if (res.ok) this.tracks = (await res.json()) as string[];
+      } catch {
+        // no listing — the jukebox hums to itself
+      }
+      if (this.tracks && this.tracks.length > 1) {
+        for (let i = this.tracks.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [this.tracks[i], this.tracks[j]] = [this.tracks[j], this.tracks[i]];
+        }
+      }
     }
-    if (tracks.length === 0) return;
-    const pick = tracks[Math.floor(Math.random() * tracks.length)];
+    if (!this.tracks || this.tracks.length === 0) return;
+    this.trackIdx = (this.trackIdx + 1) % this.tracks.length;
+    const pick = this.tracks[this.trackIdx];
     this.lastTrack = pick;
+    if (fromInteract) this.onTrack?.(pick.replace(/\.[a-z0-9]+$/i, ''));
     const ctx = e.ctx as AudioContext;
     // offline verification contexts can't host media elements — the pick
     // still registers (lastTrack) so the harness can assert the choice
     if (typeof ctx.createMediaElementSource !== 'function') return;
+    this.stopMusic();
     const el = new Audio(`/music/easteregg/${encodeURIComponent(pick)}`);
     const src = ctx.createMediaElementSource(el);
     const g = ctx.createGain();
     g.gain.value = TUNING.voice.jukeboxGain * SETTINGS.volumeMusic;
     src.connect(g);
-    g.connect(e.underwater); // game-wide through the water — the LORE ask
+    g.connect(e.music);
     this.trackEl = el;
     void el.play().catch(() => {});
   }

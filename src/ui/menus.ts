@@ -11,6 +11,7 @@
 import { TUNING, setTuningValue } from '../tuning';
 import { SETTINGS, saveSettings } from './settings';
 import { imageUrl } from '../game/media';
+import { GALLERY } from '../game/gallery';
 import { TAPES } from '../audio/lines';
 
 type Screen = 'title' | 'jobsheet' | 'pause' | 'settings' | 'howto' | null;
@@ -48,6 +49,10 @@ export class Menus {
   constructor(private hooks: MenuHooks) {
     this.root = document.createElement('div');
     this.root.id = 'menus';
+    // start HIDDEN: #menus is a fullscreen wash — without this class a run
+    // that never calls show() (editor ▶ TEST playtest) sat behind an
+    // invisible click-eating overlay (user bug 2026-07-20)
+    this.root.className = 'hidden';
     document.body.appendChild(this.root);
     window.addEventListener('keydown', (e) => {
       if (this.screen === 'jobsheet' && (e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter')) this.dive();
@@ -65,6 +70,30 @@ export class Menus {
     this.screen = screen;
     this.hooks.setDucked(screen !== null);
     this.render();
+    this.syncMusic();
+  }
+
+  // ── menu music (user 2026-07-20): the menus carry their own theme —
+  // a plain looped element, outside the game's buses (the run is frozen).
+  // Missing file = silence; autoplay-block = first click/key retries. ──
+  private musicEl: HTMLAudioElement | null = null;
+  private syncMusic(): void {
+    if (this.screen === null) {
+      this.musicEl?.pause();
+      return;
+    }
+    if (!this.musicEl) {
+      this.musicEl = new Audio('/music/menu-theme.mp3');
+      this.musicEl.loop = true;
+    }
+    this.musicEl.volume = Math.min(1, Math.max(0, SETTINGS.volumeMaster * SETTINGS.volumeMusic * 0.8));
+    void this.musicEl.play().catch(() => {
+      const retry = (): void => {
+        if (this.blocking) void this.musicEl?.play().catch(() => {});
+      };
+      window.addEventListener('pointerdown', retry, { once: true });
+      window.addEventListener('keydown', retry, { once: true });
+    });
   }
 
   /** Pointer-lock loss during play = pause (unless something else owns the screen). */
@@ -182,6 +211,39 @@ export class Menus {
         list.appendChild(b);
       }
       wrap.appendChild(list);
+      // photographs: everything inspected in the world + the toy polaroids
+      // (user 2026-07-20) — click a thumbnail for the full print
+      const shots = GALLERY.items;
+      const gal = document.createElement('div');
+      gal.className = 'menu-gallery';
+      const gh = document.createElement('div');
+      gh.className = 'menu-sub';
+      gh.textContent = shots.length ? `PHOTOGRAPHS — ${shots.length} filed (click to view)` : 'NO PHOTOGRAPHS FILED YET — inspect what you find';
+      gal.appendChild(gh);
+      if (shots.length) {
+        const grid = document.createElement('div');
+        grid.className = 'menu-gallery-grid';
+        for (const it of shots) {
+          const img = document.createElement('img');
+          img.src = it.url;
+          img.title = it.title;
+          img.addEventListener('click', () => {
+            const box = document.createElement('div');
+            box.className = 'menu-lightbox';
+            const big = document.createElement('img');
+            big.src = it.url;
+            const cap = document.createElement('div');
+            cap.className = 'menu-sub';
+            cap.textContent = it.caption;
+            box.append(big, cap);
+            box.addEventListener('click', () => box.remove());
+            this.root.appendChild(box);
+          });
+          grid.appendChild(img);
+        }
+        gal.appendChild(grid);
+      }
+      wrap.appendChild(gal);
       btn('SETTINGS', () => {
         this.from = 'pause';
         this.show('settings');
