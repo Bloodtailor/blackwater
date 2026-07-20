@@ -31,6 +31,8 @@ export function buildTiltRegions(): Map<string, number> {
 export class TiltSystem {
   /** Last output roll in degrees (HUD/debug mirror; the camera owns truth). */
   rollDeg = 0;
+  /** Steady Hands: natural decay runs this much faster (main sets from perks). */
+  decayMult = 1;
 
   constructor(
     private regions: Map<string, number>,
@@ -63,7 +65,8 @@ export class TiltSystem {
       roll += (s >= 0 ? 1 : -1) * T.driftDegPerSec * dt;
     } else {
       // slow natural decay — you carry disorientation out of the zone
-      roll = approachZero(roll, T.decayDegPerSec * dt);
+      // (Steady Hands decays 3× faster)
+      roll = approachZero(roll, T.decayDegPerSec * this.decayMult * dt);
     }
     // clamp to the stronger of zone cap / accessibility cap; if the setting
     // shrank mid-run, pull the roll back inside it

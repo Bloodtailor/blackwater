@@ -43,6 +43,8 @@ export class Atmosphere {
   private targetMote = new THREE.Color();
   private beamHalf: number;
   private beamThrow = 65;
+  /** Cat Eyes: wider beam, less backscatter pinch (main sets from perks). */
+  beamMult = 1;
   private motes: THREE.Points;
   private motePos: Float32Array;
   private moteVel: Float32Array;
@@ -183,10 +185,11 @@ export class Atmosphere {
       this.ambient.intensity = 0.55 * THREE.MathUtils.lerp(1, A.depthDarkFloor, t);
     }
 
-    // headlamp cone: narrow + short during a silt-out (backscatter)
+    // headlamp cone: narrow + short during a silt-out (backscatter);
+    // Cat Eyes widens the cone and loosens the silt pinch
     const L = TUNING.light;
-    const targetHalf = THREE.MathUtils.degToRad((siltout ? L.siltBeamAngleDeg : L.beamAngleDeg) / 2);
-    const targetThrow = siltout ? L.siltThrowM : 65;
+    const targetHalf = THREE.MathUtils.degToRad(((siltout ? L.siltBeamAngleDeg : L.beamAngleDeg) * this.beamMult) / 2);
+    const targetThrow = (siltout ? L.siltThrowM : 65) * (siltout ? this.beamMult : 1);
     this.beamHalf += (targetHalf - this.beamHalf) * Math.min(1, dt * 3);
     this.beamThrow += (targetThrow - this.beamThrow) * Math.min(1, dt * 3);
     this.headlamp.angle = this.beamHalf;

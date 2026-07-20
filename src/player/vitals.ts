@@ -15,6 +15,15 @@ export interface VitalsEnv {
   zone: Zone;
 }
 
+/** The slice of perk effects vitals cares about (economy/perks.ts computes
+ *  the full set; defaults = no perks). */
+export interface VitalsMods {
+  maxHp: number;
+  airCap: number;
+  drainMult: number;
+  sprintDrainMult: number;
+}
+
 export class Vitals {
   air: number = TUNING.air.capacity;
   hp: number = TUNING.health.max;
@@ -24,6 +33,9 @@ export class Vitals {
   inReserve = false;
   flashlightOn = true;
   dead = false;
+  /** Perk effects (Barnacle Hide, Iron Lungs, Fin Kick) — main keeps this
+   *  pointed at the live Perks.mods. */
+  mods: VitalsMods = { maxHp: TUNING.health.max, airCap: TUNING.air.capacity, drainMult: 1, sprintDrainMult: 1 };
   // debug flags
   god = false;
   infiniteAir = false;
@@ -48,15 +60,16 @@ export class Vitals {
     const tau = target > this.hr ? H.riseTau : H.fallTau;
     this.hr += ((target - this.hr) * dt) / tau;
 
-    // ── air: two-stage tank, HR-scaled drain ──
+    // ── air: two-stage tank, HR-scaled drain (Iron Lungs / Fin Kick mods) ──
     const A = TUNING.air;
     if (env.headAbove) {
-      this.air = Math.min(A.capacity, this.air + A.refillPerSec * dt);
+      this.air = Math.min(this.mods.airCap, this.air + A.refillPerSec * dt);
       this.inReserve = false;
       if (this.air >= A.reserveRearmAt) this.reserveArmed = true;
     } else if (!this.infiniteAir) {
       if (this.air > 0) {
-        const drain = A.drainPerSec * (this.hr / H.rest) * A.zoneMult[env.zone];
+        const drain =
+          A.drainPerSec * (this.hr / H.rest) * A.zoneMult[env.zone] * this.mods.drainMult * (env.sprinting ? this.mods.sprintDrainMult : 1);
         this.air = Math.max(0, this.air - drain * dt);
         if (this.air <= 0 && this.reserveArmed) {
           this.inReserve = true;
@@ -80,10 +93,10 @@ export class Vitals {
       if (this.battery <= 0) this.flashlightOn = false;
     }
 
-    // ── health regen ──
+    // ── health regen (to the perk-modified max) ──
     this.sinceDamage += dt;
-    if (this.hp < TUNING.health.max && this.sinceDamage >= TUNING.health.regenDelay) {
-      this.hp = Math.min(TUNING.health.max, this.hp + (TUNING.health.max / TUNING.health.regenDuration) * dt);
+    if (this.hp < this.mods.maxHp && this.sinceDamage >= TUNING.health.regenDelay) {
+      this.hp = Math.min(this.mods.maxHp, this.hp + (this.mods.maxHp / TUNING.health.regenDuration) * dt);
     }
   }
 

@@ -457,6 +457,59 @@ export class ZombieManager {
     return 'hit';
   }
 
+  /** Pierce-capable shot (M6a): up to `maxPierce` zombies along the ray,
+   *  nearest first, stopped by rock. One zombie counts once even if the ray
+   *  clips several of its parts. */
+  raycastPierce(
+    origin: THREE.Vector3,
+    dir: THREE.Vector3,
+    range: number,
+    maxPierce: number,
+  ): { hits: { zombie: Zombie; head: boolean; point: [number, number, number]; dist: number }[]; end: [number, number, number] } {
+    let wallT = range;
+    let t = 0;
+    for (let i = 0; i < 220; i++) {
+      const d = sdf(origin.x + dir.x * t, origin.y + dir.y * t, origin.z + dir.z * t);
+      if (d >= 0) {
+        wallT = t;
+        break;
+      }
+      t += Math.max(0.08, -d * 0.85);
+      if (t >= range) break;
+    }
+    this.ray.set(origin, dir);
+    this.ray.far = Math.min(wallT, range);
+    for (const z of this.zombies) if (z.state !== 'dead') z.rig.group.updateWorldMatrix(false, true);
+    const raw = this.ray.intersectObjects(this.shootables, false);
+    const seen = new Set<Zombie>();
+    const hits: { zombie: Zombie; head: boolean; point: [number, number, number]; dist: number }[] = [];
+    for (const h of raw) {
+      const z = h.object.userData.zombie as Zombie | undefined;
+      if (!z || z.state === 'dead' || seen.has(z)) continue;
+      seen.add(z);
+      hits.push({ zombie: z, head: h.object.userData.head === true, point: [h.point.x, h.point.y, h.point.z], dist: h.distance });
+      if (hits.length >= maxPierce) break;
+    }
+    const endT = hits.length >= maxPierce ? hits[hits.length - 1].dist : Math.min(wallT, range);
+    return { hits, end: [origin.x + dir.x * endT, origin.y + dir.y * endT, origin.z + dir.z * endT] };
+  }
+
+  /** Up to `max` live zombies inside a reach-and-arc sweep (Line Lance stab). */
+  meleeTargets(origin: THREE.Vector3, dir: THREE.Vector3, rangeM: number, arcDeg: number, max: number): Zombie[] {
+    const cosArc = Math.cos(THREE.MathUtils.degToRad(arcDeg));
+    const found: { z: Zombie; d: number }[] = [];
+    for (const z of this.zombies) {
+      if (z.state === 'dead') continue;
+      this.vTmp.copy(z.pos).sub(origin);
+      const d = this.vTmp.length() - TUNING.zombies.radius;
+      if (d > rangeM) continue;
+      if (this.vTmp.normalize().dot(dir) < cosArc) continue;
+      found.push({ z, d });
+    }
+    found.sort((a, b) => a.d - b.d);
+    return found.slice(0, max).map((f) => f.z);
+  }
+
   /** Nearest thing along a shot ray: zombie (head?) or rock. */
   raycastShot(origin: THREE.Vector3, dir: THREE.Vector3, range: number): ShotResult {
     // rock first (SDF march) — zombies behind a wall can't be hit

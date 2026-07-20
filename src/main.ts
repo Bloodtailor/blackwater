@@ -22,8 +22,11 @@ import { SiltSystem, chambersFromNodes } from './effects/silt';
 import { SiltParticles } from './effects/siltParticles';
 import { RoundSystem } from './zombies/rounds';
 import { ZombieManager } from './zombies/zombies';
-import { Weapons, TracerFx } from './player/weapons';
+import { Weapons, TracerFx, type WeaponSlot, type GunId } from './player/weapons';
 import { Points } from './economy/points';
+import { Perks, ALL_PERKS } from './economy/perks';
+import { InteractSystem } from './economy/interact';
+import { Shops } from './economy/shops';
 import { Hud } from './ui/hud';
 import { SETTINGS, saveSettings } from './ui/settings';
 import { TUNING } from './tuning';
@@ -126,7 +129,7 @@ function initGame(): void {
     if (SETTINGS.fullscreenOnPlay && !document.fullscreenElement) {
       document.documentElement
         .requestFullscreen()
-        .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyX', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'KeyV', 'Space']))
+        .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyX', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'KeyV', 'Digit1', 'Digit2', 'Digit3', 'Space']))
         .catch(() => {});
     }
   });
@@ -172,37 +175,102 @@ function initGame(): void {
   const tracers = new TracerFx(scene);
   weapons.bindMouse(renderer.domElement, () => !vitals.dead && player.mode !== 'noclip');
   const E = TUNING.economy;
-  const doShot = (): void => {
-    camera.getWorldDirection(lookDir);
-    const res = zombies.raycastShot(camera.position, lookDir, weapons.def.rangeM);
-    // darts burst chalk columns (§7.2 shot detonation — the M4 debt): sample
-    // the ray for armed columns up to the impact point
-    for (let t = 0.6; t < res.dist; t += 0.35) {
-      const px = camera.position.x + lookDir.x * t;
-      const py = camera.position.y + lookDir.y * t;
-      const pz = camera.position.z + lookDir.z * t;
-      let burst = false;
+
+  // ── the economy (M6a): perks, interact prompts, shops, power ──
+  const perks = new Perks();
+  const interact = new InteractSystem();
+  const applyPerkEffects = (): void => {
+    const m = perks.mods;
+    vitals.mods = m;
+    weapons.maxSlots = m.slots;
+    player.speedMult = m.speedMult;
+    tilt.decayMult = m.tiltDecayMult;
+    atmo.beamMult = m.beamWidenMult;
+    hud.setPerks(perks.owned);
+  };
+  const shops = new Shops({
+    scene,
+    interact,
+    doors,
+    points,
+    perks,
+    weapons,
+    toast: (msg) => hud.toast(msg),
+    onPerkBought: (id) => {
+      applyPerkEffects();
+      if (id === 'barnacleHide') vitals.hp = perks.mods.maxHp; // the dose heals whole
+    },
+    onVendor: (v) => {
+      if (v === 'battery') {
+        vitals.battery = 1;
+        return true;
+      }
+      if (v === 'chemlights') {
+        chems.count += TUNING.chemlights.packSize;
+        return true;
+      }
+      if (guideLine.reelM >= TUNING.guideLine.maxDeployedM) return false; // 400 m cap
+      guideLine.reelM = Math.min(guideLine.reelM + TUNING.guideLine.reelLengthM, TUNING.guideLine.maxDeployedM);
+      return true;
+    },
+    onPowerOn: () => flashStatus('power on — the arteries are lit'),
+  });
+
+  // Second Wind (§10.5): blackout → wake at the last-used air pocket with the
+  // sidearm → the perk is spent. Non-stackable, re-buyable.
+  let lastPocketNodeId = 'sink-platform';
+  const revive = { active: false, t: 0 };
+
+  const checkMounds = (ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, dist: number): void => {
+    // darts burst chalk columns (§7.2 shot detonation)
+    for (let t = 0.6; t < dist; t += 0.35) {
+      const px = ox + dx * t;
+      const py = oy + dy * t;
+      const pz = oz + dz * t;
       for (const m of moundSpots) {
         if (columnDistSq(m, px, py, pz) < 0.9 && silt.detonate(m.nodeId)) {
           flashStatus(`chalk column shot — ${m.nodeId}`);
-          burst = true;
-          break;
+          return;
         }
       }
-      if (burst) break;
     }
-    if (res.kind === 'zombie' && res.zombie) {
-      const dmg = weapons.def.damage * (res.head ? weapons.def.headshotMult : 1);
-      const outcome = zombies.applyDamage(res.zombie, dmg);
-      points.award(E.hit);
-      if (outcome === 'killed') points.award(res.head ? E.headshotKill : E.kill);
-      hud.hitmark(res.head === true);
+  };
+  const shotDir = new THREE.Vector3();
+  const muzzle = new THREE.Vector3();
+  const doShot = (slot: WeaponSlot): void => {
+    const def = slot.def;
+    camera.getWorldDirection(lookDir);
+    // stab weapons (Line Lance): a fast melee-range sweep, not a ray
+    if (def.stabRangeM !== undefined) {
+      const targets = zombies.meleeTargets(camera.position, lookDir, def.stabRangeM, TUNING.weapons.knife.arcDeg, def.stabPierce ?? 1);
+      for (const t of targets) {
+        const outcome = zombies.applyDamage(t, def.damage);
+        points.award(outcome === 'killed' ? E.meleeKill : E.hit);
+      }
+      if (targets.length) hud.hitmark(false);
+      return;
     }
-    // tracer from the wrist, just off-axis of the lens
     beamRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
     beamUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
-    exhaleOrigin.copy(camera.position).addScaledVector(lookDir, 0.35).addScaledVector(beamRight, 0.14).addScaledVector(beamUp, -0.12);
-    tracers.spawn(exhaleOrigin, res.point);
+    for (let pellet = 0; pellet < def.pellets; pellet++) {
+      shotDir.copy(lookDir);
+      if (def.spreadDeg > 0) {
+        const s = THREE.MathUtils.degToRad(def.spreadDeg);
+        shotDir.addScaledVector(beamRight, (Math.random() * 2 - 1) * s).addScaledVector(beamUp, (Math.random() * 2 - 1) * s).normalize();
+      }
+      const res = zombies.raycastPierce(camera.position, shotDir, def.rangeM, def.pierce);
+      const endDist = Math.hypot(res.end[0] - camera.position.x, res.end[1] - camera.position.y, res.end[2] - camera.position.z);
+      checkMounds(camera.position.x, camera.position.y, camera.position.z, shotDir.x, shotDir.y, shotDir.z, endDist);
+      for (const h of res.hits) {
+        const dmg = def.damage * (h.head ? def.headshotMult : 1);
+        const outcome = zombies.applyDamage(h.zombie, dmg);
+        points.award(E.hit);
+        if (outcome === 'killed') points.award(h.head ? E.headshotKill : E.kill);
+      }
+      if (res.hits.length) hud.hitmark(res.hits.some((h) => h.head));
+      muzzle.copy(camera.position).addScaledVector(lookDir, 0.35).addScaledVector(beamRight, 0.14).addScaledVector(beamUp, -0.12);
+      tracers.spawn(muzzle, res.end, def.tracer);
+    }
   };
   const doMelee = (): void => {
     camera.getWorldDirection(lookDir);
@@ -272,7 +340,7 @@ function initGame(): void {
   // 12). When dead it restarts the dive instead.
   debug.hotkey('KeyR', 'Reload / restart when dead', () => {
     if (vitals.dead) location.reload();
-    else if (player.mode !== 'noclip') weapons.startReload();
+    else if (player.mode !== 'noclip') weapons.startReload({ reloadMult: perks.mods.reloadMult, fireDelayMult: 1 });
   });
   // knife: RMB (bound in weapons) or V — instant, clear of every line key
   debug.hotkey('KeyV', 'Knife', () => {
@@ -432,8 +500,46 @@ function initGame(): void {
   });
   debug.button(zSec, 'Kill all', () => flashStatus(`recovered ${zombies.killAll()}`));
   debug.button(zSec, 'Kill all but 2 (Cave Stirs test)', () => flashStatus(`recovered ${zombies.killAll(2)}`));
-  debug.button(zSec, 'Give 80 dart reserve', () => (weapons.reserve = weapons.def.reserveMax));
+  debug.button(zSec, 'Refill current weapon', () => weapons.refill(weapons.current.def.id));
   debug.button(zSec, 'Give 5000 points', () => points.award(5000));
+
+  const econSec = debug.section('Economy');
+  debug.toggle(econSec, 'Power on', () => shops.powered, (v) => shops.setPowered(v));
+  debug.button(econSec, 'Give 20000 points', () => points.award(20000));
+  const perkSelect = document.createElement('select');
+  perkSelect.style.width = '100%';
+  for (const id of ALL_PERKS) {
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = id;
+    perkSelect.appendChild(o);
+  }
+  econSec.appendChild(perkSelect);
+  debug.button(econSec, 'Give selected perk', () => {
+    if (perks.buy(perkSelect.value as (typeof ALL_PERKS)[number]) === 'ok') {
+      applyPerkEffects();
+      if (perkSelect.value === 'barnacleHide') vitals.hp = perks.mods.maxHp;
+    }
+  });
+  debug.button(econSec, 'Give ALL perks', () => {
+    perks.giveAll();
+    applyPerkEffects();
+    vitals.hp = perks.mods.maxHp;
+  });
+  debug.button(econSec, 'Clear perks', () => {
+    perks.clear();
+    applyPerkEffects();
+  });
+  const gunSelect = document.createElement('select');
+  gunSelect.style.width = '100%';
+  for (const id of ['wristDart', 'speargun', 'pneuDriver', 'flechette', 'harpoon', 'lineLance'] as GunId[]) {
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = id;
+    gunSelect.appendChild(o);
+  }
+  econSec.appendChild(gunSelect);
+  debug.button(econSec, 'Give selected weapon', () => weapons.give(gunSelect.value as GunId));
 
   const doorSec = debug.section('Doors');
   debug.button(doorSec, 'Open ALL doors', () => openAllDoors(doors));
@@ -498,6 +604,13 @@ function initGame(): void {
       player.applyRollDelta(newRoll - measuredRoll);
     }
     sampleCurrent(p.x, p.y, p.z, time, currentVec);
+
+    // ── buy prompts (M6a): E belongs to a live prompt, not to camera roll ──
+    camera.getWorldDirection(lookDir);
+    interact.update(dt, p, lookDir, !vitals.dead && player.mode !== 'noclip' && player.keyDown('KeyE'));
+    player.suppressRollE = interact.target !== null;
+    hud.updatePrompt(player.mode === 'noclip' ? null : interact.targetPrompt, interact.progress);
+    shops.update(dt);
 
     const hand: [number, number, number] = [p.x, p.y - 0.25, p.z];
     // wall grab (hold Ctrl near rock, user 2026-07-19): freeze in place —
@@ -629,7 +742,8 @@ function initGame(): void {
           break;
         }
       }
-      if ((speed > S.stirSpeed && nearFloor) || (player.sprinting && player.moving)) silt.disturb(chamber, dt);
+      // Steady Hands: your movement never stirs ambient silt
+      if (!perks.mods.noStir && ((speed > S.stirSpeed && nearFloor) || (player.sprinting && player.moving))) silt.disturb(chamber, dt);
     }
     if (player.mode !== 'noclip' && !vitals.dead) {
       for (const m of moundSpots) {
@@ -680,8 +794,9 @@ function initGame(): void {
     const siltout = silt.siltoutAt(chamber);
     const siltThickness = silt.thicknessAt(chamber);
     const daylight = headAbove && Math.hypot(p.x, p.z) < 18 && p.y > -16; // open cenote only
-    // noclip = debug map survey: full visibility and brightness (user)
-    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis), siltout, currentVec, daylight, player.mode === 'noclip', siltThickness);
+    // noclip = debug map survey: full visibility and brightness (user);
+    // Cat Eyes lifts the final visibility — silt and dark included
+    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis) * perks.mods.visMult, siltout, currentVec, daylight, player.mode === 'noclip', siltThickness);
     siltFx.update(dt, p, siltThickness, !headAbove, currentVec);
     // squeeze claustrophobia: modest FOV pull-in
     const targetFov = player.mode !== 'noclip' && player.inSqueeze ? 64 : 75;
@@ -694,6 +809,32 @@ function initGame(): void {
     exhaleOrigin.y -= 0.18;
     bubbles.update(dt, exhaleOrigin, !headAbove && player.mode !== 'noclip', time, vitals.hr);
 
+    // ── Second Wind: the pocket ledger + the blackout revive ──
+    if (headAbove && region && !region.ref.includes('~')) {
+      const n = NODES.find((x) => x.id === region.ref);
+      if (n && (n.tags.includes('airPocket') || n.tags.includes('surface') || n.dry)) lastPocketNodeId = n.id;
+    }
+    if (vitals.dead && !revive.active && perks.owned.has('secondWind')) {
+      revive.active = true;
+      revive.t = 0;
+      hud.blackout(true, 'SECOND WIND');
+    }
+    if (revive.active) {
+      revive.t += dt;
+      if (revive.t >= TUNING.perks.secondWind.blackoutSec) {
+        revive.active = false;
+        perks.consumeSecondWind();
+        applyPerkEffects();
+        weapons.stripToSidearm();
+        vitals.dead = false;
+        vitals.hp = perks.mods.maxHp;
+        vitals.air = perks.mods.airCap;
+        teleport(lastPocketNodeId);
+        hud.blackout(false);
+        hud.toast('SECOND WIND — THE PERK IS SPENT');
+      }
+    }
+
     // ── combat: rounds, zombies, weapons (M5) ──
     // noclip is a survey mode — the site ignores the surveyor; death freezes
     // the run (R restarts)
@@ -704,8 +845,8 @@ function initGame(): void {
         hud.setRound(ev.roundStarted);
         flashStatus(`round ${ev.roundStarted} begins`);
       }
-      const acts = weapons.update(dt);
-      if (acts.fire) doShot();
+      const acts = weapons.update(dt, { reloadMult: perks.mods.reloadMult, fireDelayMult: perks.mods.fireDelayMult });
+      if (acts.fire) doShot(acts.fire);
       if (acts.melee) doMelee();
     }
     zombies.update(dt, {
@@ -768,6 +909,11 @@ function initGame(): void {
     zombies,
     weapons,
     points,
+    perks,
+    shops,
+    interact,
+    doors,
+    applyPerkEffects,
     doShot,
     doMelee,
     teleport,

@@ -574,6 +574,63 @@ canvas {
 #hud-ammo.empty {
   color: #e05545;
 }
+#hud-prompt {
+  position: absolute;
+  top: 58%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 15px;
+  letter-spacing: 2px;
+  color: #d8f2e8;
+  text-shadow: 0 0 6px #000;
+  white-space: nowrap;
+}
+#hud-prompt.disabled {
+  color: #7a8a84;
+}
+#hud-prompt .sub {
+  font-size: 11px;
+  color: #c9865a;
+  margin-top: 3px;
+}
+#hud-prompt .bar {
+  width: 140px;
+  height: 5px;
+  margin: 5px auto 0;
+  border: 1px solid #2a5a52;
+  background: rgba(4, 16, 18, 0.7);
+}
+#hud-prompt .fill {
+  height: 100%;
+  background: #57c9b8;
+}
+#hud-perks {
+  position: absolute;
+  bottom: 64px;
+  left: 14px;
+  display: flex;
+  gap: 4px;
+}
+#hud-perks .chip {
+  border: 1px solid;
+  padding: 1px 4px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  background: rgba(4, 14, 14, 0.7);
+}
+#hud-blackout {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  letter-spacing: 4px;
+  color: #7a8a84;
+  transition: opacity 0.5s;
+}
 #hud-death {
   position: absolute;
   inset: 0;

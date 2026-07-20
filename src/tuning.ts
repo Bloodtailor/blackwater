@@ -221,7 +221,8 @@ export const TUNING = {
     pauseCooldownSec: 20, // per-zombie, so nobody loops the same desk
   },
   weapons: {
-    // starter loadout (DESIGN §10.1): full arsenal + distinct-feel pass is M6
+    // Wall arsenal (DESIGN §10.1). Mechanical identity per gun (single/auto/
+    // spread/pierce/stab); the deeper feel polish is M6b's. Box guns land M6b.
     wristDart: {
       damage: 20,
       headshotMult: 3,
@@ -231,12 +232,81 @@ export const TUNING = {
       reloadSec: 1.6,
       rangeM: 45,
     },
+    speargun: {
+      damage: 130, // strong single — one-shots through round 1–2 bodies
+      headshotMult: 2,
+      magSize: 8,
+      reserveMax: 40,
+      fireDelaySec: 0.75,
+      reloadSec: 2.2,
+      rangeM: 55,
+    },
+    pneuDriver: {
+      damage: 18, // pneumatic dart hose — volume, not punch
+      headshotMult: 2.5,
+      magSize: 24,
+      reserveMax: 120,
+      fireDelaySec: 0.09,
+      reloadSec: 1.8,
+      rangeM: 40,
+    },
+    flechette: {
+      damage: 16, // per pellet
+      pellets: 8,
+      spreadDeg: 7,
+      headshotMult: 2,
+      magSize: 6,
+      reserveMax: 36,
+      fireDelaySec: 0.85,
+      reloadSec: 2.6,
+      rangeM: 18, // scatter dies fast in water
+    },
+    harpoon: {
+      damage: 200, // slow, heavy, keeps going
+      pierce: 3, // bodies one bolt can nail together
+      headshotMult: 2,
+      magSize: 4,
+      reserveMax: 24,
+      fireDelaySec: 1.25,
+      reloadSec: 2.8,
+      rangeM: 60,
+    },
+    lineLance: {
+      damage: 170, // fast stab, melee range, 2-target pierce; no ammo economy
+      stabRangeM: 3.0,
+      stabPierce: 2,
+      fireDelaySec: 0.5,
+    },
     knife: {
       damage: 150, // one-knife at round 1 (BO1 tradition)
       rangeM: 2.3,
       arcDeg: 55, // swing catches targets this far off view center
       cooldownSec: 0.85,
     },
+  },
+  perks: {
+    // DESIGN §10.5 — pick 4 of 9. Costs + effect numbers.
+    cap: 4,
+    barnacleHide: { cost: 2500, maxHp: 220 },
+    secondWind: { cost: 1500, blackoutSec: 2.4 },
+    greasedGears: { cost: 3000, reloadMult: 0.5 },
+    triggerFish: { cost: 2000, fireDelayMult: 1 / 1.3 }, // +30% fire rate
+    deepPockets: { cost: 4000, slots: 3 },
+    ironLungs: { cost: 2500, airCap: 150, drainMult: 0.85 },
+    catEyes: { cost: 2000, visMult: 1.4, beamWidenMult: 1.25 },
+    finKick: { cost: 2000, speedMult: 1.15, sprintDrainMult: 0.8 },
+    steadyHands: { cost: 1500, tiltDecayMult: 3 },
+  },
+  interact: {
+    reachM: 2.7, // how close E can act from
+    coneDeg: 42, // how far off view center a target can sit
+    doorHoldSec: 1.2, // grinding a choke/grate/hatch open
+    powerHoldSec: 1.5, // the Pile's breaker is theatrical
+    doorGrindSec: 1.2, // open animation length
+  },
+  power: {
+    lightSpacingM: 3.2, // string-light bulb spacing along the arteries
+    bulbBelowCeilingM: 0.4,
   },
   economy: {
     startPoints: 500,
@@ -250,6 +320,8 @@ export const TUNING = {
     batteryCost: 250,
     chemlightPackCost: 250,
     reelCost: 750,
+    // wall-gun price sheet (DESIGN §10.1); ammo refill = half gun cost
+    gunCost: { speargun: 500, pneuDriver: 1000, flechette: 1250, harpoon: 1500, lineLance: 1750 },
   },
   guideLine: {
     reelLengthM: 200,

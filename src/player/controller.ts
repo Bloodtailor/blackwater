@@ -32,6 +32,11 @@ export class PlayerController {
   readonly vel = new THREE.Vector3();
   /** Fired when a lunge triggers (main wires this to the HR spike). */
   onLunge?: () => void;
+  /** Fin Kick: swim speed/thrust multiplier (main sets from perks). */
+  speedMult = 1;
+  /** While an interact prompt is live, E belongs to it, not to camera roll
+   *  (M4.7 note: context-sensitive E). Main sets this each frame. */
+  suppressRollE = false;
   private keys = new Set<string>();
   private prevSprint = false;
   private prevSpace = false;
@@ -279,10 +284,11 @@ export class PlayerController {
     if (this.keys.has('ArrowRight')) this.rotateLook(-look, 0);
     if (this.keys.has('ArrowUp')) this.rotateLook(0, look);
     if (this.keys.has('ArrowDown')) this.rotateLook(0, -look);
-    // Q/E: manual camera roll (user 2026-07-19 — replaces the X auto-level)
+    // Q/E: manual camera roll (user 2026-07-19 — replaces the X auto-level).
+    // E yields to a live interact prompt (context-sensitive, M4.7 note).
     const rollRate = P.manualRollDegPerSec * dt;
     if (this.keys.has('KeyQ')) this.applyRollDelta(-rollRate);
-    if (this.keys.has('KeyE')) this.applyRollDelta(rollRate);
+    if (this.keys.has('KeyE') && !this.suppressRollE) this.applyRollDelta(rollRate);
     if (this.mode === 'walk') this.traditionalRotate(0, 0);
     this.camera.quaternion.copy(this.orient);
 
@@ -367,14 +373,16 @@ export class PlayerController {
       } else if (!this.sprinting) {
         this.streamline = Math.max(0, this.streamline - dt * S.idleDecayPerSec);
       }
+      // Fin Kick raises open-water speed; the squeeze crawl stays forced-slow
       const targetCap: number = this.inSqueeze
         ? P.squeezeSpeed
-        : THREE.MathUtils.lerp(P.swimSpeed, P.sprintSpeed, this.streamline);
+        : THREE.MathUtils.lerp(P.swimSpeed, P.sprintSpeed, this.streamline) * this.speedMult;
       // Heavy force-based swimming: bounded thrust, low drag. Slow to start,
       // hates stopping, redirecting costs real time. Thrust only cuts out
       // once you're properly clear of the water (breach), not while treading.
       const thrust =
         (this.sprinting ? P.sprintThrust : P.swimThrust) *
+        this.speedMult *
         (this.inSqueeze ? 0.7 : 1) *
         (h > 0.5 ? P.breachThrustCut : 1);
       if (this.wish.lengthSq() > 0) this.vel.addScaledVector(this.wish, thrust * dt);

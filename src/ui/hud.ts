@@ -5,6 +5,9 @@ import type { Vitals } from '../player/vitals';
 import type { GuideLine } from '../player/line';
 import type { Chemlights } from '../player/chemlights';
 import type { Weapons } from '../player/weapons';
+import type { PerkId } from '../cave/data';
+import type { Prompt } from '../economy/interact';
+import { PERK_INFO } from '../economy/perks';
 import { TUNING } from '../tuning';
 
 export class Hud {
@@ -28,6 +31,14 @@ export class Hud {
   private hitmarkEl: HTMLElement;
   private damageEl: HTMLElement;
   private ptickEl: HTMLElement;
+  private promptEl!: HTMLElement;
+  private promptLine!: HTMLElement;
+  private promptSub!: HTMLElement;
+  private promptFill!: HTMLElement;
+  private perksEl!: HTMLElement;
+  private blackoutEl!: HTMLElement;
+  /** Second Wind blackout suppresses the death screen while it plays. */
+  suppressDeath = false;
   private hitmarkTimer: number | null = null;
   private ptickTimer: number | null = null;
   private lastDepth = 0;
@@ -69,6 +80,15 @@ export class Hud {
     this.hitmarkEl.textContent = '✕';
     this.damageEl = make('hud-damage');
     this.ptickEl = make('hud-ptick');
+    this.promptEl = make('hud-prompt');
+    this.promptEl.innerHTML = '<div class="line"></div><div class="sub"></div><div class="bar"><div class="fill"></div></div>';
+    this.promptLine = this.promptEl.querySelector('.line') as HTMLElement;
+    this.promptSub = this.promptEl.querySelector('.sub') as HTMLElement;
+    this.promptFill = this.promptEl.querySelector('.fill') as HTMLElement;
+    this.promptEl.classList.add('hidden');
+    this.perksEl = make('hud-perks');
+    this.blackoutEl = make('hud-blackout');
+    this.blackoutEl.classList.add('hidden');
     this.kitEl = make('hud-kit');
     this.toastEl = make('hud-toast');
     this.deathEl = make('hud-death');
@@ -88,7 +108,7 @@ export class Hud {
       this.o2Fill.classList.add('reserve');
       this.o2Num.textContent = '!!';
     } else {
-      const frac = v.air / TUNING.air.capacity;
+      const frac = v.air / v.mods.airCap; // Iron Lungs widens the tank
       this.o2Fill.style.width = `${(frac * 100).toFixed(0)}%`;
       this.o2Fill.classList.remove('reserve');
       this.o2Fill.classList.toggle('low', v.lowAir);
@@ -112,7 +132,7 @@ export class Hud {
     const danger = v.air <= 0 ? 1 : v.lowAir ? 1 - v.air / TUNING.air.lowThreshold : 0;
     this.vignette.style.opacity = String(danger * 0.65);
 
-    this.deathEl.classList.toggle('hidden', !v.dead);
+    this.deathEl.classList.toggle('hidden', !v.dead || this.suppressDeath);
   }
 
   setPoints(p: number): void {
@@ -147,10 +167,49 @@ export class Hud {
     this.stirsEl.textContent = `the cave stirs… ${Math.max(0, Math.ceil(secondsLeft))}`;
   }
 
-  /** Ammo + reload state (bottom-right). */
+  /** Ammo + reload state + slot pips (bottom-right). */
   updateWeapon(w: Weapons): void {
-    this.ammoEl.textContent = w.reloading ? `${w.def.name} · RELOADING` : `${w.def.name} · ${w.mag} / ${w.reserve}`;
-    this.ammoEl.classList.toggle('empty', !w.reloading && w.mag === 0 && w.reserve === 0);
+    const s = w.current;
+    const slots = w.slots.map((_, i) => (i === w.cur ? '●' : '○')).join('');
+    const ammo = Number.isFinite(s.mag) ? `${s.mag} / ${s.reserve}` : '—';
+    this.ammoEl.textContent = w.reloading ? `${slots} ${s.def.name} · RELOADING` : `${slots} ${s.def.name} · ${ammo}`;
+    this.ammoEl.classList.toggle('empty', !w.reloading && s.mag === 0 && s.reserve === 0);
+  }
+
+  /** The buy prompt + hold progress (economy, M6a). */
+  updatePrompt(p: Prompt | null, progress: number): void {
+    if (!p) {
+      this.promptEl.classList.add('hidden');
+      return;
+    }
+    this.promptEl.classList.remove('hidden');
+    this.promptEl.classList.toggle('disabled', !p.enabled);
+    this.promptLine.textContent = `${p.holdSec > 0 ? 'HOLD E — ' : 'E — '}${p.text}`;
+    this.promptSub.textContent = p.sub ?? '';
+    this.promptSub.classList.toggle('hidden', !p.sub);
+    this.promptFill.style.width = `${(progress * 100).toFixed(0)}%`;
+    this.promptEl.querySelector('.bar')!.classList.toggle('hidden', p.holdSec <= 0);
+  }
+
+  /** Owned-perk chips (bottom-left, above the HR readout). */
+  setPerks(owned: Iterable<PerkId>): void {
+    this.perksEl.innerHTML = '';
+    for (const id of owned) {
+      const info = PERK_INFO[id];
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = info.name.split(' ').map((w) => w[0]).join('');
+      chip.title = info.name;
+      chip.style.borderColor = chip.style.color = `#${info.color.toString(16).padStart(6, '0')}`;
+      this.perksEl.appendChild(chip);
+    }
+  }
+
+  /** Second Wind blackout overlay. */
+  blackout(on: boolean, text = ''): void {
+    this.blackoutEl.classList.toggle('hidden', !on);
+    this.blackoutEl.textContent = text;
+    this.suppressDeath = on;
   }
 
   /** Subtle hitmarker; red-tinged on headshot (DESIGN §12: subtle). */
