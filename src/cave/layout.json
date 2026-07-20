@@ -437,7 +437,7 @@
         -33.15,
         23.8
       ],
-      "radius": 1.5,
+      "radius": 2.5,
       "dry": true,
       "zone": "galleries",
       "tags": [
@@ -488,7 +488,7 @@
         -21.25,
         3.4
       ],
-      "radius": 1.5,
+      "radius": 2.5,
       "dry": true,
       "zone": "galleries",
       "tags": [
@@ -681,7 +681,7 @@
         -46.75,
         34
       ],
-      "radius": 1.5,
+      "radius": 2.5,
       "dry": true,
       "zone": "maze",
       "tags": [
@@ -764,37 +764,37 @@
     {
       "id": "mz-air2",
       "pos": [
-        -10.2,
-        -53.04,
-        51
+        -24.46957129170172,
+        -73.2705382124706,
+        61.02745977968053
       ],
       "radius": 6.75,
       "stretch": [
-        1.2,
+        1.5,
         0.9,
-        1.2
+        0.5
       ],
       "dry": true,
-      "floor": 0.32,
       "spikes": 8,
       "falseUp": [
-        0.5000110003630133,
-        0.866019052628739,
-        0
+        0,
+        0,
+        1
       ],
       "zone": "maze",
       "tags": [
         "airPocket",
         "ambushPocket"
       ],
-      "water": 0.368
+      "water": 0.27,
+      "floor": 0.35
     },
     {
-      "id": "mz-air2-t1",
+      "id": "mz-teaser-t1",
       "pos": [
-        -4.25,
-        -46.75,
-        51.85
+        -27.598554468713807,
+        -71.07479650465835,
+        78.3224042822325
       ],
       "radius": 1.3,
       "dry": true,
@@ -802,11 +802,11 @@
       "tags": []
     },
     {
-      "id": "mz-air2-t2",
+      "id": "mz-teaser-t2",
       "pos": [
-        -15.299999999999999,
-        -46.239999999999995,
-        55.25
+        -32.801648171119375,
+        -90.8577478078971,
+        78.87988618459968
       ],
       "radius": 1.2,
       "dry": true,
@@ -818,7 +818,7 @@
       "pos": [
         6.8,
         -66.3,
-        56.1
+        54.630300787656005
       ],
       "radius": 4.7250000000000005,
       "stretch": [
@@ -843,9 +843,9 @@
     {
       "id": "mz-chapel",
       "pos": [
-        -5.1,
+        -5.921590229336329,
         -69.7,
-        61.199999999999996
+        60.21702248833365
       ],
       "radius": 5.4,
       "stretch": [
@@ -867,9 +867,9 @@
     {
       "id": "mz-coil",
       "pos": [
-        17,
+        18.18734634958417,
         -71.39999999999999,
-        61.199999999999996
+        60.50623277424036
       ],
       "radius": 4.050000000000001,
       "zone": "maze",
@@ -891,7 +891,7 @@
         -65.45,
         61.199999999999996
       ],
-      "radius": 1.5,
+      "radius": 2.5,
       "dry": true,
       "zone": "maze",
       "tags": [
@@ -945,9 +945,9 @@
     {
       "id": "mz-d3",
       "pos": [
-        -18.7,
-        -71.39999999999999,
-        56.1
+        -7.071048807510344,
+        -77.51125610213364,
+        42.63297211441805
       ],
       "radius": 2.07,
       "zone": "maze",
@@ -1024,9 +1024,9 @@
     {
       "id": "mz-b3",
       "pos": [
-        -13.6,
+        -15.388258298162393,
         -68,
-        57.8
+        56.44362155175088
       ],
       "radius": 1,
       "zone": "maze",
@@ -1094,8 +1094,8 @@
       "id": "throat-bottom",
       "pos": [
         8.5,
-        -119,
-        68
+        -116.16599241387404,
+        67.71895061434283
       ],
       "radius": 2.875,
       "zone": "throat",
@@ -1108,7 +1108,7 @@
       "pos": [
         8.5,
         -124.1,
-        78.2
+        74.25947800003745
       ],
       "radius": 4.050000000000001,
       "stretch": [
@@ -1127,9 +1127,9 @@
     {
       "id": "abyss-box",
       "pos": [
-        17,
+        16.303155191703098,
         -125.8,
-        81.6
+        76.05430626226001
       ],
       "radius": 2.875,
       "zone": "abyss",
@@ -1140,8 +1140,8 @@
     {
       "id": "abyss-toy",
       "pos": [
-        20.4,
-        -120.7,
+        -25.26928867665642,
+        -118.85547801979644,
         74.8
       ],
       "radius": 2.07,
@@ -1182,11 +1182,11 @@
     {
       "id": "abyss-air",
       "pos": [
-        -10.2,
-        -122.39999999999999,
+        -24.145368692874538,
+        -120.01450696979161,
         93.5
       ],
-      "radius": 1.5,
+      "radius": 2,
       "dry": true,
       "zone": "abyss",
       "tags": [
@@ -1197,25 +1197,28 @@
     {
       "id": "pap-chamber",
       "pos": [
-        -27.2,
-        -129.2,
-        76.5
+        15.620526924072642,
+        -68.28284829993247,
+        74.88629423452988
       ],
-      "radius": 4.050000000000001,
+      "radius": 5,
       "zone": "abyss",
       "tags": [
         "pap",
-        "perk"
+        "perk",
+        "airPocket"
       ],
       "contents": {
         "perk": "deepPockets"
-      }
+      },
+      "floor": 0.35,
+      "dry": true
     },
     {
       "id": "drill-head",
       "pos": [
         3.4,
-        -134.29999999999998,
+        -159.50703181864685,
         96.89999999999999
       ],
       "radius": 4.050000000000001,
@@ -1239,7 +1242,7 @@
       "id": "heart-apse",
       "pos": [
         11.9,
-        -134.29999999999998,
+        -171.04825227538865,
         100.3
       ],
       "radius": 2.875,
@@ -1256,9 +1259,9 @@
     {
       "id": "abyss-b1",
       "pos": [
-        -13.6,
-        -139.4,
-        91.8
+        -2.4614718114406386,
+        -169.39398055931852,
+        90.80611044817451
       ],
       "radius": 1,
       "zone": "abyss",
@@ -1273,7 +1276,7 @@
       "id": "abyss-b2",
       "pos": [
         10.2,
-        -130.9,
+        -167.90728656030402,
         91.8
       ],
       "radius": 1,
@@ -1357,24 +1360,169 @@
     {
       "id": "throat-elbow-5",
       "pos": [
-        15.299999999999999,
-        -123.25,
-        73.95
+        16.15142812307415,
+        -120.10475693062524,
+        68.17610523907273
       ],
-      "radius": 2,
+      "radius": 1.3,
       "zone": "throat",
       "tags": []
     },
     {
       "id": "abyss-elbow-6",
       "pos": [
-        -8.5,
+        -24.86102218775102,
         -125.8,
         91.8
       ],
       "radius": 2,
       "zone": "abyss",
       "tags": []
+    },
+    {
+      "id": "mz-elbow",
+      "pos": [
+        -24.469571291701715,
+        -73.2705382124706,
+        47.27254963583683
+      ],
+      "radius": 2.5,
+      "zone": "maze",
+      "tags": []
+    },
+    {
+      "id": "throat-rim-air-teaser",
+      "pos": [
+        -2.155509891031194,
+        -67.37738621941224,
+        76.47944225330139
+      ],
+      "radius": 3,
+      "zone": "maze",
+      "tags": [],
+      "stretch": [
+        1.5,
+        1,
+        2.5
+      ],
+      "dry": true,
+      "floor": 0.35,
+      "pillars": 2,
+      "spikes": 5,
+      "water": 0
+    },
+    {
+      "id": "abyss-air-copy",
+      "pos": [
+        -6.524099314150473,
+        -104.43145684305587,
+        80.37277169940573
+      ],
+      "radius": 2,
+      "dry": true,
+      "zone": "abyss",
+      "tags": [],
+      "water": 0.5
+    },
+    {
+      "id": "cath-faulse-chim-1",
+      "pos": [
+        -0.35544246833686977,
+        -100.00191444356433,
+        87.83963841259899
+      ],
+      "radius": 5,
+      "stretch": [
+        1.5,
+        2.1,
+        1.3
+      ],
+      "zone": "abyss",
+      "tags": []
+    },
+    {
+      "id": "cath-faulse-chim-2",
+      "pos": [
+        0.04959642984286727,
+        -101.42805703899676,
+        98.26723861207601
+      ],
+      "radius": 5,
+      "stretch": [
+        1.5,
+        2.1,
+        1.3
+      ],
+      "zone": "abyss",
+      "tags": []
+    },
+    {
+      "id": "cath-faulse-chim-4",
+      "pos": [
+        -6.9344129298302715,
+        -101.42805703899676,
+        89.55781364804395
+      ],
+      "radius": 4,
+      "stretch": [
+        1.5,
+        2.1,
+        1.3
+      ],
+      "zone": "abyss",
+      "tags": []
+    },
+    {
+      "id": "cath-faulse-chim-5",
+      "pos": [
+        -4.3025769493212955,
+        -93.3654377724272,
+        95.24863156032664
+      ],
+      "radius": 10,
+      "stretch": [
+        1.5,
+        0.75,
+        1.3
+      ],
+      "zone": "abyss",
+      "tags": []
+    },
+    {
+      "id": "cath-faulse-chim-6",
+      "pos": [
+        15.071816804612482,
+        -104.44098020659015,
+        101.83165380251279
+      ],
+      "radius": 10,
+      "stretch": [
+        1.5,
+        2,
+        1.3
+      ],
+      "zone": "abyss",
+      "tags": []
+    },
+    {
+      "id": "throat-rim-air-teaser-copy",
+      "pos": [
+        2.314355838873208,
+        -63.67235841282521,
+        69.11674628010603
+      ],
+      "radius": 3,
+      "zone": "maze",
+      "tags": [],
+      "stretch": [
+        1.5,
+        1,
+        2.5
+      ],
+      "dry": true,
+      "floor": 0.35,
+      "spikes": 5,
+      "water": 0
     }
   ],
   "edges": [
@@ -1670,11 +1818,10 @@
       "b": "mz-b",
       "width": "normal",
       "falseUp": [
-        -0.14018235567070347,
-        0.8711332102393715,
-        0.47061219403736154
-      ],
-      "airGap": 0.5
+        0,
+        0,
+        0
+      ]
     },
     {
       "a": "mz-b",
@@ -1711,11 +1858,10 @@
       "b": "mz-f",
       "width": "normal",
       "falseUp": [
-        0.15996001499375273,
-        0.8197950768429827,
-        -0.549862551541025
-      ],
-      "airGap": 0.5
+        0,
+        0,
+        0
+      ]
     },
     {
       "a": "mz-organ",
@@ -1731,18 +1877,13 @@
       }
     },
     {
-      "a": "mz-infirm",
-      "b": "mz-air2",
+      "a": "mz-air2",
+      "b": "mz-teaser-t1",
       "width": "normal"
     },
     {
       "a": "mz-air2",
-      "b": "mz-air2-t1",
-      "width": "normal"
-    },
-    {
-      "a": "mz-air2",
-      "b": "mz-air2-t2",
+      "b": "mz-teaser-t2",
       "width": "normal"
     },
     {
@@ -1764,18 +1905,6 @@
       "a": "mz-stores",
       "b": "mz-coil",
       "width": "normal"
-    },
-    {
-      "a": "mz-chapel",
-      "b": "mz-coil",
-      "width": "squeeze",
-      "waypoints": [
-        [
-          5.1,
-          -71.39999999999999,
-          62.9
-        ]
-      ]
     },
     {
       "a": "mz-coil",
@@ -1961,30 +2090,18 @@
     },
     {
       "a": "abyss-hall",
-      "b": "abyss-toy",
-      "width": "normal"
-    },
-    {
-      "a": "abyss-hall",
       "b": "cathedral",
       "width": "open"
     },
     {
       "a": "cathedral",
       "b": "abyss-elbow-6",
-      "width": "squeeze"
+      "width": "open"
     },
     {
       "a": "abyss-elbow-6",
       "b": "abyss-air",
-      "width": "squeeze"
-    },
-    {
-      "a": "cathedral",
-      "b": "pap-chamber",
-      "width": "normal",
-      "powerGate": true,
-      "gateAt": 0.75
+      "width": "normal"
     },
     {
       "a": "cathedral",
@@ -2005,6 +2122,93 @@
       "a": "drill-head",
       "b": "abyss-b2",
       "width": "squeeze"
+    },
+    {
+      "a": "mz-elbow",
+      "b": "mz-infirm",
+      "width": "normal"
+    },
+    {
+      "a": "mz-elbow",
+      "b": "mz-air2",
+      "width": "normal"
+    },
+    {
+      "a": "throat-rim-air",
+      "b": "pap-chamber",
+      "width": "normal"
+    },
+    {
+      "a": "mz-coil",
+      "b": "mz-chapel",
+      "width": "squeeze"
+    },
+    {
+      "a": "abyss-toy",
+      "b": "abyss-elbow-6",
+      "width": "normal"
+    },
+    {
+      "a": "abyss-air-copy",
+      "b": "cathedral",
+      "width": "open",
+      "waypoints": [
+        [
+          -6.554392858368219,
+          -114.53014306815616,
+          80.02102795243849
+        ]
+      ]
+    },
+    {
+      "a": "cath-faulse-chim-4",
+      "b": "cathedral",
+      "width": "normal"
+    },
+    {
+      "a": "cath-faulse-chim-2",
+      "b": "cathedral",
+      "width": "normal"
+    },
+    {
+      "a": "cath-faulse-chim-1",
+      "b": "cathedral",
+      "width": "normal"
+    },
+    {
+      "a": "cath-faulse-chim-5",
+      "b": "cath-faulse-chim-2",
+      "width": "normal"
+    },
+    {
+      "a": "cath-faulse-chim-2",
+      "b": "cath-faulse-chim-4",
+      "width": "normal"
+    },
+    {
+      "a": "cath-faulse-chim-5",
+      "b": "cath-faulse-chim-1",
+      "width": "normal"
+    },
+    {
+      "a": "cath-faulse-chim-5",
+      "b": "cath-faulse-chim-6",
+      "width": "normal"
+    },
+    {
+      "a": "throat-rim-air-teaser-copy",
+      "b": "throat-rim-air-teaser",
+      "width": "normal"
+    },
+    {
+      "a": "throat-rim-air-teaser",
+      "b": "throat-rim-air",
+      "width": "normal"
+    },
+    {
+      "a": "throat-rim-air-teaser-copy",
+      "b": "throat-rim-air",
+      "width": "normal"
     }
   ],
   "zoneHubs": {
