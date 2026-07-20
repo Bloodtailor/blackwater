@@ -387,11 +387,14 @@ export class PlayerController {
       }
       // Surface physics: gravity ramps in as you rise clear of the line, but
       // a buoyancy spring holds your head comfortably out of the water, and
-      // damping near the line stops pogo-bobbing.
+      // damping near the line stops pogo-bobbing. All along the REFERENCE up
+      // (user 2026-07-19: in falseUp areas gravity follows the lie too, so a
+      // listed room's air pulls you onto its tilted pool, not sideways).
       if (h > 0) {
-        this.vel.y -= P.gravity * Math.min(1, h / 0.8) * dt;
-        if (h < P.floatHeight) this.vel.y += (P.floatHeight - h) * P.buoyancy * dt;
-        if (h < 0.6) this.vel.y *= Math.max(0, 1 - P.surfaceDamp * dt);
+        const up = this.refUp;
+        this.vel.addScaledVector(up, -P.gravity * Math.min(1, h / 0.8) * dt);
+        if (h < P.floatHeight) this.vel.addScaledVector(up, (P.floatHeight - h) * P.buoyancy * dt);
+        if (h < 0.6) this.vel.addScaledVector(up, -this.vel.dot(up) * Math.min(1, P.surfaceDamp * dt));
       }
       pos.addScaledVector(this.vel, dt);
       // splash brake: diving back in kills most of the plunge so momentum
@@ -421,8 +424,11 @@ export class PlayerController {
         }
       }
       // surface into walking: head above water and floor close underfoot
+      // ("underfoot" = along the reference up, so listed rooms land you on
+      // their fake floor)
       if (headAbove) {
-        const probe = { x: pos.x, y: pos.y - P.eyeHeight, z: pos.z };
+        const up = this.refUp;
+        const probe = { x: pos.x - up.x * P.eyeHeight, y: pos.y - up.y * P.eyeHeight, z: pos.z - up.z * P.eyeHeight };
         if (resolveCollision(probe, P.radius)) {
           this.mode = 'walk';
           this.grounded = true;
@@ -451,35 +457,44 @@ export class PlayerController {
         this.prevSpace = this.keys.has('Space');
         return;
       }
-      // walk: horizontal wish, gravity, SDF ground with snap (no jitter),
-      // snappy jump with coyote time (dolphin dives off the shore)
-      this.wish.y = 0;
+      // walk: wish flattened onto the ground plane, gravity, SDF ground with
+      // snap (no jitter), snappy jump with coyote time (dolphin dives off the
+      // shore). The WHOLE frame runs along the reference up (user 2026-07-19:
+      // in falseUp areas "down" is the lie's down — you walk the fake floor
+      // of a listed room and jump off it along its fake up).
+      const up = this.refUp;
+      this.wish.addScaledVector(up, -this.wish.dot(up));
       if (this.wish.lengthSq() > 0) this.wish.normalize();
-      const target = this.wish.multiplyScalar(P.walkSpeed);
-      this.vel.x = THREE.MathUtils.lerp(this.vel.x, target.x, Math.min(1, dt / 0.15));
-      this.vel.z = THREE.MathUtils.lerp(this.vel.z, target.z, Math.min(1, dt / 0.15));
+      const vUp = this.vel.dot(up);
+      this.vTmp.copy(this.vel).addScaledVector(up, -vUp); // ground-plane velocity
+      this.vTmp2.copy(this.wish).multiplyScalar(P.walkSpeed);
+      this.vTmp.lerp(this.vTmp2, Math.min(1, dt / 0.15));
+      this.vel.copy(this.vTmp).addScaledVector(up, vUp);
       this.coyote = this.grounded ? P.coyoteTime : Math.max(0, this.coyote - dt);
       if (this.keys.has('Space') && !this.prevSpace && this.coyote > 0) {
-        this.vel.y = P.jumpSpeed;
+        this.vel.addScaledVector(up, P.jumpSpeed - this.vel.dot(up)); // takeoff along the (fake) up
         this.coyote = 0;
         this.grounded = false;
       }
-      if (!this.grounded || this.vel.y > 0) this.vel.y -= P.gravity * dt;
+      if (!this.grounded || this.vel.dot(up) > 0) this.vel.addScaledVector(up, -P.gravity * dt);
       pos.addScaledVector(this.vel, dt);
-      const body = { x: pos.x, y: pos.y - P.eyeHeight, z: pos.z };
+      const body = { x: pos.x - up.x * P.eyeHeight, y: pos.y - up.y * P.eyeHeight, z: pos.z - up.z * P.eyeHeight };
       const corrected = resolveCollision(body, P.radius);
-      let grounded = corrected && this.vel.y <= 0.05;
-      if (!corrected && this.vel.y <= 0) {
+      let grounded = corrected && this.vel.dot(up) <= 0.05;
+      if (!corrected && this.vel.dot(up) <= 0) {
         // ground-snap: floor just below the feet? stick, don't micro-fall
         const d = sdf(body.x, body.y, body.z);
         if (d > -(P.radius + 0.3)) {
-          body.y -= -d - P.radius;
+          body.x += up.x * (d + P.radius);
+          body.y += up.y * (d + P.radius);
+          body.z += up.z * (d + P.radius);
           grounded = true;
         }
       }
       this.grounded = grounded;
-      if (grounded && this.vel.y < 0) this.vel.y = 0;
-      pos.set(body.x, body.y + P.eyeHeight, body.z);
+      const vUpAfter = this.vel.dot(up);
+      if (grounded && vUpAfter < 0) this.vel.addScaledVector(up, -vUpAfter);
+      pos.set(body.x + up.x * P.eyeHeight, body.y + up.y * P.eyeHeight, body.z + up.z * P.eyeHeight);
       resolveCollision(pos, 0.3); // headroom
     }
     this.prevSprint = this.sprinting;
