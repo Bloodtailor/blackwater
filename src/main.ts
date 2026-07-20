@@ -4,7 +4,7 @@ import { DebugPanel } from './debug/panel';
 import { buildTuningUI } from './debug/tuningPanel';
 import { NODES, buildAirWaterMap, buildFalseUpMap, getNode, waterSurfaceLevel, type Zone } from './cave/data';
 import { buildWaterSurfaces } from './cave/waterViz';
-import { initSdf, regionAt, resolveCollision, sdf } from './cave/sdf';
+import { gradient, initSdf, regionAt, resolveCollision, sdf } from './cave/sdf';
 import { buildCaveMesh } from './cave/mesh';
 import { buildDoors, openAllDoors, openDoor } from './cave/doors';
 import { buildMounds, columnDistSq, placeMounds, syncMounds } from './cave/mounds';
@@ -122,7 +122,7 @@ function initGame(): void {
     if (SETTINGS.fullscreenOnPlay && !document.fullscreenElement) {
       document.documentElement
         .requestFullscreen()
-        .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'Space']))
+        .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyX', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'Space']))
         .catch(() => {});
     }
   });
@@ -185,10 +185,9 @@ function initGame(): void {
 
   // ── hotkeys & debug ──
   // shared control state (tick writes, hotkeys read)
-  const ctl = { grabbing: false, tieTimer: 0 };
+  const ctl = { grabbing: false, tTime: 0, xTime: 0, lineWasDeployed: false };
   debug.hotkey('KeyH', 'Hide UI (screenshot mode)', () => ui.classList.toggle('hidden'));
-  debug.hotkey('KeyF', 'Flashlight (anchor/tie while grabbing)', () => {
-    if (ctl.grabbing) return; // F is the tie-off ceremony while wall-grabbing
+  debug.hotkey('KeyF', 'Flashlight', () => {
     if (vitals.battery > 0) vitals.flashlightOn = !vitals.flashlightOn;
   });
   debug.hotkey('KeyG', 'Toss chemlight', () => {
@@ -202,17 +201,10 @@ function initGame(): void {
     player.mode = player.mode === 'noclip' ? 'swim' : 'noclip';
     if (player.mode === 'noclip') vitals.god = true; // user: noclip implies god
   });
-  debug.hotkey('KeyR', 'Lay/stop line (restart when dead)', () => {
-    if (vitals.dead) {
-      location.reload();
-      return;
-    }
-    if (player.mode === 'noclip') return;
-    const p = camera.position;
-    const r = guideLine.toggleLaying([p.x, p.y - 0.25, p.z]);
-    hud.toast(
-      r === 'started' || r === 'resumed' ? 'LAYING LINE' : r === 'stopped' ? 'LINE STOPPED' : 'LINE ENDS ELSEWHERE',
-    );
+  // R is reserved for the shooter (reload, M5/M6) — line moved to T/X
+  // (user 2026-07-19 round 12). When dead it restarts the dive.
+  debug.hotkey('KeyR', 'Restart (when dead)', () => {
+    if (vitals.dead) location.reload();
   });
   // Ghost-wall probe: press P where collision feels wrong; records the spot
   // and the field-vs-mesh mismatch along your view for later diagnosis.
@@ -377,8 +369,7 @@ function initGame(): void {
   let frames = 0;
   let fpsTime = 0;
   let time = 0;
-  let fPrev = false;
-  let cPrev = false;
+  const gradTmp: [number, number, number] = [0, 0, 0];
   const exhaleOrigin = new THREE.Vector3();
   const lookDir = new THREE.Vector3();
   const beamDir = new THREE.Vector3();
@@ -417,7 +408,7 @@ function initGame(): void {
 
     const hand: [number, number, number] = [p.x, p.y - 0.25, p.z];
     // wall grab (hold Ctrl near rock, user 2026-07-19): freeze in place —
-    // the current can't move you, and the tie ceremony happens here
+    // pure movement brace against the current (no line duties anymore)
     ctl.grabbing =
       !vitals.dead &&
       player.mode === 'swim' &&
@@ -425,56 +416,99 @@ function initGame(): void {
       sdf(p.x, p.y, p.z) > -(TUNING.player.radius + TUNING.player.grabWallDistM);
     if (ctl.grabbing) player.vel.set(0, 0, 0);
 
-    // follow mode (hold T near the line): direction LATCHES on engage so you
-    // can look around freely while hand-over-handing (user 2026-07-19)
+    // ── THE LINE (controls rework, user 2026-07-19 round 12: constant use,
+    // in a panic, zero overlap with combat keys) ──
+    //   T tap  = lay / stop / resume (context) — starting auto-anchors
+    //   T hold = ride the line (follow, latched direction, free look)
+    //   X tap  = tie-off while laying (instant — the 4 s ceremony is gone)
+    //   X hold = reel in from the end: glide toward the anchor, collecting
+    const HOLD_S = TUNING.guideLine.tapHoldSeconds;
     let following = false;
+    let reeling = false;
     const tHeld = player.keyDown('KeyT');
-    if (!tHeld) {
-      guideLine.followEnd();
-    } else if (!ctl.grabbing && player.mode === 'swim') {
-      // engage (or keep trying to) while held; direction latches once
-      if (!guideLine.followingActive) {
-        camera.getWorldDirection(lookDir);
-        guideLine.followBegin(hand, [lookDir.x, lookDir.y, lookDir.z]);
-      }
-      if (!vitals.dead && !headAbove) {
-        const fv = guideLine.followVelocity(hand);
-        if (fv) {
-          following = true;
-          player.vel.set(fv[0], fv[1], fv[2]);
-          p.addScaledVector(player.vel, dt);
-          resolveCollision(p, TUNING.player.radius);
+    if (tHeld) {
+      ctl.tTime += dt;
+      if (ctl.tTime >= HOLD_S && !ctl.grabbing && player.mode === 'swim') {
+        // hold: engage (or keep trying to); direction latches once
+        if (!guideLine.followingActive) {
+          camera.getWorldDirection(lookDir);
+          guideLine.followBegin(hand, [lookDir.x, lookDir.y, lookDir.z]);
         }
-      }
-    }
-    if (!vitals.dead && !following && !ctl.grabbing) player.update(dt, lvl);
-
-    // the anchor/tie ceremony: HOLD F for 4 s while wall-grabbing; tap F at a
-    // stopped line's end to resume laying; tap C there to reel in
-    const fHeld = player.keyDown('KeyF');
-    const cHeld = player.keyDown('KeyC');
-    if (ctl.grabbing && fHeld) {
-      if (!fPrev && guideLine.resumeLaying(hand)) {
-        hud.toast('LAYING LINE');
-        ctl.tieTimer = 0;
-      } else if (guideLine.mode === 'laying' || !guideLine.deployed) {
-        ctl.tieTimer += dt;
-        if (ctl.tieTimer >= TUNING.guideLine.tieSeconds) {
-          const r = guideLine.pin(hand);
-          hud.toast(r === 'anchored' ? 'ANCHOR SET — LAYING LINE' : 'TIE-OFF SET');
-          ctl.tieTimer = 0;
+        if (!vitals.dead && !headAbove) {
+          const fv = guideLine.followVelocity(hand);
+          if (fv) {
+            following = true;
+            player.vel.set(fv[0], fv[1], fv[2]);
+            p.addScaledVector(player.vel, dt);
+            resolveCollision(p, TUNING.player.radius);
+          }
         }
       }
     } else {
-      ctl.tieTimer = 0;
+      if (ctl.tTime > 0 && ctl.tTime < HOLD_S && !vitals.dead && player.mode !== 'noclip') {
+        // tap: context toggle
+        if (guideLine.mode === 'laying' || guideLine.mode === 'reeling') {
+          guideLine.toggleLaying(hand);
+          hud.toast('LINE STOPPED');
+        } else if (!guideLine.deployed) {
+          // starting: auto-anchor to the nearest rock in reach, else the
+          // line just trails from your hand
+          const d = sdf(hand[0], hand[1], hand[2]);
+          if (-d <= TUNING.guideLine.anchorReachM) {
+            gradient(hand[0], hand[1], hand[2], gradTmp);
+            const gl = Math.hypot(gradTmp[0], gradTmp[1], gradTmp[2]) || 1;
+            guideLine.pin([hand[0] - (gradTmp[0] / gl) * d, hand[1] - (gradTmp[1] / gl) * d, hand[2] - (gradTmp[2] / gl) * d]);
+            hud.toast('ANCHORED — LAYING LINE');
+          } else {
+            guideLine.toggleLaying(hand);
+            hud.toast('LAYING LINE (no rock in reach to anchor)');
+          }
+        } else {
+          const r = guideLine.toggleLaying(hand);
+          hud.toast(r === 'resumed' ? 'LAYING LINE' : 'LINE ENDS ELSEWHERE — HOLD T TO RIDE IT');
+        }
+      }
+      guideLine.followEnd();
+      ctl.tTime = 0;
     }
-    if (ctl.grabbing && cHeld && !cPrev && guideLine.beginReel(hand)) hud.toast('REELING IN');
-    fPrev = fHeld;
-    cPrev = cHeld;
+    const xHeld = player.keyDown('KeyX');
+    if (xHeld && !vitals.dead && player.mode !== 'noclip') {
+      ctl.xTime += dt;
+      if (ctl.xTime >= HOLD_S) {
+        if (guideLine.mode !== 'reeling' && guideLine.beginReel(hand)) hud.toast('REELING IN');
+        if (guideLine.mode === 'reeling' && player.mode === 'swim' && !ctl.grabbing && !headAbove) {
+          const rv = guideLine.reelVelocity(hand);
+          if (rv) {
+            reeling = true;
+            player.vel.set(rv[0], rv[1], rv[2]);
+            p.addScaledVector(player.vel, dt);
+            resolveCollision(p, TUNING.player.radius);
+          }
+        }
+      }
+    } else {
+      if (ctl.xTime > 0 && ctl.xTime < HOLD_S && !vitals.dead && player.mode !== 'noclip') {
+        // tap: instant tie-off while laying
+        if (guideLine.mode === 'laying') {
+          guideLine.pin(hand);
+          hud.toast('TIE-OFF SET');
+        } else if (guideLine.deployed) {
+          hud.toast('HOLD X AT THE LINE END TO REEL IN');
+        }
+      }
+      if (guideLine.mode === 'reeling') {
+        guideLine.endReel();
+        hud.toast('REEL PAUSED — LINE STOPPED');
+      }
+      ctl.xTime = 0;
+    }
+    if (!vitals.dead && !following && !reeling && !ctl.grabbing) player.update(dt, lvl);
 
     // guide line pays out behind the hand (never in noclip, not while
     // hand-over-handing the line itself)
     if (player.mode !== 'noclip') guideLine.update(hand, !following);
+    if (ctl.lineWasDeployed && !guideLine.deployed) hud.toast('LINE RECOVERED — STOWED');
+    ctl.lineWasDeployed = guideLine.deployed;
     lineFx.update();
     chems.update(dt);
     chemFx.update(p);
@@ -556,7 +590,7 @@ function initGame(): void {
     exhaleOrigin.y -= 0.18;
     bubbles.update(dt, exhaleOrigin, !headAbove && player.mode !== 'noclip', time, vitals.hr);
     hud.update(dt, vitals, -p.y);
-    hud.updateKit(guideLine, chems, following, ctl.grabbing, ctl.tieTimer / TUNING.guideLine.tieSeconds);
+    hud.updateKit(guideLine, chems, following, ctl.grabbing, guideLine.nearEnd(hand));
     if (statusFlash > 0) statusFlash -= dt;
   };
 

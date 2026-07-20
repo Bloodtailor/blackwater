@@ -12,8 +12,8 @@ function swim(gl: GuideLine, from: Vec3, to: Vec3, steps = 200): void {
   }
 }
 
-describe('laying (user 2026-07-19: start anywhere, stop any time)', () => {
-  it('R starts a line anywhere, pays out ~1 m points, R stops it, R at the end resumes', () => {
+describe('laying (T tap: start anywhere, stop any time, resume at the end)', () => {
+  it('starts a line anywhere, pays out ~1 m points, stops, resumes at the end', () => {
     const gl = new GuideLine();
     expect(gl.toggleLaying([0, 0, 0])).toBe('started');
     expect(gl.mode).toBe('laying');
@@ -41,7 +41,7 @@ describe('laying (user 2026-07-19: start anywhere, stop any time)', () => {
   });
 });
 
-describe('anchors & tie-offs (wall-grab ceremony; main owns the 4 s timer)', () => {
+describe('anchors & tie-offs (instant: auto-anchor on start, X tap mid-lay)', () => {
   it('pin() with no line anchors and starts laying; pin() mid-lay ties off', () => {
     const gl = new GuideLine();
     expect(gl.pin([0, 0, 0])).toBe('anchored');
@@ -53,7 +53,7 @@ describe('anchors & tie-offs (wall-grab ceremony; main owns the 4 s timer)', () 
   });
 });
 
-describe('reeling in (C while grabbing the end)', () => {
+describe('reeling in (hold X at the end: glide toward the anchor, collecting)', () => {
   it('winds the line back point by point and stows at the start', () => {
     const gl = new GuideLine();
     gl.toggleLaying([0, 0, 0]);
@@ -68,14 +68,56 @@ describe('reeling in (C while grabbing the end)', () => {
     expect(gl.reelM).toBeCloseTo(G.reelLengthM, 0);
   });
 
-  it('F at the end of a stopped line resumes laying', () => {
+  it('reelVelocity glides toward the anchor; simulated hold recovers the whole line', () => {
+    const gl = new GuideLine();
+    gl.toggleLaying([0, 0, 0]);
+    swim(gl, [0, 0, 0], [15, 0, 0]);
+    gl.toggleLaying([15, 0, 0]); // stop, come back later
+    expect(gl.beginReel([15, 0, 0])).toBe(true);
+    const v = gl.reelVelocity([15, 0, 0]);
+    expect(v).not.toBeNull();
+    expect(v![0]).toBeLessThan(-2); // pulled toward the anchor (−x)
+    // hold X: integrate the glide, collecting as we go
+    const hand: Vec3 = [15, 0, 0];
+    const dt = 1 / 60;
+    for (let i = 0; i < 60 * 20 && gl.deployed; i++) {
+      const rv = gl.reelVelocity(hand);
+      if (rv) {
+        hand[0] += rv[0] * dt;
+        hand[1] += rv[1] * dt;
+        hand[2] += rv[2] * dt;
+      }
+      // the game loop always ticks update(); the final stow happens there
+      gl.update(hand);
+    }
+    expect(gl.deployed).toBe(false); // fully recovered and stowed
+    expect(gl.mode).toBe('idle');
+    expect(gl.reelM).toBeCloseTo(G.reelLengthM, 0);
+  });
+
+  it('releasing X mid-reel leaves the remaining line stopped in place', () => {
+    const gl = new GuideLine();
+    gl.toggleLaying([0, 0, 0]);
+    swim(gl, [0, 0, 0], [10, 0, 0]);
+    gl.beginReel([10, 0, 0]);
+    swim(gl, [10, 0, 0], [6, 0, 0]); // collect a stretch
+    gl.endReel();
+    expect(gl.mode).toBe('stopped');
+    expect(gl.deployed).toBe(true);
+    // winding collects up to reelInRadiusM around the hand, so the new end
+    // trails just behind you — and it is grabbable again: resume from it
+    const end = gl.points[gl.points.length - 1];
+    expect(Math.hypot(end[0] - 6, end[1], end[2])).toBeLessThanOrEqual(G.reelInRadiusM + 1.1);
+    expect(gl.toggleLaying(end)).toBe('resumed');
+  });
+
+  it('reeling straight out of laying works ("wait, wrong way")', () => {
     const gl = new GuideLine();
     gl.toggleLaying([0, 0, 0]);
     swim(gl, [0, 0, 0], [8, 0, 0]);
-    gl.toggleLaying([8, 0, 0]); // stop
-    expect(gl.resumeLaying([4, 0, 0])).toBe(false);
-    expect(gl.resumeLaying([8, 0, 0])).toBe(true);
     expect(gl.mode).toBe('laying');
+    expect(gl.beginReel([8, 0, 0])).toBe(true); // end is at the hand mid-lay
+    expect(gl.mode).toBe('reeling');
   });
 });
 

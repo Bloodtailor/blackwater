@@ -209,10 +209,11 @@ export const TUNING = {
     maxDeployedM: 400,
     followSpeed: 3.5,
     grabRadiusM: 1.5,
-    tieSeconds: 4, // hold F while wall-grabbing to set an anchor/tie-off
+    tapHoldSeconds: 0.3, // T/X shorter than this = tap, longer = hold action
+    anchorReachM: 2.0, // starting a line auto-anchors to rock within this
     pointSpacingM: 1.0, // line vertices laid this far apart while paying out
-    reelInRadiusM: 2.2, // walking the line back re-reels points inside this
-    followPullPerSec: 3, // how hard follow mode pulls you onto the line
+    reelInRadiusM: 2.2, // reeling collects points inside this
+    followPullPerSec: 3, // how hard follow/reel pulls you onto the line
   },
 } as const;
 

@@ -1,13 +1,16 @@
-// Guide line reel (DESIGN §6.6; UX redesigned per user 2026-07-19):
+// Guide line reel (DESIGN §6.6; controls rework 2026-07-19 round 12 — the
+// user: players use this constantly AND in a panic, so it is two keys that
+// never touch the combat set:
 //
-//  • Start laying ANYWHERE (R toggles laying on/off; no anchor required —
-//    the line simply trails from your hand until you pin it).
-//  • Anchors/tie-offs are a deliberate ceremony: wall-grab (Ctrl) and hold F
-//    for tieSeconds — main owns the timer, then calls pin().
-//  • Grab the line's end later: F resumes laying, C reels it back in,
-//    consuming the line point by point; recover the anchor and it's stowed.
-//  • Follow mode (hold T) latches a travel DIRECTION when engaged, so you
-//    can look around freely while hand-over-handing (user 2026-07-19).
+//  • T tap — lay / stop / resume, by context. Starting auto-anchors to the
+//    nearest rock in reach (main finds the wall point and calls pin()); no
+//    ceremony, no timer. Stopping auto-leaves the end grabbable.
+//  • T hold — ride the line (follow): latches a travel DIRECTION on engage,
+//    then glides hand-over-hand at any visibility with free look.
+//  • X tap while laying — instant tie-off pin at the hand.
+//  • X hold near the end — reel: glide back along the line toward the
+//    anchor, collecting points as you pass (reelVelocity + update); release
+//    leaves the rest stopped in place; collect the anchor and it stows.
 //
 // Pure logic, no three dependency (unit-testable); rendering in lineRender.ts.
 
@@ -43,7 +46,8 @@ export class GuideLine {
     return this.deployed && d3(hand, this.points[this.points.length - 1]) <= TUNING.guideLine.reelInRadiusM;
   }
 
-  /** R key: toggle laying. Starting needs no anchor and works anywhere. */
+  /** T tap: toggle laying. Starting needs no anchor and works anywhere
+   *  (main prefers pin() at a wall point when rock is in reach). */
   toggleLaying(hand: Vec3): 'started' | 'stopped' | 'resumed' | 'far-from-end' {
     if (this.mode === 'laying' || this.mode === 'reeling') {
       this.mode = 'stopped';
@@ -66,7 +70,8 @@ export class GuideLine {
     return 'far-from-end';
   }
 
-  /** The 4-second wall-grab ceremony completed: pin the line here. */
+  /** Pin the line here: no line = anchor + start laying; mid-lay = tie-off.
+   *  Instant (X tap / auto-anchor) — the 4 s ceremony is gone. */
   pin(hand: Vec3): 'anchored' | 'tied' {
     if (!this.deployed) {
       this.points.push([...hand]);
@@ -88,20 +93,53 @@ export class GuideLine {
     return 'tied';
   }
 
-  /** C while grabbing the end: wind the line back in as you travel it. */
+  /** X held near the end (works mid-lay too — "wait, wrong way"): start
+   *  winding the line back in. */
   beginReel(hand: Vec3): boolean {
     if (!this.deployed || !this.nearEnd(hand)) return false;
+    this.followDir = 0;
     this.mode = 'reeling';
     this.version++;
     return true;
   }
 
-  /** F while grabbing the end of a stopped line: keep laying from here. */
-  resumeLaying(hand: Vec3): boolean {
-    if (this.mode !== 'stopped' || !this.nearEnd(hand)) return false;
-    this.mode = 'laying';
+  /** X released: leave whatever line remains stopped in place. */
+  endReel(): void {
+    if (this.mode !== 'reeling') return;
+    this.mode = this.deployed ? 'stopped' : 'idle';
     this.version++;
-    return true;
+  }
+
+  /** Reeling glide: pulled along the line TOWARD the anchor while update()
+   *  collects the points behind you. Same feel as follow, opposite intent. */
+  reelVelocity(hand: Vec3): Vec3 | null {
+    if (this.mode !== 'reeling' || !this.deployed) return null;
+    const G = TUNING.guideLine;
+    if (this.points.length < 2) {
+      // only the anchor left: home the last stretch so a held X finishes
+      // the recovery instead of dying just short of the wall
+      const a = this.points[0];
+      const d = d3(hand, a);
+      if (d > G.grabRadiusM + G.reelInRadiusM) return null;
+      const s = G.followSpeed / (d || 1);
+      return [(a[0] - hand[0]) * s, (a[1] - hand[1]) * s, (a[2] - hand[2]) * s];
+    }
+    const near = this.nearestSegment(hand);
+    if (near && near.d <= G.grabRadiusM) {
+      const pull = Math.min(G.followPullPerSec, G.followPullPerSec * near.d);
+      return [
+        -near.tan[0] * G.followSpeed + (near.pt[0] - hand[0]) * pull,
+        -near.tan[1] * G.followSpeed + (near.pt[1] - hand[1]) * pull,
+        -near.tan[2] * G.followSpeed + (near.pt[2] - hand[2]) * pull,
+      ];
+    }
+    // the wind-in radius outruns the grab radius, so the retreating end can
+    // slip out of the hand — chase it instead of stalling
+    const end = this.points[this.points.length - 1];
+    const d = d3(hand, end);
+    if (d > G.grabRadiusM + G.reelInRadiusM + 1) return null;
+    const s = G.followSpeed / (d || 1);
+    return [(end[0] - hand[0]) * s, (end[1] - hand[1]) * s, (end[2] - hand[2]) * s];
   }
 
   /** payOut=false while hand-over-handing the line (follow mode) — you don't

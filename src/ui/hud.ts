@@ -100,29 +100,28 @@ export class Hud {
     this.pointsEl.textContent = String(p);
   }
 
-  /** Guide line + chemlight readout with a CLEAR line state (user 2026-07-19:
-   *  laying vs stopped vs reeling must be unmistakable). */
-  updateKit(line: GuideLine, chems: Chemlights, following: boolean, grabbing: boolean, tieFrac: number): void {
+  /** Guide line + chemlight readout with a CLEAR line state and the current
+   *  T/X options spelled out in place (controls rework 2026-07-19: players
+   *  work the line constantly and in a panic — the HUD teaches the keys). */
+  updateKit(line: GuideLine, chems: Chemlights, following: boolean, grabbing: boolean, nearEnd: boolean): void {
     const parts = [`REEL ${line.reelM.toFixed(0)}m`];
     if (line.deployed) parts.push(`OUT ${line.deployedLengthM.toFixed(0)}m`);
-    const state =
-      tieFrac > 0
-        ? `TYING ${(tieFrac * 100).toFixed(0)}%`
-        : following
-          ? 'ON LINE'
-          : grabbing
-            ? 'GRABBING'
-            : line.mode === 'laying'
-              ? '● LAYING'
-              : line.mode === 'reeling'
-                ? '⟲ REELING'
-                : line.mode === 'stopped'
-                  ? 'LINE STOPPED'
-                  : '';
-    if (state) parts.push(state);
+    const state = following
+      ? 'ON LINE'
+      : line.mode === 'laying'
+        ? '● LAYING · T stop · X tie'
+        : line.mode === 'reeling'
+          ? '⟲ REELING'
+          : line.mode === 'stopped'
+            ? nearEnd
+              ? 'LINE END · T resume · hold X reel'
+              : 'LINE DOWN · hold T to ride'
+            : 'T — lay line';
+    parts.push(state);
+    if (grabbing) parts.push('GRABBING');
     parts.push(`GLO ${chems.count}`);
     this.kitEl.textContent = parts.join(' · ');
-    this.kitEl.classList.toggle('online', following || grabbing || tieFrac > 0 || line.mode === 'laying' || line.mode === 'reeling');
+    this.kitEl.classList.toggle('online', following || grabbing || line.mode === 'laying' || line.mode === 'reeling');
   }
 
   /** Big center-screen confirmation flash (probes, line actions). */
