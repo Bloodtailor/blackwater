@@ -5,12 +5,15 @@ import { TUNING } from '../tuning';
 
 export class Points {
   balance: number = TUNING.economy.startPoints;
+  /** Double Points drop: earnings multiplier (spending is never multiplied). */
+  multiplier = 1;
   /** HUD hook: balance + the delta that just landed (for the +tick). */
   onChange?: (balance: number, delta: number) => void;
 
   award(n: number): void {
-    this.balance += n;
-    this.onChange?.(this.balance, n);
+    const amt = Math.round(n * this.multiplier);
+    this.balance += amt;
+    this.onChange?.(this.balance, amt);
   }
 
   canAfford(n: number): boolean {

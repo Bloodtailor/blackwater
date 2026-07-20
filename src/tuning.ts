@@ -277,6 +277,61 @@ export const TUNING = {
       stabPierce: 2,
       fireDelaySec: 0.5,
     },
+    // ── box-only guns (DESIGN §10.2, M6b) ──
+    twinfish: {
+      damage: 60, // akimbo spear pistols: one trigger, both hands
+      burst: 2,
+      burstSpreadDeg: 2.5,
+      headshotMult: 2.5,
+      magSize: 12, // consumed in pairs
+      reserveMax: 72,
+      fireDelaySec: 0.34,
+      reloadSec: 2.0,
+      rangeM: 40,
+    },
+    arcProjector: {
+      damage: 150, // chain lightning — water conducts (room-clearer, rare)
+      chainCount: 4,
+      chainRadiusM: 8,
+      chainFalloff: 0.7, // damage multiplier per jump
+      headshotMult: 1,
+      magSize: 6,
+      reserveMax: 24,
+      fireDelaySec: 0.9,
+      reloadSec: 2.6,
+      rangeM: 35,
+    },
+    vortexMaw: {
+      damage: 30, // utility: drags the room into a point
+      vortexRadiusM: 10,
+      vortexPullSec: 0.9,
+      vortexPullSpeed: 9,
+      headshotMult: 1,
+      magSize: 4,
+      reserveMax: 16,
+      fireDelaySec: 1.2,
+      reloadSec: 2.8,
+      rangeM: 30,
+    },
+    sonicLance: {
+      damage: 120, // piercing beam — everything on the line
+      pierce: 99,
+      headshotMult: 1.5,
+      magSize: 8,
+      reserveMax: 32,
+      fireDelaySec: 0.7,
+      reloadSec: 2.2,
+      rangeM: 45,
+    },
+    bangStick: {
+      damage: 8000, // one-hit stab (BO1 ballistic-knife energy); shell-per-shot
+      stabRangeM: 2.5,
+      stabPierce: 1,
+      magSize: 1,
+      reserveMax: 12,
+      fireDelaySec: 0.4,
+      reloadSec: 1.5,
+    },
     knife: {
       damage: 150, // one-knife at round 1 (BO1 tradition)
       rangeM: 2.3,
@@ -296,6 +351,41 @@ export const TUNING = {
     catEyes: { cost: 2000, visMult: 1.4, beamWidenMult: 1.25 },
     finKick: { cost: 2000, speedMult: 1.15, sprintDrainMult: 0.8 },
     steadyHands: { cost: 1500, tiltDecayMult: 3 },
+  },
+  box: {
+    // Requisition Roulette (DESIGN §10.2, LORE §4): several crates exist, one
+    // is live; rarely the pull is a wind-up toy diver and the crate moves.
+    spinSec: 3.0, // lid open, names cycling
+    takeSec: 8.0, // window to take the offered gun before it sinks back
+    moveFreeSpins: 3, // no tease before this many spins at one crate
+    moveChance: 0.15, // per spin after the free spins…
+    moveGuaranteedSpin: 12, // …and the 12th pull always moves it
+    boxGunWeight: 0.7, // box-only guns draw at this weight vs 1.0 wall guns
+  },
+  pap: {
+    // The Bench (DESIGN §10.6, LORE §4): ×2.5 damage, bigger mag, rename,
+    // per-gun quirk, and the universal rule — PaP projectiles EMIT LIGHT.
+    damageMult: 2.5,
+    magMult: 1.5,
+    reserveMult: 1.5,
+    benchSec: 3.0, // the machine works the weapon
+    takeSec: 10.0,
+    impactLightIntensity: 14, // the glow a papped shot leaves at impact
+    impactLightSec: 0.35,
+    impactLightRadiusM: 9,
+  },
+  drops: {
+    // §10.7: ~2% + pity. Weights are relative draw odds.
+    chance: 0.02,
+    pityKills: 40, // a drop is guaranteed within this many kills
+    despawnSec: 30,
+    pickupRadiusM: 1.6,
+    doublePointsSec: 60,
+    instaKillSec: 30,
+    clearWatersSec: 30,
+    clearWatersVisMult: 1.15,
+    pressureWaveAward: 400, // flat points for the room-clear (BO1 nuke custom)
+    weights: { maxAmmo: 22, doublePoints: 22, instaKill: 22, clearWaters: 14, batterySurge: 14, pressureWave: 6 },
   },
   interact: {
     reachM: 2.7, // how close E can act from

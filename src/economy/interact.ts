@@ -20,6 +20,8 @@ export interface Prompt {
 export interface Interactable {
   id: string;
   pos: [number, number, number];
+  /** Big fixtures (the crate, the bench) extend the default reach. */
+  reachM?: number;
   /** Current prompt, or null to be invisible (e.g. door already open). */
   prompt(): Prompt | null;
   /** Runs when the tap lands / the hold completes. */
@@ -52,7 +54,7 @@ export class InteractSystem {
       const dy = it.pos[1] - camPos.y;
       const dz = it.pos[2] - camPos.z;
       const d = Math.hypot(dx, dy, dz);
-      if (d > I.reachM || d >= bestD) continue;
+      if (d > (it.reachM ?? I.reachM) || d >= bestD) continue;
       if (d > 0.4 && (dx * camDir.x + dy * camDir.y + dz * camDir.z) / d < cosCone) continue;
       const p = it.prompt();
       if (!p) continue;

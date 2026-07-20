@@ -22,11 +22,14 @@ import { SiltSystem, chambersFromNodes } from './effects/silt';
 import { SiltParticles } from './effects/siltParticles';
 import { RoundSystem } from './zombies/rounds';
 import { ZombieManager } from './zombies/zombies';
-import { Weapons, TracerFx, type WeaponSlot, type GunId } from './player/weapons';
+import { Weapons, TracerFx, ImpactGlow, WALL_GUNS, BOX_GUNS, type WeaponSlot, type GunId } from './player/weapons';
 import { Points } from './economy/points';
 import { Perks, ALL_PERKS } from './economy/perks';
 import { InteractSystem } from './economy/interact';
 import { Shops } from './economy/shops';
+import { MysteryBox } from './economy/mysteryBox';
+import { PapBench } from './economy/pap';
+import { Drops, type DropId } from './economy/drops';
 import { Hud } from './ui/hud';
 import { SETTINGS, saveSettings } from './ui/settings';
 import { TUNING } from './tuning';
@@ -213,7 +216,28 @@ function initGame(): void {
       guideLine.reelM = Math.min(guideLine.reelM + TUNING.guideLine.reelLengthM, TUNING.guideLine.maxDeployedM);
       return true;
     },
-    onPowerOn: () => flashStatus('power on — the arteries are lit'),
+    onPowerOn: () => {
+      pap.setPowered(true);
+      flashStatus('power on — the arteries are lit');
+    },
+  });
+
+  // ── M6b: the Requisition Roulette, the Bench, drops ──
+  const box = new MysteryBox(scene, interact, points, weapons, (m) => hud.toast(m));
+  const pap = new PapBench(scene, interact, points, weapons, () => shops.powered, (m) => hud.toast(m));
+  const impactGlow = new ImpactGlow(scene);
+  const drops = new Drops({
+    scene,
+    toast: (m) => hud.toast(m),
+    applyMaxAmmo: () => weapons.refillAll(),
+    applyBatterySurge: () => (vitals.battery = 1),
+    applyPressureWave: () => {
+      const killed = zombies.killAll();
+      points.award(TUNING.drops.pressureWaveAward);
+      flashStatus(`pressure wave — ${killed} recovered`);
+    },
+    applyClearWaters: () => silt.clearAll(),
+    setPointsMultiplier: (m) => (points.multiplier = m),
   });
 
   // Second Wind (§10.5): blackout → wake at the last-used air pocket with the
@@ -237,48 +261,71 @@ function initGame(): void {
   };
   const shotDir = new THREE.Vector3();
   const muzzle = new THREE.Vector3();
-  const doShot = (slot: WeaponSlot): void => {
+  // one damage funnel: insta-kill override, points, drops, hitmark
+  const hitZombie = (z: import('./zombies/zombies').Zombie, dmg: number, head: boolean, melee: boolean): void => {
+    const outcome = zombies.applyDamage(z, drops.instaKill ? 1e5 : dmg);
+    points.award(E.hit);
+    if (outcome === 'killed') {
+      points.award(melee ? E.meleeKill : head ? E.headshotKill : E.kill);
+      drops.onKill(z.pos);
+    }
+    hud.hitmark(head);
+  };
+  const doShot = (slot: WeaponSlot, rays: number): void => {
     const def = slot.def;
     camera.getWorldDirection(lookDir);
-    // stab weapons (Line Lance): a fast melee-range sweep, not a ray
+    // stab weapons (Line Lance, Bang Stick): a fast close sweep, not a ray
     if (def.stabRangeM !== undefined) {
       const targets = zombies.meleeTargets(camera.position, lookDir, def.stabRangeM, TUNING.weapons.knife.arcDeg, def.stabPierce ?? 1);
-      for (const t of targets) {
-        const outcome = zombies.applyDamage(t, def.damage);
-        points.award(outcome === 'killed' ? E.meleeKill : E.hit);
-      }
-      if (targets.length) hud.hitmark(false);
+      for (const t of targets) hitZombie(t, def.damage, false, true);
       return;
     }
     beamRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
     beamUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
-    for (let pellet = 0; pellet < def.pellets; pellet++) {
-      shotDir.copy(lookDir);
-      if (def.spreadDeg > 0) {
-        const s = THREE.MathUtils.degToRad(def.spreadDeg);
-        shotDir.addScaledVector(beamRight, (Math.random() * 2 - 1) * s).addScaledVector(beamUp, (Math.random() * 2 - 1) * s).normalize();
+    for (let ray = 0; ray < rays; ray++) {
+      for (let pellet = 0; pellet < def.pellets; pellet++) {
+        shotDir.copy(lookDir);
+        // Twinfish: the two hands land a fixed hair apart
+        if (def.burst > 1) shotDir.addScaledVector(beamRight, THREE.MathUtils.degToRad(def.burstSpreadDeg) * (ray - (rays - 1) / 2));
+        if (def.spreadDeg > 0) {
+          const s = THREE.MathUtils.degToRad(def.spreadDeg);
+          shotDir.addScaledVector(beamRight, (Math.random() * 2 - 1) * s).addScaledVector(beamUp, (Math.random() * 2 - 1) * s);
+        }
+        shotDir.normalize();
+        const res = zombies.raycastPierce(camera.position, shotDir, def.rangeM, def.pierce);
+        const endDist = Math.hypot(res.end[0] - camera.position.x, res.end[1] - camera.position.y, res.end[2] - camera.position.z);
+        checkMounds(camera.position.x, camera.position.y, camera.position.z, shotDir.x, shotDir.y, shotDir.z, endDist);
+        for (const h of res.hits) hitZombie(h.zombie, def.damage * (h.head ? def.headshotMult : 1), h.head, false);
+        // Arc Projector: the water conducts — the first body struck chains
+        if (def.chainCount > 0 && res.hits.length > 0) {
+          const from = res.hits[0].zombie;
+          const links = zombies.chainFrom(from, def.chainRadiusM, def.chainCount);
+          let prev = from.pos;
+          links.forEach((z, i) => {
+            hitZombie(z, def.damage * def.chainFalloff ** (i + 1), false, false);
+            tracers.spawn([prev.x, prev.y, prev.z], [z.pos.x, z.pos.y, z.pos.z], def.tracer, 0.3);
+            if (def.papped) impactGlow.spawn([z.pos.x, z.pos.y, z.pos.z]);
+            prev = z.pos;
+          });
+        }
+        // Vortex Maw: the impact point drags the room into itself
+        if (def.vortexRadiusM > 0) {
+          const caught = zombies.vortexPull(res.end, def.vortexRadiusM, def.vortexPullSec);
+          if (caught > 0) flashStatus(`vortex: ${caught} caught`);
+        }
+        if (def.papped) impactGlow.spawn(res.end); // the universal rule: light
+        muzzle.copy(camera.position).addScaledVector(lookDir, 0.35).addScaledVector(beamRight, 0.14).addScaledVector(beamUp, -0.12);
+        tracers.spawn(muzzle, res.end, def.tracer, def.tracerLifeSec);
       }
-      const res = zombies.raycastPierce(camera.position, shotDir, def.rangeM, def.pierce);
-      const endDist = Math.hypot(res.end[0] - camera.position.x, res.end[1] - camera.position.y, res.end[2] - camera.position.z);
-      checkMounds(camera.position.x, camera.position.y, camera.position.z, shotDir.x, shotDir.y, shotDir.z, endDist);
-      for (const h of res.hits) {
-        const dmg = def.damage * (h.head ? def.headshotMult : 1);
-        const outcome = zombies.applyDamage(h.zombie, dmg);
-        points.award(E.hit);
-        if (outcome === 'killed') points.award(h.head ? E.headshotKill : E.kill);
-      }
-      if (res.hits.length) hud.hitmark(res.hits.some((h) => h.head));
-      muzzle.copy(camera.position).addScaledVector(lookDir, 0.35).addScaledVector(beamRight, 0.14).addScaledVector(beamUp, -0.12);
-      tracers.spawn(muzzle, res.end, def.tracer);
     }
   };
   const doMelee = (): void => {
     camera.getWorldDirection(lookDir);
     const target = zombies.meleeTarget(camera.position, lookDir);
     if (!target) return;
-    const outcome = zombies.applyDamage(target, TUNING.weapons.knife.damage);
-    points.award(outcome === 'killed' ? E.meleeKill : E.hit);
-    hud.hitmark(false);
+    // the Bang Stick upgrades your melee to its one-hit shell while owned
+    const dmg = weapons.owns('bangStick') ? TUNING.weapons.bangStick.damage : TUNING.weapons.knife.damage;
+    hitZombie(target, dmg, false, true);
   };
 
   const teleport = (nodeId: string): void => {
@@ -532,7 +579,7 @@ function initGame(): void {
   });
   const gunSelect = document.createElement('select');
   gunSelect.style.width = '100%';
-  for (const id of ['wristDart', 'speargun', 'pneuDriver', 'flechette', 'harpoon', 'lineLance'] as GunId[]) {
+  for (const id of ['wristDart', ...WALL_GUNS, ...BOX_GUNS] as GunId[]) {
     const o = document.createElement('option');
     o.value = id;
     o.textContent = id;
@@ -540,6 +587,25 @@ function initGame(): void {
   }
   econSec.appendChild(gunSelect);
   debug.button(econSec, 'Give selected weapon', () => weapons.give(gunSelect.value as GunId));
+  debug.button(econSec, 'PaP current weapon (free)', () => {
+    weapons.papSlot(weapons.current);
+    hud.toast(`BENCHED FREE → ${weapons.current.def.name}`);
+  });
+  debug.button(econSec, 'Force box move on next spin', () => (box.forceMoveNext = true));
+  const dropSelect = document.createElement('select');
+  dropSelect.style.width = '100%';
+  for (const id of ['maxAmmo', 'doublePoints', 'instaKill', 'clearWaters', 'batterySurge', 'pressureWave'] as DropId[]) {
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = id;
+    dropSelect.appendChild(o);
+  }
+  econSec.appendChild(dropSelect);
+  debug.button(econSec, 'Force selected drop (apply now)', () => drops.force(dropSelect.value as DropId));
+  debug.button(econSec, 'Spawn selected drop at player', () => {
+    const q = camera.position;
+    drops.spawn(dropSelect.value as DropId, new THREE.Vector3(q.x, q.y - 0.4, q.z - 1.5));
+  });
 
   const doorSec = debug.section('Doors');
   debug.button(doorSec, 'Open ALL doors', () => openAllDoors(doors));
@@ -795,8 +861,9 @@ function initGame(): void {
     const siltThickness = silt.thicknessAt(chamber);
     const daylight = headAbove && Math.hypot(p.x, p.z) < 18 && p.y > -16; // open cenote only
     // noclip = debug map survey: full visibility and brightness (user);
-    // Cat Eyes lifts the final visibility — silt and dark included
-    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis) * perks.mods.visMult, siltout, currentVec, daylight, player.mode === 'noclip', siltThickness);
+    // Cat Eyes and the Clear Waters drop both lift the final visibility
+    const visMult = perks.mods.visMult * (drops.clearWaters ? TUNING.drops.clearWatersVisMult : 1);
+    atmo.update(dt, p, headAbove, zone, silt.visibilityAt(chamber, clearVis) * visMult, siltout, currentVec, daylight, player.mode === 'noclip', siltThickness);
     siltFx.update(dt, p, siltThickness, !headAbove, currentVec);
     // squeeze claustrophobia: modest FOV pull-in
     const targetFov = player.mode !== 'noclip' && player.inSqueeze ? 64 : 75;
@@ -846,9 +913,13 @@ function initGame(): void {
         flashStatus(`round ${ev.roundStarted} begins`);
       }
       const acts = weapons.update(dt, { reloadMult: perks.mods.reloadMult, fireDelayMult: perks.mods.fireDelayMult });
-      if (acts.fire) doShot(acts.fire);
+      if (acts.fire) doShot(acts.fire, acts.rays);
       if (acts.melee) doMelee();
     }
+    box.update(dt, time);
+    pap.update(dt, time);
+    drops.update(dt, p, time);
+    impactGlow.update(dt);
     zombies.update(dt, {
       playerPos: p,
       playerDead: combatFrozen,
@@ -913,6 +984,9 @@ function initGame(): void {
     shops,
     interact,
     doors,
+    box,
+    pap,
+    drops,
     applyPerkEffects,
     doShot,
     doMelee,

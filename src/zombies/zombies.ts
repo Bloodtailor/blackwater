@@ -35,6 +35,9 @@ export interface Zombie {
   lastPos: THREE.Vector3;
   hitFlash: number;
   fading: boolean;
+  /** Vortex Maw: seconds left being dragged toward pullPoint. */
+  pulledT: number;
+  pullPoint: THREE.Vector3;
 }
 
 export interface ShotResult {
@@ -118,6 +121,8 @@ export class ZombieManager {
       lastPos: rig.group.position.clone(),
       hitFlash: 0,
       fading: false,
+      pulledT: 0,
+      pullPoint: new THREE.Vector3(),
     };
     this.zombies.push(z);
     for (const m of rig.meshes) {
@@ -303,6 +308,24 @@ export class ZombieManager {
           z.stateT = 0;
         }
         animateDrowned(z.rig, ctx.time + z.phase, 0.4, 'reach', dt);
+        continue;
+      }
+
+      // Vortex Maw: the drag overrides everything — the room folds into a
+      // point, then the crowd untangles itself
+      if (z.pulledT > 0) {
+        z.pulledT -= dt;
+        this.vTmp.copy(z.pullPoint).sub(z.pos);
+        const d = this.vTmp.length();
+        if (d > 0.4) {
+          this.vTmp.normalize().multiplyScalar(Math.min(TUNING.weapons.vortexMaw.vortexPullSpeed, d * 6));
+          z.vel.lerp(this.vTmp, Math.min(1, dt * 10));
+        } else {
+          z.vel.multiplyScalar(Math.max(0, 1 - 6 * dt));
+        }
+        z.pos.addScaledVector(z.vel, dt);
+        resolveCollision(z.pos, Z.radius);
+        animateDrowned(z.rig, ctx.time + z.phase, 1, 'limp', dt); // tumbling
         continue;
       }
 
@@ -557,6 +580,32 @@ export class ZombieManager {
       bestD = d;
     }
     return best;
+  }
+
+  /** Vortex Maw impact: drag every live body near the point toward it. */
+  vortexPull(point: [number, number, number], radiusM: number, pullSec: number): number {
+    let caught = 0;
+    for (const z of this.zombies) {
+      if (z.state === 'dead') continue;
+      const d = Math.hypot(z.pos.x - point[0], z.pos.y - point[1], z.pos.z - point[2]);
+      if (d > radiusM) continue;
+      z.pullPoint.set(point[0], point[1], point[2]);
+      z.pulledT = pullSec;
+      caught++;
+    }
+    return caught;
+  }
+
+  /** Arc Projector: the nearest live bodies to a struck zombie (the chain). */
+  chainFrom(from: Zombie, radiusM: number, count: number): Zombie[] {
+    const found: { z: Zombie; d: number }[] = [];
+    for (const z of this.zombies) {
+      if (z === from || z.state === 'dead') continue;
+      const d = z.pos.distanceTo(from.pos);
+      if (d <= radiusM) found.push({ z, d });
+    }
+    found.sort((a, b) => a.d - b.d);
+    return found.slice(0, count).map((f) => f.z);
   }
 
   /** Debug: kill everything (optionally leaving n stragglers for Cave Stirs). */

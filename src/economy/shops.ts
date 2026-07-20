@@ -254,23 +254,24 @@ export class Shops {
       id: `gun:${id}`,
       pos: [spot.pos.x, spot.pos.y, spot.pos.z],
       prompt: () => {
-        const owned = def.owns(id);
-        const price = owned ? Math.floor(cost / 2) : cost;
+        const slot = def.slots.find((s) => s.def.id === id);
+        // papped guns feed on PaP ammo (§10.6: 4500); plain ammo = half cost
+        const price = slot ? (slot.def.papped ? TUNING.economy.papAmmo : Math.floor(cost / 2)) : cost;
         const afford = this.ctx.points.canAfford(price);
         return {
-          text: owned ? `${name} AMMO · ${price}` : `${name} · ${price}`,
+          text: slot ? `${slot.def.name} AMMO · ${price}` : `${name} · ${price}`,
           holdSec: 0,
           enabled: afford,
           sub: afford ? undefined : `NEED ${price}`,
         };
       },
       execute: () => {
-        const owned = def.owns(id);
-        const price = owned ? Math.floor(cost / 2) : cost;
+        const slot = def.slots.find((s) => s.def.id === id);
+        const price = slot ? (slot.def.papped ? TUNING.economy.papAmmo : Math.floor(cost / 2)) : cost;
         if (!this.ctx.points.spend(price)) return;
-        if (owned) {
+        if (slot) {
           def.refill(id);
-          this.ctx.toast(`${name} — AMMO STOCKED`);
+          this.ctx.toast(`${slot.def.name} — AMMO STOCKED`);
         } else {
           def.give(id);
           this.ctx.toast(`${name} — OFF THE RACK`);
