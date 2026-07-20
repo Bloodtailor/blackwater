@@ -9,6 +9,7 @@
 
 import type * as THREE from 'three';
 import { TUNING } from '../tuning';
+import { Ambience } from './ambience';
 import { AudioEngine, type PositionalHandle } from './engine';
 import { SAMPLES } from './samples';
 import * as sfx from './sfx';
@@ -43,6 +44,8 @@ export class AudioDirector {
   engine: AudioEngine | null = null;
   /** Last ~40 audio events, newest last (verification + M9 pilot logs). */
   readonly recent: string[] = [];
+  /** Depth beds + audio-emitter nodes (user 2026-07-20). */
+  readonly ambience = new Ambience();
   private breathT = 0;
   private heartT = 0;
   private moanT = 2;
@@ -87,6 +90,7 @@ export class AudioDirector {
     e.setListener(p.x, p.y, p.z, s.right.x, s.right.y, s.right.z);
     e.setHeadAbove(s.headAbove);
     e.setMuffle(s.siltThickness);
+    this.ambience.update(e, p.x, p.y, p.z, !s.headAbove);
 
     // ── breathing: the regulator cycle rides the heart rate; silent above
     // water (mouth open, regulator out) and when dead ──

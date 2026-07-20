@@ -27,7 +27,8 @@ describe('cave SDF traversability', () => {
   });
 
   it('every node center is inside passable space (pillars keep clear of centers)', () => {
-    for (const n of NODES) {
+    // audio emitters live INSIDE solid rock by design (sound through walls)
+    for (const n of NODES.filter((n) => n.kind !== 'audio')) {
       const [x, y, z] = n.pos;
       expect(sdf(x, y, z, false), n.id).toBeLessThan(-0.4);
     }
@@ -97,8 +98,10 @@ describe('cave SDF traversability', () => {
   });
 
   it('flat-floored rooms really are flat: floor height varies little across the room', () => {
-    // falseUp rooms are DELIBERATELY tilted (the Listing Room) — skip
-    for (const n of NODES.filter((n) => n.floor !== undefined && !n.falseUp)) {
+    // falseUp rooms are DELIBERATELY tilted (the Listing Room) — skip; so are
+    // teaser rooms (user 2026-07-20: outside the rules — the long-standing
+    // throat-rim-air-teaser-copy overlap "failure" was exactly this)
+    for (const n of NODES.filter((n) => n.floor !== undefined && !n.falseUp && !n.teaser)) {
       const s = n.stretch ?? [1, 1, 1];
       const ry = n.radius * s[1];
       const floorY = n.pos[1] - ry * n.floor!;

@@ -73,6 +73,15 @@ const SFX = {
   'toy-wind': { p: 'A small tin wind-up toy being cranked: fine ratchet clicks, then the spring releasing into a brief mechanical whir. Close, tiny, charming and slightly eerie. No music.', sec: 1.8 },
   'toy-shimmer': { p: 'A faint music box mechanism turning over sparsely in the dark: three or four tiny detuned notes with long gaps, distant, underwater, eerie and gentle, seamless loop.', sec: 8, loop: true },
   'radio-squelch': { p: 'A brief vintage radio squelch: short static crackle burst with a soft carrier pop, small, close. No music.', sec: 0.8 },
+  // ── depth ambience beds (user 2026-07-20: pressure rises with the bands) ──
+  'ambient-shallow': { p: 'Calm underwater cave ambience, shallow sunlit water: soft water movement, gentle distant bubbles, faint muffled surface shimmer, peaceful but enclosed, seamless loop. No music, no melody.', sec: 12, loop: true },
+  'ambient-mid': { p: 'Deep underwater cave ambience: heavier water pressure, slow currents pushing through rock passages, distant low groans of settling stone, occasional far-off bubble bursts, unsettling, seamless loop. No music.', sec: 12, loop: true },
+  'ambient-deep': { p: 'Crushing abyssal underwater ambience: intense low pressure drone, powerful current surging against rock, deep tectonic groans, oppressive darkness you can hear, dread, seamless loop. No music.', sec: 12, loop: true },
+  // ── audio-emitter node palette (behind-the-walls life; user 2026-07-20) ──
+  'amb-machinery': { p: 'Old industrial machinery running behind a thick rock wall: muffled rhythmic mechanical thumping, distant motors and pumps cycling, pipes knocking, heard through stone underwater, seamless loop. No music.', sec: 10, loop: true },
+  'amb-airflow': { p: 'Heavy air flowing through unseen cave passages: deep powerful rushing airflow, resonant like wind through a huge duct, rising and falling slowly, distant, seamless loop. No music.', sec: 10, loop: true },
+  'amb-groan': { p: 'An abandoned flooded structure settling: slow metal groans, deep sporadic creaks of stressed steel and rock, long silences between, ominous, heard through water, seamless loop. No music.', sec: 12, loop: true },
+  'amb-drips': { p: 'Water dripping in a vast dark cavern: sparse echoing drips into a pool, hollow cave reverb, lonely and quiet, seamless loop. No music.', sec: 10, loop: true },
   // ── stingers & motifs (original, dark — DESIGN §14) ──
   'stinger-round': { p: 'A short dark orchestral horror stinger: one somber low French horn swell blooming into a dissonant minor chord, muffled as if heard through deep water, cinematic, 4 seconds, then silence.', sec: 5.0 },
   'stinger-stirs': { p: 'A short rising horror tension swell: low strings and a distant horn climbing, unresolved, cut off uneasily, heard through deep water, cinematic, 4 seconds.', sec: 5.0 },

@@ -94,6 +94,7 @@ export function nearestNodeId(x: number, y: number, z: number): string {
   let best = '';
   let bestD = Infinity;
   for (const n of NODES) {
+    if (n.teaser || n.kind === 'audio') continue; // dressing, not destinations
     const d = (n.pos[0] - x) ** 2 + (n.pos[1] - y) ** 2 + (n.pos[2] - z) ** 2;
     if (d < bestD) {
       bestD = d;

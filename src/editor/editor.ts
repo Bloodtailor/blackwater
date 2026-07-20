@@ -77,6 +77,18 @@ export function initEditor(): void {
   const dragProxy = new THREE.Object3D();
   scene.add(dragProxy);
 
+  // ── view filters (user 2026-07-20) ──
+  //  tagFilter: show only nodes of one type (others ghosted, labels off)
+  //  showTeasers: teaser rooms are dressing — hidden by default
+  let tagFilter = 'all';
+  let showTeasers = false;
+  const nodeMatchesFilter = (n: CaveNode): boolean => {
+    if (tagFilter === 'all') return true;
+    if (tagFilter === 'teaser') return !!n.teaser;
+    if (tagFilter === 'audio') return n.kind === 'audio' || n.audio !== undefined;
+    return n.tags.includes(tagFilter as CaveNode['tags'][number]);
+  };
+
   const makeLabel = (text: string, pos: [number, number, number], dy: number): void => {
     const c = document.createElement('canvas');
     c.width = 256;
@@ -121,12 +133,48 @@ export function initEditor(): void {
     }
     nodeMeshes.clear();
     for (const n of NODES) {
+      if (n.teaser && !showTeasers && tagFilter !== 'teaser') continue; // hidden dressing
       const s = n.stretch ?? [1, 1, 1];
       const selected = selection?.kind === 'node' && selection.id === n.id;
+      const filtered = !nodeMatchesFilter(n);
+      // AUDIO EMITTER (user 2026-07-20): a speaker core + two wireframe
+      // shells that SHOW the sound's reach — outer = audible limit
+      // (radiusM), inner = the falloff knee (refDist = radiusM / falloff)
+      if (n.kind === 'audio') {
+        const core = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(0.9, 0),
+          new THREE.MeshLambertMaterial({ color: 0xd946ef, emissive: selected ? 0xffffff : 0xd946ef, emissiveIntensity: selected ? 0.5 : 0.25, transparent: true, opacity: filtered ? 0.1 : 0.95 }),
+        );
+        core.position.set(...n.pos);
+        core.userData.nodeId = n.id;
+        nodeGroup.add(core);
+        nodeMeshes.set(n.id, core);
+        if (!filtered) {
+          const a = n.audio ?? { sample: '?', radiusM: 10, falloff: 3 };
+          const range = new THREE.Mesh(
+            sphereGeo,
+            new THREE.MeshBasicMaterial({ color: 0xd946ef, wireframe: true, transparent: true, opacity: 0.14, depthWrite: false }),
+          );
+          range.position.set(...n.pos);
+          range.scale.setScalar(a.radiusM);
+          range.raycast = () => undefined; // shells must not steal clicks
+          const knee = new THREE.Mesh(
+            sphereGeo,
+            new THREE.MeshBasicMaterial({ color: 0xf0abfc, wireframe: true, transparent: true, opacity: 0.28, depthWrite: false }),
+          );
+          knee.position.set(...n.pos);
+          knee.scale.setScalar(a.radiusM / (a.falloff ?? 3));
+          knee.raycast = () => undefined;
+          nodeGroup.add(range, knee);
+          makeLabel(`♪ ${n.id} · ${a.sample} · ${a.radiusM}m`, n.pos, 1.2);
+        }
+        continue;
+      }
       const mat = new THREE.MeshLambertMaterial({
-        color: ZONE_COLORS[n.zone],
+        color: n.teaser ? 0xaaaaaa : ZONE_COLORS[n.zone],
         transparent: true,
-        opacity: n.dry ? 0.6 : 0.42,
+        opacity: filtered ? 0.06 : n.teaser ? 0.18 : n.dry ? 0.6 : 0.42,
+        wireframe: !!n.teaser, // teasers read as ghosts
         depthWrite: false, // translucent spheres must not occlude tunnel lines (random invisible-line bug, user 2026-07-19)
         emissive: selected ? 0xffffff : 0x000000,
         emissiveIntensity: selected ? 0.35 : 0,
@@ -137,20 +185,27 @@ export function initEditor(): void {
       m.userData.nodeId = n.id;
       nodeGroup.add(m);
       nodeMeshes.set(n.id, m);
-      makeLabel(n.id, n.pos, n.radius * s[1]);
+      if (!filtered) makeLabel(n.teaser ? `👻 ${n.id}` : n.id, n.pos, n.radius * s[1]);
     }
     EDGES.forEach((e, index) => {
       let pts: THREE.Vector3[];
+      let na: CaveNode;
+      let nb: CaveNode;
       try {
-        pts = [getNode(e.a).pos, ...(e.waypoints ?? []), getNode(e.b).pos].map((p) => new THREE.Vector3(...p));
+        na = getNode(e.a);
+        nb = getNode(e.b);
+        pts = [na.pos, ...(e.waypoints ?? []), nb.pos].map((p) => new THREE.Vector3(...p));
       } catch {
         return; // dangling edge (mid-edit) — skip drawing
       }
+      // an edge into a hidden teaser room hides with it
+      if ((na.teaser || nb.teaser || e.teaser) && !showTeasers && tagFilter !== 'teaser') return;
+      const dimmed = tagFilter !== 'all' && !nodeMatchesFilter(na) && !nodeMatchesFilter(nb);
       const selected = selection?.kind === 'edge' && selection.index === index;
       const color = selected ? 0xffee66 : e.door || e.powerGate ? 0xd9534f : WIDTH_COLORS[e.width];
       const line = new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({ color, linewidth: 1, transparent: true, opacity: selected ? 1 : 0.85, depthWrite: false }),
+        new THREE.LineBasicMaterial({ color, linewidth: 1, transparent: true, opacity: selected ? 1 : dimmed ? 0.08 : 0.85, depthWrite: false }),
       );
       line.frustumCulled = false; // stale bounding spheres culled lines mid-orbit
       line.renderOrder = 1; // draw after the translucent room spheres
@@ -497,6 +552,43 @@ export function initEditor(): void {
       commit();
       select({ kind: 'node', id });
       panel.toast(`ROOM ${id} — drag it into place`);
+    },
+    addAudioNode: () => {
+      let n = 1;
+      let id = `aud-${n}`;
+      while (NODES.some((x) => x.id === id)) id = `aud-${++n}`;
+      let zone: Zone = 'galleries';
+      let best = Infinity;
+      for (const x of NODES) {
+        const d = Math.hypot(x.pos[0] - orbit.target.x, x.pos[1] - orbit.target.y, x.pos[2] - orbit.target.z);
+        if (d < best) {
+          best = d;
+          zone = x.zone;
+        }
+      }
+      NODES.push({
+        id,
+        pos: [orbit.target.x, orbit.target.y, orbit.target.z],
+        radius: 1,
+        zone,
+        kind: 'audio',
+        audio: { sample: 'amb-machinery', radiusM: 15, falloff: 3 },
+        tags: [],
+      });
+      commit();
+      select({ kind: 'node', id });
+      panel.toast(`♪ ${id} — bury it in rock; the shells show its reach`);
+    },
+    setFilter: (t) => {
+      tagFilter = t;
+      rebuild();
+    },
+    getFilter: () => tagFilter,
+    toggleTeasers: () => {
+      showTeasers = !showTeasers;
+      rebuild();
+      panel.toast(showTeasers ? 'TEASER ROOMS SHOWN (ghosts)' : 'TEASER ROOMS HIDDEN');
+      return showTeasers;
     },
     deleteSelection: () => {
       if (selection?.kind === 'node') {

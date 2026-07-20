@@ -71,6 +71,31 @@ function shotPlugin(): Plugin {
           }
         });
       });
+      // Tuning SAVE (user 2026-07-20): the debug/editor panels POST the full
+      // override map here; it lands in src/tuning.overrides.json (committed,
+      // loaded at startup as the new stock values). watch-ignored like
+      // layout.json so saving doesn't reload the editor out from under you.
+      server.middlewares.use('/__tuning', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        let body = '';
+        req.on('data', (c: Buffer) => (body += c.toString()));
+        req.on('end', () => {
+          try {
+            const map = JSON.parse(body) as Record<string, number>;
+            if (typeof map !== 'object' || map === null || Array.isArray(map)) throw new Error('bad map');
+            for (const v of Object.values(map)) if (typeof v !== 'number') throw new Error('non-numeric');
+            fs.writeFileSync(path.resolve(server.config.root, 'src/tuning.overrides.json'), JSON.stringify(map, null, 2) + '\n');
+            res.end('ok');
+          } catch {
+            res.statusCode = 400;
+            res.end('bad body');
+          }
+        });
+      });
       // Jukebox track listing (M8b): the folder IS the playlist — drop MP3s
       // into public/music/easteregg/, zero code changes (LORE §6). Dev serves
       // a live listing; `buildStart` writes the static file for dist builds.
@@ -112,7 +137,7 @@ export default defineConfig({
       // The level editor SAVES layout.json while you're standing in it — a
       // watcher reload would wipe editor state on every save. Game/editor
       // tabs pick the file up on their next manual reload instead.
-      ignored: ['**/src/cave/layout.json'],
+      ignored: ['**/src/cave/layout.json', '**/src/tuning.overrides.json'],
     },
   },
 });

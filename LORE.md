@@ -53,7 +53,7 @@ He is soft-spoken, formal, courteous. Not military — never was. Topside life d
 
 ### 2.1 VO rules
 - **Lowe NEVER speaks underwater.** Regulator in, mouth shut — his silence below is the horror discipline, and it makes every surface line land. Below, he is breath, heartbeat, and bubbles only.
-- Lines trigger at: the platform, any air pocket (head above water), and menus. Tape reactions queue until he next surfaces.
+- **He speaks only after ~3 s continuously out of the water** (user 2026-07-20): bobbing up for a breath doesn't count — he catches his breath first, then talks. Lines trigger at: the platform, any air pocket (head above ≥3 s), and menus. Tape reactions queue until then.
 - **Anti-spam (silence is the default):** global ambient-line cooldown ≥ 120 s; each line plays at most once per run (no-repeat memory); priority queue = tape reactions > event reactions (power, close call, toys) > ambient, and ambient lines roll a ~40% chance even when off cooldown. If in doubt, he says nothing.
 - Delivery: ElevenLabs at M8, one consistent voice — soft, unhurried, courteous, aging Midwestern; close-mic; slight room echo topside / tight wet echo in pockets.
 
@@ -137,7 +137,7 @@ The user asked: cave, or flooded nuclear facility? **Answer: both, deliberately.
 
 ## 5. Tapes — full scripts (6; VO at M8; subtitled; 20–40 s each)
 
-**Playback (important):** tapes do NOT play where they're found. Pickup is a one-second interaction (click + "TAPE RECOVERED — T3" toast); the tape **auto-plays the next time Lowe has his head above water and it's safe** (no enemy within ~20 m), followed by his queued reaction line; recovered tapes replay from the pause menu. Dive = tension, breathe = story.
+**Playback (REVISED by the user 2026-07-20 — the original safe-surfacing rule was theirs and they reversed it: players bob for air, they don't linger surfaced):** a tape **plays the moment it's picked up, right where you are, at any depth** — a waterproof deck held to the mask, always clear (no underwater filter). Subtitled, skippable (B). Lowe's queued reaction still waits for his own rule (§2.1). Recovered tapes replay from the pause menu.
 
 Each tape is mundane official business with **exactly one wrongness**. No tape mentions the flood. Together they corroborate nothing.
 

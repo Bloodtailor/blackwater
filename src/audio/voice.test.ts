@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { VoiceQueue } from './voice';
 import { estimateSpeechSec, LOWE_LINES, TAPES } from './lines';
-import { TapeDeck, tapeSafe } from '../game/tapes';
+import { TapeDeck } from '../game/tapes';
 import { TUNING } from '../tuning';
 
 const step = (q: VoiceQueue, sec: number, surfaced: boolean, blocked = false): string[] => {
@@ -67,36 +67,32 @@ describe('VoiceQueue (LORE §2.1)', () => {
   });
 });
 
-describe('TapeDeck (LORE §5 playback spec)', () => {
-  it('collect → pending → plays only at a SAFE surfacing, then fires the reaction', () => {
+describe('TapeDeck (rework 2026-07-20: plays on pickup, any depth)', () => {
+  it('collect → plays immediately → fires the reaction at the end', () => {
     const deck = new TapeDeck();
     const done: string[] = [];
     deck.onFinished = (t) => done.push(t.reactionId);
     expect(deck.collect('t3')).toBe(true);
     expect(deck.collect('t3')).toBe(false); // once
-    deck.update(1, false, true); // submerged: no
-    expect(deck.playing).toBeNull();
-    deck.update(1, true, false); // surfaced but hostile ≤20 m: defers
-    expect(deck.playing).toBeNull();
-    deck.update(1, true, true); // safe surfacing: rolls
+    deck.update(0.1); // first tick after pickup: rolling
     expect(deck.playing?.tape.id).toBe('t3');
     const dur = deck.playing!.durSec;
-    for (let t = 0; t < dur + 1; t += 0.5) deck.update(0.5, true, true);
+    for (let t = 0; t < dur + 1; t += 0.5) deck.update(0.5);
     expect(deck.playing).toBeNull();
     expect(done).toEqual(['tape.t3']);
   });
 
-  it('submerging mid-tape pauses the reel and holds the position', () => {
+  it('a second pickup queues behind the tape already rolling', () => {
     const deck = new TapeDeck();
     deck.collect('t1');
-    deck.update(0.1, true, true);
-    deck.update(5, true, true);
-    const at = deck.playing!.t;
-    deck.update(10, false, true); // dive: paused, no progress
-    expect(deck.playing!.paused).toBe(true);
-    expect(deck.playing!.t).toBe(at);
-    deck.update(1, true, true); // resurface: resumes
-    expect(deck.playing!.paused).toBe(false);
+    deck.update(0.1);
+    deck.collect('t2');
+    deck.update(1);
+    expect(deck.playing?.tape.id).toBe('t1');
+    expect(deck.pending.map((t) => t.id)).toEqual(['t2']);
+    deck.skip();
+    deck.update(0.1);
+    expect(deck.playing?.tape.id).toBe('t2');
   });
 
   it('skip ends the tape and still queues the reaction', () => {
@@ -104,17 +100,9 @@ describe('TapeDeck (LORE §5 playback spec)', () => {
     const done: string[] = [];
     deck.onFinished = (t) => done.push(t.reactionId);
     deck.collect('t6');
-    deck.update(0.1, true, true);
+    deck.update(0.1);
     expect(deck.skip()).toBe(true);
     expect(done).toEqual(['tape.t6']);
-  });
-
-  it('tapeSafe: hostile inside 20 m blocks, dead ones and far ones do not', () => {
-    const P = { x: 0, y: 0, z: 0 };
-    expect(tapeSafe(P, [])).toBe(true);
-    expect(tapeSafe(P, [{ pos: { x: 10, y: 0, z: 0 }, state: 'pursuing' }])).toBe(false);
-    expect(tapeSafe(P, [{ pos: { x: 10, y: 0, z: 0 }, state: 'dead' }])).toBe(true);
-    expect(tapeSafe(P, [{ pos: { x: 30, y: 0, z: 0 }, state: 'pursuing' }])).toBe(true);
   });
 });
 

@@ -1,13 +1,13 @@
-// Radio logs (M8b, LORE §5). Six waterproof reel-to-reel bricks at the
-// tape-tagged spots. Pickup is a one-second interact; the tape AUTO-PLAYS the
-// next time Lowe's head is above water and it's SAFE (no enemy within ~20 m).
-// Dive = tension, breathe = story. Subtitled, skippable (B), pauses if you
-// submerge mid-play and resumes at the next safe surfacing.
+// Radio logs (M8b, reworked 2026-07-20 per user: the safe-surfacing rule was
+// their own earlier call and they reversed it — players spend almost no time
+// surfaced, they bob for air). A tape now PLAYS THE MOMENT YOU PICK IT UP,
+// right where you are, at any depth — a waterproof deck held to the mask.
+// Subtitled, skippable (B). Lowe's reaction still queues for his own rule
+// (fully out of the water ≥3 s — he keeps the regulator in).
 //
 // TapeDeck is pure logic (unit-tested); TapeProps is the three.js side.
 
 import * as THREE from 'three';
-import { TUNING } from '../tuning';
 import { getNode } from '../cave/data';
 import { sdf } from '../cave/sdf';
 import { SETTINGS } from '../ui/settings';
@@ -21,19 +21,17 @@ export interface TapePlayback {
   tape: TapeScript;
   t: number; // seconds into the tape (fallback clock)
   durSec: number;
-  paused: boolean;
 }
 
 export class TapeDeck {
   /** Recovered tape ids, in pickup order (pause-menu list reads this). */
   readonly collected: string[] = [];
-  /** Waiting to play (FIFO — story order is pickup order). */
+  /** Waiting to play (FIFO — only if one is already rolling). */
   readonly pending: TapeScript[] = [];
   playing: TapePlayback | null = null;
   /** Set when a tape finishes: the Lowe reaction to queue. */
   onFinished: ((tape: TapeScript) => void) | null = null;
   onStart: ((tape: TapeScript) => void) | null = null;
-  onPauseChange: ((paused: boolean) => void) | null = null;
 
   collect(id: string): boolean {
     if (this.collected.includes(id)) return false;
@@ -44,25 +42,18 @@ export class TapeDeck {
     return true;
   }
 
-  /** `safe` = head above water AND no enemy within tapeSafeRadiusM. */
-  update(dt: number, surfaced: boolean, safe: boolean): void {
+  /** Plays immediately on pickup (user 2026-07-20) — the only wait is for a
+   *  previous tape to finish. */
+  update(dt: number): void {
     const p = this.playing;
     if (p) {
-      // submerging (or danger arriving) pauses the reel — it waits for you
-      const shouldPause = !surfaced;
-      if (shouldPause !== p.paused) {
-        p.paused = shouldPause;
-        this.onPauseChange?.(p.paused);
-      }
-      if (!p.paused) {
-        p.t += dt;
-        if (p.t >= p.durSec) this.finish();
-      }
+      p.t += dt;
+      if (p.t >= p.durSec) this.finish();
       return;
     }
-    if (surfaced && safe && this.pending.length > 0) {
+    if (this.pending.length > 0) {
       const tape = this.pending.shift()!;
-      this.playing = { tape, t: 0, durSec: estimateSpeechSec(tape.text), paused: false };
+      this.playing = { tape, t: 0, durSec: estimateSpeechSec(tape.text) };
       this.onStart?.(this.playing.tape);
     }
   }
@@ -149,13 +140,6 @@ export class TapeProps {
     }
 
     deck.onStart = (tape) => this.startAudio(tape);
-    deck.onPauseChange = (paused) => {
-      const el = this.currentEl();
-      if (el) {
-        if (paused) el.pause();
-        else void el.play().catch(() => {});
-      }
-    };
   }
 
   private currentEl(): HTMLAudioElement | null {
@@ -174,7 +158,7 @@ export class TapeProps {
     const g = ctx.createGain();
     g.gain.value = SETTINGS.volumeVo;
     src.connect(g);
-    g.connect(e.surface); // tapes play at the surface, in air
+    g.connect(e.master); // any depth — held to the mask, never filtered
     el.addEventListener('loadedmetadata', () => {
       if (Number.isFinite(el.duration) && el.duration > 0) this.deck.setDuration(el.duration);
     });
@@ -188,19 +172,3 @@ export class TapeProps {
   }
 }
 
-/** Safe-surfacing check (§5 playback spec): head above AND nothing hostile
- *  inside the radius. Pure — testable. */
-export function tapeSafe(
-  playerPos: { x: number; y: number; z: number },
-  hostiles: { pos: { x: number; y: number; z: number }; state: string }[],
-): boolean {
-  const r = TUNING.voice.tapeSafeRadiusM;
-  for (const h of hostiles) {
-    if (h.state === 'dead') continue;
-    const dx = h.pos.x - playerPos.x;
-    const dy = h.pos.y - playerPos.y;
-    const dz = h.pos.z - playerPos.z;
-    if (dx * dx + dy * dy + dz * dz < r * r) return false;
-  }
-  return true;
-}

@@ -19,6 +19,10 @@ export interface PanelApi {
   deleteSelection(): void;
   duplicateNode(): void;
   renameNode(oldId: string, newId: string): boolean;
+  addAudioNode(): void;
+  setFilter(tag: string): void;
+  getFilter(): string;
+  toggleTeasers(): boolean;
   previewRock(): void;
   hideRock(): void;
   toggleLabels(): void;
@@ -73,12 +77,35 @@ export function buildPanel(api: PanelApi): Panel {
   btn('▶ TEST', () => api.playtest(), 'ed-primary');
   btn('▶ saved', () => (location.search = '?debug=1'));
   btn('+ ROOM', () => api.addRoom());
+  btn('+ ♪', () => api.addAudioNode()).title = 'Add an AUDIO node: a pure sound emitter (machinery/airflow behind the walls). No geometry — bury it in rock.';
   btn('⛰ ROCK', () => api.previewRock());
   btn('⛰ off', () => api.hideRock());
   btn('↩ UNDO', () => api.undo());
   btn('⬇ JSON', () => api.download());
   btn('🏷', () => api.toggleLabels());
   btn('🧭', () => api.toggleMarkers());
+  const ghostBtn = btn('👻', () => {
+    ghostBtn.classList.toggle('ed-on', api.toggleTeasers());
+  });
+  ghostBtn.title = 'Show/hide TEASER rooms (visible-but-unreachable dressing; outside all rule checks)';
+
+  // ── node-type filter (user 2026-07-20: "just see all boxSpots") ──
+  const filterRow = document.createElement('div');
+  filterRow.className = 'ed-filter';
+  const fLabel = document.createElement('span');
+  fLabel.textContent = 'FILTER ';
+  filterRow.appendChild(fLabel);
+  const fSel = document.createElement('select');
+  for (const o of ['all', ...ALL_TAGS, 'teaser', 'audio']) {
+    const opt = document.createElement('option');
+    opt.value = o;
+    opt.textContent = o;
+    fSel.appendChild(opt);
+  }
+  fSel.value = api.getFilter();
+  fSel.addEventListener('change', () => api.setFilter(fSel.value));
+  filterRow.appendChild(fSel);
+  root.appendChild(filterRow);
 
   const hint = document.createElement('div');
   hint.className = 'ed-hint';
@@ -192,7 +219,76 @@ export function buildPanel(api: PanelApi): Panel {
 
   let posInputs: HTMLInputElement[] = [];
 
+  // Known loopable samples (public/audio/sfx) for the audio-node picker;
+  // free text still allowed — the game falls back to a synth drone for
+  // unknown names, so a typo hums instead of crashing.
+  const SAMPLE_SUGGESTIONS = ['amb-machinery', 'amb-airflow', 'amb-groan', 'amb-drips', 'ambient-shallow', 'ambient-mid', 'ambient-deep', 'angler-hum', 'guardian-presence', 'toy-shimmer'];
+  const dataList = document.createElement('datalist');
+  dataList.id = 'bw-sample-list';
+  for (const s of SAMPLE_SUGGESTIONS) {
+    const o = document.createElement('option');
+    o.value = s;
+    dataList.appendChild(o);
+  }
+  root.appendChild(dataList);
+
+  const audioFields = (n: CaveNode): void => {
+    const a = (n.audio = n.audio ?? { sample: 'amb-machinery', radiusM: 15, falloff: 3 });
+    const r = row(form, 'sample');
+    const i = document.createElement('input');
+    i.value = a.sample;
+    i.setAttribute('list', 'bw-sample-list');
+    i.addEventListener('change', () => {
+      a.sample = i.value.trim();
+      api.commit();
+    });
+    r.appendChild(i);
+    numField(form, 'radiusM (audible range)', () => a.radiusM, (v) => (a.radiusM = v ?? a.radiusM), 1);
+    numField(form, 'falloff (higher = tighter)', () => a.falloff, (v) => (a.falloff = v ?? undefined), 0.5);
+    const note = document.createElement('div');
+    note.className = 'ed-note';
+    note.textContent = 'Outer shell = audible limit (radiusM), inner shell = falloff knee (radiusM ÷ falloff). Rock between player and node muffles it honestly (SDF occlusion).';
+    form.appendChild(note);
+  };
+
+  const audioNodeForm = (n: CaveNode): void => {
+    const h = document.createElement('div');
+    h.className = 'ed-title';
+    h.textContent = `♪ AUDIO NODE · ${n.id}`;
+    form.appendChild(h);
+    const r = row(form, 'id');
+    const idInput = document.createElement('input');
+    idInput.value = n.id;
+    idInput.addEventListener('change', () => {
+      if (!api.renameNode(n.id, idInput.value.trim())) {
+        toast('RENAME FAILED (empty or taken)');
+        idInput.value = n.id;
+      }
+    });
+    r.appendChild(idInput);
+    selectField(form, 'zone', ZONES, () => n.zone, (v) => (n.zone = v as Zone));
+    posInputs = vecField(form, 'pos', () => n.pos, (v) => (n.pos = v ?? n.pos));
+    audioFields(n);
+    const acts = document.createElement('div');
+    acts.className = 'ed-actions';
+    for (const [label, fn] of [
+      ['⌖ frame', api.frame],
+      ['⧉ duplicate', api.duplicateNode],
+      ['✕ delete', api.deleteSelection],
+    ] as const) {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.addEventListener('click', fn);
+      acts.appendChild(b);
+    }
+    form.appendChild(acts);
+  };
+
   const nodeForm = (n: CaveNode): void => {
+    if (n.kind === 'audio') {
+      audioNodeForm(n);
+      return;
+    }
     const h = document.createElement('div');
     h.className = 'ed-title';
     h.textContent = `ROOM · ${n.id}`;
@@ -218,6 +314,9 @@ export function buildPanel(api: PanelApi): Panel {
     boolField(form, 'dry (air)', () => !!n.dry, (v) => (n.dry = v || undefined));
     numField(form, 'water 0..1', () => n.water, (v) => (n.water = v), 0.05);
     vecField(form, 'falseUp', () => n.falseUp, (v) => (n.falseUp = v ?? undefined));
+    // teaser: visible-but-unreachable dressing — outside every rule check,
+    // hidden in the editor by default (👻 toggles)
+    boolField(form, 'teaser (dressing)', () => !!n.teaser, (v) => (n.teaser = v || undefined));
     // tags
     const tagBox = document.createElement('div');
     tagBox.className = 'ed-tags';

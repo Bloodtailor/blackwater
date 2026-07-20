@@ -104,6 +104,7 @@ export function initSdf(): void {
   };
 
   for (const n of NODES) {
+    if (n.kind === 'audio') continue; // pure sound emitters carve nothing
     const s = n.stretch ?? [1, 1, 1];
     const rx = n.radius * s[0];
     const ry = n.radius * s[1];

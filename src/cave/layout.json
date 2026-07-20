@@ -271,7 +271,8 @@
       "radius": 1.5,
       "dry": true,
       "zone": "galleries",
-      "tags": []
+      "tags": [],
+      "teaser": true
     },
     {
       "id": "dry-teaser2",
@@ -283,7 +284,8 @@
       "radius": 1.3,
       "dry": true,
       "zone": "galleries",
-      "tags": []
+      "tags": [],
+      "teaser": true
     },
     {
       "id": "dry-slide-top",
@@ -799,7 +801,8 @@
       "radius": 1.3,
       "dry": true,
       "zone": "maze",
-      "tags": []
+      "tags": [],
+      "teaser": true
     },
     {
       "id": "mz-teaser-t2",
@@ -811,7 +814,8 @@
       "radius": 1.2,
       "dry": true,
       "zone": "maze",
-      "tags": []
+      "tags": [],
+      "teaser": true
     },
     {
       "id": "mz-stores",
@@ -1409,7 +1413,8 @@
       "floor": 0.35,
       "pillars": 2,
       "spikes": 5,
-      "water": 0
+      "water": 0,
+      "teaser": true
     },
     {
       "id": "abyss-air-copy",
@@ -1522,7 +1527,59 @@
       "dry": true,
       "floor": 0.35,
       "spikes": 5,
-      "water": 0
+      "water": 0,
+      "teaser": true
+    },
+    {
+      "id": "aud-listing-airflow",
+      "pos": [
+        -10.719571291701719,
+        -70.2705382124706,
+        57.02745977968053
+      ],
+      "radius": 1,
+      "zone": "maze",
+      "kind": "audio",
+      "audio": {
+        "sample": "amb-airflow",
+        "radiusM": 20,
+        "falloff": 2.5
+      },
+      "tags": []
+    },
+    {
+      "id": "aud-pile-machinery",
+      "pos": [
+        -6,
+        -41.1,
+        29.8
+      ],
+      "radius": 1,
+      "zone": "galleries",
+      "kind": "audio",
+      "audio": {
+        "sample": "amb-machinery",
+        "radiusM": 16,
+        "falloff": 3
+      },
+      "tags": []
+    },
+    {
+      "id": "aud-abyss-groan",
+      "pos": [
+        11.4,
+        -155.50703181864685,
+        102.89999999999999
+      ],
+      "radius": 1,
+      "zone": "abyss",
+      "kind": "audio",
+      "audio": {
+        "sample": "amb-groan",
+        "radiusM": 24,
+        "falloff": 2.5
+      },
+      "tags": []
     }
   ],
   "edges": [

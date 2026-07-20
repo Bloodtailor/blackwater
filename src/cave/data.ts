@@ -95,6 +95,24 @@ export interface CaveNode {
   floor?: number;
   /** Stalactites + stalagmites (count) — air rooms only. */
   spikes?: number;
+  /**
+   * TEASER room (user 2026-07-20): visible but unreachable — carved into the
+   * rock like any room so the player can SEE it through windows/gaps, but
+   * excluded from every layout rule check (it is deliberately unconnected)
+   * and hidden by default in the editor. Edges between teaser nodes are
+   * teaser passages implicitly.
+   */
+  teaser?: boolean;
+  /**
+   * AUDIO EMITTER node (user 2026-07-20): no geometry, no cavity — a pure
+   * positional sound source, usually placed INSIDE solid rock so machinery /
+   * airflow / settling sounds leak through the walls (the SDF occlusion
+   * filter does the muffling honestly). `radiusM` is the audible range
+   * (editor draws it); `falloff` shapes the curve — higher = the sound stays
+   * hearable closer to the wall only (refDist = radiusM / falloff).
+   */
+  kind?: 'room' | 'audio';
+  audio?: { sample: string; radiusM: number; falloff?: number };
   zone: Zone;
   tags: NodeTag[];
   contents?: {
@@ -134,6 +152,8 @@ export interface CaveEdge {
   /** Deceptive reference-up for this passage — camera orientation only; an
    *  `airGap` surface follows the tunnel geometry regardless. */
   falseUp?: [number, number, number];
+  /** Teaser passage (between teaser rooms) — carved, but outside the rules. */
+  teaser?: boolean;
 }
 
 interface Layout {
@@ -190,6 +210,32 @@ for (const e of EDGES) {
     if (e.airGap === undefined) e.airGap = 0.5; // best guess for hand-me-downs
     e.waterY = undefined;
   }
+}
+
+// ── Playable-world filters (user 2026-07-20): teaser rooms and audio
+// emitters are map DRESSING — every gameplay rule, pathing graph, and layout
+// assertion sees only the playable cave. ──
+
+export function isPlayableNode(n: CaveNode): boolean {
+  return !n.teaser && n.kind !== 'audio';
+}
+
+export function playableNodes(): CaveNode[] {
+  return NODES.filter(isPlayableNode);
+}
+
+export function playableEdges(): CaveEdge[] {
+  return EDGES.filter((e) => {
+    if (e.teaser) return false;
+    const a = nodeMap.get(e.a);
+    const b = nodeMap.get(e.b);
+    return !!a && !!b && isPlayableNode(a) && isPlayableNode(b);
+  });
+}
+
+/** Nodes that emit sound (kind 'audio', or any room given an `audio` field). */
+export function audioNodes(): CaveNode[] {
+  return NODES.filter((n) => n.audio !== undefined);
 }
 
 // ── Helpers (graph utilities shared by all systems) ──

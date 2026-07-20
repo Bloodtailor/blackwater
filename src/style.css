@@ -310,6 +310,25 @@ canvas {
 #hud-subtitle.hidden {
   display: none;
 }
+.ed-filter {
+  padding: 4px 8px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  opacity: 0.9;
+}
+.ed-filter select {
+  width: 60%;
+}
+.ed-toolbar button.ed-on {
+  outline: 1px solid #d946ef;
+}
+.tuning-row span.has-desc {
+  border-bottom: 1px dotted #6a8;
+  cursor: help;
+}
+.tuning-head button {
+  margin-left: 6px;
+}
 #editor-panel {
   position: fixed;
   top: 0;

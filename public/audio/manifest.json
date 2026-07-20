@@ -144,6 +144,34 @@
     "radio-squelch": {
       "url": "/audio/sfx/radio-squelch.mp3"
     },
+    "ambient-shallow": {
+      "url": "/audio/sfx/ambient-shallow.mp3",
+      "loop": true
+    },
+    "ambient-mid": {
+      "url": "/audio/sfx/ambient-mid.mp3",
+      "loop": true
+    },
+    "ambient-deep": {
+      "url": "/audio/sfx/ambient-deep.mp3",
+      "loop": true
+    },
+    "amb-machinery": {
+      "url": "/audio/sfx/amb-machinery.mp3",
+      "loop": true
+    },
+    "amb-airflow": {
+      "url": "/audio/sfx/amb-airflow.mp3",
+      "loop": true
+    },
+    "amb-groan": {
+      "url": "/audio/sfx/amb-groan.mp3",
+      "loop": true
+    },
+    "amb-drips": {
+      "url": "/audio/sfx/amb-drips.mp3",
+      "loop": true
+    },
     "stinger-round": {
       "url": "/audio/sfx/stinger-round.mp3"
     },

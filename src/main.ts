@@ -38,7 +38,7 @@ import { AudioDirector } from './audio/director';
 import { SAMPLES } from './audio/samples';
 import { loadManifest, VoicePlayer, VoiceQueue, type VoManifest } from './audio/voice';
 import { TAPES } from './audio/lines';
-import { TapeDeck, TapeProps, tapeSafe } from './game/tapes';
+import { TapeDeck, TapeProps } from './game/tapes';
 import { Toys } from './game/toys';
 import { Hud } from './ui/hud';
 import { SETTINGS, saveSettings } from './ui/settings';
@@ -529,13 +529,18 @@ function initGame(): void {
     doorsOpen: 0,
     boxWasSpinning: false,
     papWasWorking: false,
-    // M8b VO edges
-    wasSurfaced: false,
+    // M8b VO edges (rework 2026-07-20: Lowe speaks after 3 s FULLY out —
+    // bobbing for a breath doesn't count)
+    surfacedT: 0,
+    wasSustained: false,
+    airAtBreach: 100,
+    wasAbove: false,
     voRound: 0,
     voStirs: false,
     idleT: 0,
     tally100: false,
     tally300: false,
+    ePrev: false,
   };
   // H toggles the DEBUG layer only — the game HUD stays up (user 2026-07-20:
   // "move all the required hud items to the game hud")
@@ -901,9 +906,17 @@ function initGame(): void {
     }
     sampleCurrent(p.x, p.y, p.z, time, currentVec);
 
+    // inspect overlay escape hatch (user bug 2026-07-20: drift away from the
+    // photograph while inspecting → the interact prompt is gone and the
+    // overlay could never close). While it's open, E ALWAYS closes it —
+    // proximity no longer matters. Esc works too.
+    const eNow = player.keyDown('KeyE');
+    if (hud.inspectOpen && ((eNow && !ctl.ePrev) || player.keyDown('Escape'))) hud.closeInspect();
+    ctl.ePrev = eNow;
+
     // ── buy prompts (M6a): E belongs to a live prompt, not to camera roll ──
     camera.getWorldDirection(lookDir);
-    interact.update(dt, p, lookDir, !vitals.dead && player.mode !== 'noclip' && player.keyDown('KeyE'));
+    interact.update(dt, p, lookDir, !vitals.dead && player.mode !== 'noclip' && !hud.inspectOpen && player.keyDown('KeyE'));
     player.suppressRollE = interact.target !== null;
     hud.updatePrompt(player.mode === 'noclip' ? null : interact.targetPrompt, interact.progress);
     shops.update(dt);
@@ -1215,21 +1228,26 @@ function initGame(): void {
     hud.update(dt, vitals, -p.y);
     hud.updateKit(guideLine, chems, following, ctl.grabbing, guideLine.nearEnd(hand));
 
-    // ── M8b: Lowe's voice + the tapes — he speaks ONLY above water ──
-    const surfaced = headAbove && player.mode !== 'noclip' && !vitals.dead;
-    if (surfaced && !ctl.wasSurfaced) {
-      // the surfacing beat: close call beats pleasantries; pockets get their
-      // own register; the open cenote gets the daylight lines
-      if (vitals.air < TUNING.voice.closeCallAir + 2) requestOneOf(['closecall.1', 'closecall.2', 'closecall.3']);
+    // ── M8b: Lowe's voice + the tapes (rework 2026-07-20: tapes play on
+    // pickup at any depth; Lowe needs 3 s continuously out of the water) ──
+    const above = headAbove && player.mode !== 'noclip' && !vitals.dead;
+    if (above && !ctl.wasAbove) ctl.airAtBreach = vitals.air; // before refill
+    ctl.wasAbove = above;
+    ctl.surfacedT = above ? ctl.surfacedT + dt : 0;
+    const sustained = ctl.surfacedT >= TUNING.voice.surfacedDelaySec;
+    if (sustained && !ctl.wasSustained) {
+      // he's properly out: the surfacing beat, judged by the air he ARRIVED
+      // with (it refills fast while he catches his breath)
+      if (ctl.airAtBreach < TUNING.voice.closeCallAir + 2) requestOneOf(['closecall.1', 'closecall.2', 'closecall.3']);
       else if (daylight) requestOneOf(['surface.1', 'surface.2', 'surface.3', 'surface.4', 'surface.5']);
       else requestOneOf(['pocket.1', 'pocket.2', 'pocket.3', 'pocket.4']);
     }
-    ctl.wasSurfaced = surfaced;
+    ctl.wasSustained = sustained;
     if (rounds.round !== ctl.voRound) {
-      if (ctl.voRound > 0 && surfaced) requestOneOf(['round.1', 'round.2']);
+      if (ctl.voRound > 0 && sustained) requestOneOf(['round.1', 'round.2']);
       ctl.voRound = rounds.round;
     }
-    if (rounds.caveStirsActive && !ctl.voStirs && surfaced) voice.request('stirs.1');
+    if (rounds.caveStirsActive && !ctl.voStirs && sustained) voice.request('stirs.1');
     ctl.voStirs = rounds.caveStirsActive;
     if (!ctl.tally100 && zombies.recovered >= 100) {
       ctl.tally100 = true;
@@ -1240,17 +1258,16 @@ function initGame(): void {
       voice.request('tally.300');
     }
     // idle at the platform, rare: stillness in daylight rolls a musing
-    if (surfaced && daylight && !player.moving && player.vel.lengthSq() < 0.04) {
+    if (sustained && daylight && !player.moving && player.vel.lengthSq() < 0.04) {
       ctl.idleT += dt;
       if (ctl.idleT > TUNING.voice.idleAfterSec) {
         ctl.idleT = 0;
         requestOneOf(['idle.1', 'idle.2']);
       }
     } else ctl.idleT = 0;
-    // tapes: auto-play at the next SAFE surfacing (no enemy ≤20 m, §5)
-    const hostiles = [...zombies.zombies, ...specials.specials];
-    deck.update(dt, surfaced, tapeSafe(p, hostiles));
-    const startedLine = voice.update(dt, surfaced, deck.playing !== null);
+    // tapes: play the moment they're picked up, wherever you are
+    deck.update(dt);
+    const startedLine = voice.update(dt, sustained, deck.playing !== null);
     if (startedLine) voicePlayer.play(startedLine);
     toys.update();
     // subtitles: the tape wins the screen; typewriter pace follows the reel
@@ -1258,7 +1275,7 @@ function initGame(): void {
     else if (deck.playing) {
       const tp = deck.playing;
       const chars = Math.ceil(Math.min(1, tp.t / tp.durSec) * tp.tape.text.length);
-      hud.subtitle(tp.paused ? `${tp.tape.title} — PAUSED` : tp.tape.title, tp.tape.text.slice(0, chars), tp.paused ? '' : 'B skip');
+      hud.subtitle(tp.tape.title, tp.tape.text.slice(0, chars), 'B skip');
     } else if (voice.current) hud.subtitle('LOWE', voice.current.text);
     else hud.subtitle(null);
 

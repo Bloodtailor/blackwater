@@ -221,7 +221,7 @@ Max Ammo · Double Points (60 s) · Insta-Kill (30 s) · **Clear Waters** (all s
 
 Minimal, diegetic-leaning: O2 bar + number (bottom-left), ammo + battery pips (bottom-right), points (top-right, +delta ticks), round tally (top-left), small depth gauge + trend arrow (bottom-center). Grab = regulator-rip flash + bubbles. Damage vignette. Hitmarkers subtle. Screenshot mode (debug) hides HUD.
 
-Run intro: **the job sheet** (LORE.md §2.3) as a skippable styled text card — it is how the player learns the objective (bottom of the bore, carry the Heart to daylight) plus two tutorial seeds, delivered in-world as a clinical recovery contract with one impossible detail. Posters/blueprint/photos support **inspect** (look + E → fullscreen overlay; LORE.md §7 readability rules). Tapes: collected on pickup, auto-play at the next safe surfacing (no enemy within ~20 m), replayable from pause (LORE.md §5).
+Run intro: **the job sheet** (LORE.md §2.3) as a skippable styled text card — it is how the player learns the objective (bottom of the bore, carry the Heart to daylight) plus two tutorial seeds, delivered in-world as a clinical recovery contract with one impossible detail. Posters/blueprint/photos support **inspect** (look + E → fullscreen overlay; while an inspect is open, E always closes it regardless of where you've drifted; LORE.md §7 readability rules). Tapes: **play immediately on pickup at any depth** (user revision 2026-07-20 — the safe-surfacing rule was reversed; LORE §5), subtitled, skippable, replayable from pause. Lowe speaks only after ~3 s continuously out of the water (LORE §2.1).
 
 Menus: title (Dive / How to Dive / Settings), pause (incl. recovered-tapes list), death screen with stats, win screen with stats. **Stats screens are written as Lowe's ledger** (LORE.md §2): e.g. `RECOVERED: 214 / ROSTER: 41 / DISCREPANCY: noted` — kills, tapes, toys, rounds, time framed as recovery paperwork; the win screen ends on the forty-two beat (LORE.md §2.2 final lines). Settings: mouse sensitivity, invert Y, FOV, **max-tilt slider**, brightness, master/music/SFX/VO volume, subtitles (radio logs).
 
@@ -237,6 +237,8 @@ Menus: title (Dive / How to Dive / Settings), pause (incl. recovered-tapes list)
 ## 14. Audio (ElevenLabs + WebAudio)
 
 - **Global underwater DSP:** low-pass + light convolver on everything below surface; lifts when head breaks water — the transition *is* the surface-relief feeling.
+- **Depth ambience (user 2026-07-20):** three looping beds crossfaded on the SAME depth bands as the ambient current (§6.1) — where the current strengthens, the water *sounds* like it: pressure rising literally and mentally.
+- **Audio-emitter nodes (user 2026-07-20):** map nodes (schema §16) that loop a positional sound from inside solid rock — machinery, heavy airflow, the site settling — muffled honestly by the SDF occlusion filter. The abandoned site is audibly still doing something, out of sight. Authored in the level editor (+♪, range/falloff shells shown).
 - **Breathing loop** tied to air level (calm → ragged), heartbeat under 25 air; regulator hiss per exhale (synced to the visible bubble stream = the up-tell has a sound).
 - Zombie moans (wet, muffled), Angler lure hum (faint wrong-feeling chord), Guardian sub-bass presence, silt-out "whump" + tinnitus dip, perk jingles (short, dark-goofy originals), round stingers, PaP choir-groan, box music-box tease, faint geiger crackle near the Pile room (pure flavor — there is no radiation mechanic, and nothing may imply damage).
 - **Radio logs:** 6 waterproof tape players in data-tagged spots; scripts are final in LORE.md §5 (Site BLACKWATER crew, 1968, increasingly wrong). ElevenLabs VO. Subtitled. Skippable. Collected on pickup; play at the next safe surfacing, never at depth (LORE.md §5 playback spec). Pure flavor, zero mechanics.
@@ -263,6 +265,9 @@ interface CaveNode { id: NodeId; pos: [number, number, number]; radius: number;
   stretch?: [number, number, number]; // rooms are ellipsoids, not spheres
   pillars?: number;                   // solid rock columns (path-clearance guaranteed)
   dry?: boolean;                      // air pocket with walkable dry floor + local water line
+  teaser?: boolean;                   // visible-but-unreachable dressing (user 2026-07-20): carved, but outside every rule check, hidden by default in the editor
+  kind?: 'room'|'audio';              // 'audio' = pure sound emitter (user 2026-07-20): NO geometry — usually buried in rock so the sound leaks through walls
+  audio?: { sample: string; radiusM: number; falloff?: number }; // emitter: sample name, audible range, curve (refDist = radiusM/falloff)
   zone: 'sinkhole'|'galleries'|'maze'|'throat'|'abyss';
   tags: ('airPocket'|'ambushPocket'|'burrow'|'landmark'|'siltyFloor'|'chalkMound'|'tiltZone'
         |'perk'|'wallBuy'|'boxSpot'|'power'|'pap'|'heart'|'tape'|'cache'|'tieOff'
