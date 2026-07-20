@@ -106,6 +106,28 @@ export class Hud {
     this.inspectEl = make('hud-inspect');
     this.inspectEl.innerHTML = '<img alt="" /><div class="caption"></div><div class="small">E to put it back</div>';
     this.inspectEl.classList.add('hidden');
+    // M8b: VO/tape subtitles — speaker tag + line, bottom-center above the gauge
+    this.subtitleEl = make('hud-subtitle');
+    this.subtitleEl.innerHTML = '<span class="who"></span><span class="text"></span>';
+    this.subWho = this.subtitleEl.querySelector('.who') as HTMLElement;
+    this.subText = this.subtitleEl.querySelector('.text') as HTMLElement;
+    this.subtitleEl.classList.add('hidden');
+  }
+
+  private subtitleEl!: HTMLElement;
+  private subWho!: HTMLElement;
+  private subText!: HTMLElement;
+
+  /** Show/refresh a subtitle (null hides it). `hint` renders after the tag
+   *  (e.g. `B skip`). */
+  subtitle(who: string | null, text = '', hint = ''): void {
+    if (who === null) {
+      this.subtitleEl.classList.add('hidden');
+      return;
+    }
+    this.subtitleEl.classList.remove('hidden');
+    this.subWho.textContent = hint ? `${who} · ${hint}` : who;
+    this.subText.textContent = text;
   }
 
   private winEl!: HTMLElement;

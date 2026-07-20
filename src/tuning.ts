@@ -474,6 +474,17 @@ export const TUNING = {
     // wall-gun price sheet (DESIGN §10.1); ammo refill = half gun cost
     gunCost: { speargun: 500, pneuDriver: 1000, flechette: 1250, harpoon: 1500, lineLance: 1750 },
   },
+  voice: {
+    // ── Lowe + tapes (LORE §2.1/§5 anti-spam; silence is the default) ──
+    ambientChance: 0.4, // ambient lines roll this even when off cooldown
+    ambientCooldownSec: 120, // global gap between ambient lines
+    tapeSafeRadiusM: 20, // a tape won't start with an enemy inside this
+    idleAfterSec: 45, // platform stillness before an idle line may roll
+    closeCallAir: 15, // surfacing under this air = a close-call event
+    voGain: 0.9, // fallback-squelch level rides volumeVo too
+    jukeboxGain: 0.22, // the song is far away, everywhere (LORE §6)
+    shimmerRefDistM: 2.2, // toy music-box shimmer ≈ audible ≤8 m
+  },
   audio: {
     // ── the M8a synth soundscape; volumes are 0..1 pre-master gains ──
     underwaterLowpassHz: 850, // the global "you are underwater" filter

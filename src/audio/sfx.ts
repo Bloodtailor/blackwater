@@ -378,6 +378,52 @@ export function deathSting(ctx: BaseAudioContext, out: AudioNode): void {
   tone(ctx, out, { type: 'sawtooth', hz: ST.gs3, hzEnd: ST.gs3 * 0.5, attack: 0.05, hold: 1.0, release: 2.5, gain: 0.2 * v });
 }
 
+/** Fallback VO marker: a soft radio squelch + breathy crackle so subtitle
+ *  changes are audible before generated voice assets exist. */
+export function radioSquelch(ctx: BaseAudioContext, out: AudioNode, vol = 1): void {
+  noiseBurst(ctx, out, { filter: 'bandpass', hz: 1900, q: 5, attack: 0.005, hold: 0.03, release: 0.08, gain: 0.12 * vol });
+  setTimeout(() => noiseBurst(ctx, out, { filter: 'bandpass', hz: 1400, q: 2, attack: 0.02, hold: 0.25, release: 0.3, gain: 0.05 * vol }), 90);
+}
+
+/** Tape handling: the pickup clunk + reel squeak. */
+export function tapeClick(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.sfxGain;
+  noiseBurst(ctx, out, { hz: 2400, q: 7, release: 0.04, gain: 0.2 * v });
+  setTimeout(() => tone(ctx, out, { type: 'triangle', hz: 1100, hzEnd: 1500, release: 0.12, gain: 0.06 * v }), 110);
+}
+
+/** The toy divers' music-box shimmer (LORE §4: findability ≤8 m). Sparse,
+ *  detuned, slightly wrong — loops until wound. */
+export function toyShimmer(ctx: BaseAudioContext, out: AudioNode): StopFn {
+  const g = ctx.createGain();
+  g.gain.value = 0.5;
+  g.connect(out);
+  const notes = [1174.7, 987.8, 1318.5, 880, 1567.98];
+  let i = 0;
+  const step = (): void => {
+    // one faint note, then a gap — a mechanism turning over in its sleep
+    if (Math.random() < 0.75) {
+      tone(ctx, g, { type: 'triangle', hz: notes[i % notes.length] * (1 + (Math.random() - 0.5) * 0.01), attack: 0.004, hold: 0.02, release: 0.9, gain: 0.09 });
+      i += Math.random() < 0.8 ? 1 : 2;
+    }
+  };
+  const iv = window.setInterval(step, 700);
+  return () => {
+    window.clearInterval(iv);
+    g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.3);
+    setTimeout(() => g.disconnect(), 1500);
+  };
+}
+
+/** Winding a toy: ratchet clicks then a spring release. */
+export function toyWind(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.sfxGain;
+  for (let i = 0; i < 6; i++) {
+    setTimeout(() => noiseBurst(ctx, out, { hz: 3000 - i * 120, q: 8, release: 0.03, gain: 0.1 * v }), i * 90);
+  }
+  setTimeout(() => tone(ctx, out, { type: 'triangle', hz: 1567.98, attack: 0.005, hold: 0.05, release: 0.8, gain: 0.12 * v }), 640);
+}
+
 export function winSting(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
   const seq = [ST.d3, ST.a3, ST.d4, ST.f4, ST.a4];

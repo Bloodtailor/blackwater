@@ -10,11 +10,17 @@ export interface Settings {
   fullscreenOnPlay: boolean;
   /** Master volume 0..1 (M8a; per-family levels live in tuning.audio). */
   volumeMaster: number;
+  /** Lowe + tapes volume 0..1 (M8b). */
+  volumeVo: number;
+  /** Jukebox / stinger-music volume 0..1 (M8b). */
+  volumeMusic: number;
+  /** Subtitles for VO and tapes (default ON — the fallback voice IS text). */
+  subtitles: boolean;
 }
 
 const KEY = 'bw-settings';
 
-const DEFAULTS: Settings = { maxTiltDeg: 180, fullscreenOnPlay: true, volumeMaster: 0.8 };
+const DEFAULTS: Settings = { maxTiltDeg: 180, fullscreenOnPlay: true, volumeMaster: 0.8, volumeVo: 1, volumeMusic: 1, subtitles: true };
 
 function load(): Settings {
   try {

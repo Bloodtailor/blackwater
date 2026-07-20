@@ -35,6 +35,10 @@ import { MysteryBox } from './economy/mysteryBox';
 import { PapBench } from './economy/pap';
 import { Drops, type DropId } from './economy/drops';
 import { AudioDirector } from './audio/director';
+import { loadManifest, VoicePlayer, VoiceQueue, type VoManifest } from './audio/voice';
+import { TAPES } from './audio/lines';
+import { TapeDeck, TapeProps, tapeSafe } from './game/tapes';
+import { Toys } from './game/toys';
 import { Hud } from './ui/hud';
 import { SETTINGS, saveSettings } from './ui/settings';
 import { TUNING } from './tuning';
@@ -143,7 +147,7 @@ function initGame(): void {
     if (SETTINGS.fullscreenOnPlay && !document.fullscreenElement) {
       document.documentElement
         .requestFullscreen()
-        .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyX', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'KeyV', 'Digit1', 'Digit2', 'Digit3', 'Space']))
+        .then(() => kb?.lock?.(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyX', 'KeyF', 'KeyC', 'KeyG', 'KeyN', 'KeyP', 'KeyH', 'KeyV', 'KeyB', 'Digit1', 'Digit2', 'Digit3', 'Space']))
         .catch(() => {});
     }
   });
@@ -234,6 +238,7 @@ function initGame(): void {
     onPowerOn: () => {
       pap.setPowered(true);
       audio.powerOn();
+      voice.request('power.1'); // "next surfacing" — the queue holds it
       flashStatus('power on — the arteries are lit');
     },
   });
@@ -318,6 +323,36 @@ function initGame(): void {
       });
     }
   }
+
+  // ── M8b: Lowe's voice, the tapes, the toys (LORE §2/§5/§6) ──
+  let voManifest: VoManifest | null = null;
+  void loadManifest().then((m) => (voManifest = m));
+  const voice = new VoiceQueue();
+  const voicePlayer = new VoicePlayer(() => audio.engine, () => voManifest);
+  voicePlayer.onEnded = () => voice.setSpeakSeconds(0);
+  const deck = new TapeDeck();
+  const tapeProps = new TapeProps(scene, interact, deck, () => audio.engine, () => voManifest, (m) => hud.toast(m));
+  deck.onFinished = (tape) => {
+    tapeProps.stopAudio();
+    voice.request(tape.reactionId); // queued; plays while he's still surfaced
+  };
+  const toys = new Toys(scene, interact, () => audio.engine);
+  toys.onWind = (n) => {
+    voice.request(`toy.${n}`);
+    if (n < 3) hud.toast(`THE DIVER WINDS — ${n} OF 3`);
+  };
+  toys.onJukebox = () => {
+    voice.request('jukebox.1');
+    hud.toast('SOMEWHERE ABOVE, THE REC ROOM WAKES');
+  };
+  // one line of a set, chosen among the unsaid (rotation per LORE §2.2)
+  const requestOneOf = (ids: string[]): void => {
+    const fresh = ids.filter((id) => !voice.played.has(id));
+    if (fresh.length > 0) voice.request(fresh[Math.floor(Math.random() * fresh.length)]);
+  };
+  debug.hotkey('KeyB', 'Skip tape', () => {
+    if (deck.skip()) hud.toast('TAPE STOPPED — FILED');
+  });
 
   // Second Wind (§10.5): blackout → wake at the last-used air pocket with the
   // sidearm → the perk is spent. Non-stackable, re-buyable.
@@ -483,7 +518,23 @@ function initGame(): void {
 
   // ── hotkeys & debug ──
   // shared control state (tick writes, hotkeys read)
-  const ctl = { grabbing: false, tTime: 0, xTime: 0, lineWasDeployed: false, reelBlockToasted: false, doorsOpen: 0, boxWasSpinning: false, papWasWorking: false };
+  const ctl = {
+    grabbing: false,
+    tTime: 0,
+    xTime: 0,
+    lineWasDeployed: false,
+    reelBlockToasted: false,
+    doorsOpen: 0,
+    boxWasSpinning: false,
+    papWasWorking: false,
+    // M8b VO edges
+    wasSurfaced: false,
+    voRound: 0,
+    voStirs: false,
+    idleT: 0,
+    tally100: false,
+    tally300: false,
+  };
   // H toggles the DEBUG layer only — the game HUD stays up (user 2026-07-20:
   // "move all the required hud items to the game hud")
   debug.hotkey('KeyH', 'Toggle debug layer (fps/panel)', () => dbgLayer.classList.toggle('hidden'));
@@ -764,6 +815,27 @@ function initGame(): void {
   debug.button(audSec, 'Silt whump (here)', () => audio.siltOut([camera.position.x, camera.position.y, camera.position.z]));
   debug.button(audSec, 'Grab impact', () => audio.grab());
   debug.button(audSec, 'Shot (current gun)', () => audio.shot(weapons.current.def.id, weapons.current.def.papped ?? false));
+  // M8b: voices & flavor
+  debug.slider(audSec, 'VO volume', 0, 1, 0.05, () => SETTINGS.volumeVo, (v) => {
+    SETTINGS.volumeVo = v;
+    saveSettings();
+  });
+  debug.slider(audSec, 'Music volume', 0, 1, 0.05, () => SETTINGS.volumeMusic, (v) => {
+    SETTINGS.volumeMusic = v;
+    saveSettings();
+  });
+  debug.toggle(audSec, 'Subtitles', () => SETTINGS.subtitles, (v) => {
+    SETTINGS.subtitles = v;
+    saveSettings();
+  });
+  debug.button(audSec, 'Collect ALL tapes', () => {
+    for (const t of TAPES) deck.collect(t.id);
+    flashStatus(`tapes pending: ${deck.pending.length}`);
+  });
+  debug.button(audSec, 'Skip tape (B)', () => deck.skip());
+  debug.button(audSec, 'Wind all 3 toys (jukebox)', () => toys.windAll());
+  debug.button(audSec, 'Say a surfacing line', () => requestOneOf(['surface.1', 'surface.2', 'surface.3', 'surface.4', 'surface.5']));
+  debug.button(audSec, 'VO queue state', () => flashStatus(`queue ${voice.queue.map((l) => l.id).join(',') || '—'} | played ${voice.played.size} | cooldown ${voice.ambientCooldown.toFixed(0)}s`));
   const sfxTest = (which: 'round' | 'stirs'): void => {
     const e = audio.ensure();
     void import('./audio/sfx').then((s) => (which === 'round' ? s.roundStinger(e.ctx, e.master) : s.stirsStinger(e.ctx, e.master)));
@@ -1059,6 +1131,7 @@ function initGame(): void {
         teleport(lastPocketNodeId);
         hud.blackout(false);
         hud.toast('SECOND WIND — THE PERK IS SPENT');
+        voice.request('secondwind.1'); // he wakes at a pocket: head above
       }
     }
 
@@ -1087,6 +1160,7 @@ function initGame(): void {
           hud.setAscent(false);
           hud.setLedger(runStats());
           hud.showWin();
+          voice.request('win.1'); // the forty-two beat, spoken
         }
       }
       const acts = weapons.update(dt, { reloadMult: perks.mods.reloadMult, fireDelayMult: perks.mods.fireDelayMult });
@@ -1138,6 +1212,53 @@ function initGame(): void {
     hud.updateWeapon(weapons);
     hud.update(dt, vitals, -p.y);
     hud.updateKit(guideLine, chems, following, ctl.grabbing, guideLine.nearEnd(hand));
+
+    // ── M8b: Lowe's voice + the tapes — he speaks ONLY above water ──
+    const surfaced = headAbove && player.mode !== 'noclip' && !vitals.dead;
+    if (surfaced && !ctl.wasSurfaced) {
+      // the surfacing beat: close call beats pleasantries; pockets get their
+      // own register; the open cenote gets the daylight lines
+      if (vitals.air < TUNING.voice.closeCallAir + 2) requestOneOf(['closecall.1', 'closecall.2', 'closecall.3']);
+      else if (daylight) requestOneOf(['surface.1', 'surface.2', 'surface.3', 'surface.4', 'surface.5']);
+      else requestOneOf(['pocket.1', 'pocket.2', 'pocket.3', 'pocket.4']);
+    }
+    ctl.wasSurfaced = surfaced;
+    if (rounds.round !== ctl.voRound) {
+      if (ctl.voRound > 0 && surfaced) requestOneOf(['round.1', 'round.2']);
+      ctl.voRound = rounds.round;
+    }
+    if (rounds.caveStirsActive && !ctl.voStirs && surfaced) voice.request('stirs.1');
+    ctl.voStirs = rounds.caveStirsActive;
+    if (!ctl.tally100 && zombies.recovered >= 100) {
+      ctl.tally100 = true;
+      voice.request('tally.100');
+    }
+    if (!ctl.tally300 && zombies.recovered >= 300) {
+      ctl.tally300 = true;
+      voice.request('tally.300');
+    }
+    // idle at the platform, rare: stillness in daylight rolls a musing
+    if (surfaced && daylight && !player.moving && player.vel.lengthSq() < 0.04) {
+      ctl.idleT += dt;
+      if (ctl.idleT > TUNING.voice.idleAfterSec) {
+        ctl.idleT = 0;
+        requestOneOf(['idle.1', 'idle.2']);
+      }
+    } else ctl.idleT = 0;
+    // tapes: auto-play at the next SAFE surfacing (no enemy ≤20 m, §5)
+    const hostiles = [...zombies.zombies, ...specials.specials];
+    deck.update(dt, surfaced, tapeSafe(p, hostiles));
+    const startedLine = voice.update(dt, surfaced, deck.playing !== null);
+    if (startedLine) voicePlayer.play(startedLine);
+    toys.update();
+    // subtitles: the tape wins the screen; typewriter pace follows the reel
+    if (!SETTINGS.subtitles) hud.subtitle(null);
+    else if (deck.playing) {
+      const tp = deck.playing;
+      const chars = Math.ceil(Math.min(1, tp.t / tp.durSec) * tp.tape.text.length);
+      hud.subtitle(tp.paused ? `${tp.tape.title} — PAUSED` : tp.tape.title, tp.tape.text.slice(0, chars), tp.paused ? '' : 'B skip');
+    } else if (voice.current) hud.subtitle('LOWE', voice.current.text);
+    else hud.subtitle(null);
 
     // ── audio (M8a): state edges + the per-tick snapshot ──
     const openNow = doors.filter((d) => d.open).length;
@@ -1220,6 +1341,9 @@ function initGame(): void {
     runStats,
     audio,
     audioVerify: () => import('./audio/verify'),
+    voice,
+    deck,
+    toys,
     applyPerkEffects,
     doShot,
     doMelee,

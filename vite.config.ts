@@ -5,9 +5,25 @@ import { defineConfig, type Plugin } from 'vite';
 // Dev-only screenshot sink: the game POSTs canvas PNGs to /__shot?name=x and
 // they land in docs/screens/. Lets the harness verify visuals even when the
 // Browser pane is hidden (rAF throttled to zero), and archives DoD screenshots.
+function listTracks(root: string): string[] {
+  try {
+    return fs
+      .readdirSync(path.resolve(root, 'public/music/easteregg'))
+      .filter((f) => /\.(mp3|ogg|wav|m4a)$/i.test(f));
+  } catch {
+    return [];
+  }
+}
+
 function shotPlugin(): Plugin {
   return {
     name: 'bw-shot',
+    // dist builds get a real tracks.json snapshot of the folder
+    buildStart() {
+      const dir = path.resolve(__dirname, 'public/music/easteregg');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'tracks.json'), JSON.stringify(listTracks(__dirname)) + '\n');
+    },
     configureServer(server) {
       // Level-editor save: the editor POSTs the whole layout and it lands in
       // src/cave/layout.json — the file the game loads. Editing IS saving.
@@ -54,6 +70,13 @@ function shotPlugin(): Plugin {
             res.end('bad body');
           }
         });
+      });
+      // Jukebox track listing (M8b): the folder IS the playlist — drop MP3s
+      // into public/music/easteregg/, zero code changes (LORE §6). Dev serves
+      // a live listing; `buildStart` writes the static file for dist builds.
+      server.middlewares.use('/music/easteregg/tracks.json', (_req, res) => {
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify(listTracks(server.config.root)));
       });
       server.middlewares.use('/__shot', (req, res) => {
         if (req.method !== 'POST') {

@@ -1,0 +1,215 @@
+{
+  "lowe": [
+    {
+      "id": "surface.1",
+      "cat": "ambient",
+      "text": "Air. Thank you kindly."
+    },
+    {
+      "id": "surface.2",
+      "cat": "ambient",
+      "text": "Still daylight up there. It keeps surprising me. I keep letting it."
+    },
+    {
+      "id": "surface.3",
+      "cat": "ambient",
+      "text": "Eleven today. The book stays honest. The book is the only one of us that is."
+    },
+    {
+      "id": "surface.4",
+      "cat": "ambient",
+      "text": "That's one more trip the water let me keep."
+    },
+    {
+      "id": "surface.5",
+      "cat": "ambient",
+      "text": "…You again. Barrow, was it. Third time this week. I'll keep doing this if you will."
+    },
+    {
+      "id": "tally.100",
+      "cat": "event",
+      "text": "One hundred recovered. Out of a complement of forty-one. I've stopped finding that strange — which is strange."
+    },
+    {
+      "id": "tally.300",
+      "cat": "event",
+      "text": "Three hundred. The stencil at the winch says FULL. It's never needed repainting. I've decided not to think about the paint."
+    },
+    {
+      "id": "pocket.1",
+      "cat": "ambient",
+      "text": "Room in here for one. Present company excepted."
+    },
+    {
+      "id": "pocket.2",
+      "cat": "ambient",
+      "text": "I'll be along. I do this in order. I always have."
+    },
+    {
+      "id": "pocket.3",
+      "cat": "ambient",
+      "text": "Quiet room, four inches of sky. I've rented worse."
+    },
+    {
+      "id": "pocket.4",
+      "cat": "ambient",
+      "text": "You can hear the site settle from in here. Or it can hear us."
+    },
+    {
+      "id": "closecall.1",
+      "cat": "event",
+      "text": "Noted. Earlier next time. We always say that, don't we."
+    },
+    {
+      "id": "closecall.2",
+      "cat": "event",
+      "text": "That was arithmetic, not luck. I prefer arithmetic on my side."
+    },
+    {
+      "id": "closecall.3",
+      "cat": "event",
+      "text": "They keep taking hold of me like I'm the one that needs recovering."
+    },
+    {
+      "id": "round.1",
+      "cat": "ambient",
+      "text": "Shift bell. Not mine."
+    },
+    {
+      "id": "round.2",
+      "cat": "ambient",
+      "text": "The roster's moving. It moves more than a roster should."
+    },
+    {
+      "id": "stirs.1",
+      "cat": "ambient",
+      "text": "They've stopped waiting on stragglers. I never waited on stragglers either."
+    },
+    {
+      "id": "power.1",
+      "cat": "event",
+      "text": "Lights below. Blue as a bruise. It was more honest dark."
+    },
+    {
+      "id": "tape.t1",
+      "cat": "tapeReact",
+      "text": "One over. Not under — over. I counted the crew photograph twice at camp. I got two different numbers. I won't be counting it again."
+    },
+    {
+      "id": "tape.t2",
+      "cat": "tapeReact",
+      "text": "Toys nobody ordered, signed for by a man who doesn't remember signing. Honest books about dishonest things."
+    },
+    {
+      "id": "tape.t3",
+      "cat": "tapeReact",
+      "text": "Machines don't fast. Either something fed the Pile, or the Pile was the meal. The engineer chose not to know. Professional of him."
+    },
+    {
+      "id": "tape.t4",
+      "cat": "tapeReact",
+      "text": "Forty-one wrists, one pulse. He checked his own. I have decided not to check mine."
+    },
+    {
+      "id": "tape.t5",
+      "cat": "tapeReact",
+      "text": "Two hundred by tally, three hundred by line. Both true. I've dived four hundred caves. The ones that lie about depth are the ones that keep you."
+    },
+    {
+      "id": "tape.t6",
+      "cat": "tapeReact",
+      "text": "That roster was read three weeks after the water came. The voice is not in the crew book. …I'd like to finish this job soon, please."
+    },
+    {
+      "id": "toy.1",
+      "cat": "event",
+      "text": "A wind-up diver. Requisitioned by no one. I'll wind it anyway — it's rude not to."
+    },
+    {
+      "id": "toy.2",
+      "cat": "event",
+      "text": "Two. There's always a set. Sets are always three."
+    },
+    {
+      "id": "toy.3",
+      "cat": "event",
+      "text": "Three, all wound. Whatever listens to these: the floor is yours."
+    },
+    {
+      "id": "jukebox.1",
+      "cat": "event",
+      "text": "Music. Nineteen sixty-six. Nobody down here minds — and that's the trouble."
+    },
+    {
+      "id": "secondwind.1",
+      "cat": "event",
+      "text": "—Clock's still running. Up. Politely now."
+    },
+    {
+      "id": "idle.1",
+      "cat": "ambient",
+      "text": "The truck is a hundred feet up. I've begun to think of it as a rumor."
+    },
+    {
+      "id": "idle.2",
+      "cat": "ambient",
+      "text": "Nobody knows I'm here. The client knows I'm here. I've decided those are different things."
+    },
+    {
+      "id": "win.1",
+      "cat": "event",
+      "text": "Recovery complete. Forty-one. …Forty-two. Out of the water, Lowe. Out of the water.",
+      "forced": true
+    }
+  ],
+  "tapes": [
+    {
+      "id": "t1",
+      "title": "T1 — SUPPLY LOG",
+      "nodeId": "sink-platform",
+      "reactionId": "tape.t1",
+      "voice": "quartermaster",
+      "text": "Supply log, March twelve. Coffee's short again, requisitioned double. Mustered the full complement for the quarterly photograph, all present. Recount came up one man over. Not under — over. Ran it twice. I've logged forty-one and I am not running it again."
+    },
+    {
+      "id": "t2",
+      "title": "T2 — REC ROOM INVENTORY",
+      "nodeId": "gal-rec",
+      "reactionId": "tape.t2",
+      "voice": "morale officer",
+      "text": "Rec room inventory. Jukebox: operational. Cards: complete. Item: three wind-up toy divers, tin, painted. Requisition slip says we ordered them — this office ordered them. Nobody here has kids. Slip's got my signature. I don't remember signing. Filing it under morale."
+    },
+    {
+      "id": "t3",
+      "title": "T3 — REACTOR LOG",
+      "nodeId": "gal-pile",
+      "reactionId": "tape.t3",
+      "voice": "reactor engineer",
+      "text": "Reactor log, weekly. Output nominal. Fuel consumption is down four percent, third month running. Output nominal. A pile that eats less and gives the same. I've stopped putting it in the weekly report, because I enjoy being believed."
+    },
+    {
+      "id": "t4",
+      "title": "T4 — MEDICAL LOG",
+      "nodeId": "mz-infirm",
+      "reactionId": "tape.t4",
+      "voice": "site physician",
+      "text": "Medical log. Sleep study, week six. At depth, resting pulses synchronize across the watch. All of them. Forty-one men, one rhythm. Last night I timed it against my own wrist. I want that noted, and I want it noted that I'm sorry I checked."
+    },
+    {
+      "id": "t5",
+      "title": "T5 — BORE SURVEY",
+      "nodeId": "throat-rim",
+      "reactionId": "tape.t5",
+      "voice": "dive supervisor",
+      "text": "Bore survey. Tally counter reads two hundred feet. The knotted line reads three hundred. I have re-measured nine times with both. Both readings are correct. I have requested better instruments, and I have been told the instruments are fine. The instruments are fine."
+    },
+    {
+      "id": "t6",
+      "title": "T6 — UNDATED",
+      "nodeId": "drill-head",
+      "reactionId": "tape.t6",
+      "voice": "flat, unhurried, not in the crew book",
+      "text": "…Albrecht, forward watch. Ames, galley. Barrow, lamps. Bell, stores. Calloway, drill. Carver, drill. Deem—"
+    }
+  ]
+}
