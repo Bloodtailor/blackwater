@@ -1,0 +1,385 @@
+// Synthesized SFX library (M8a). Every sound in the game, built from
+// oscillators + shaped noise — these double as M8b's per-sound fallbacks
+// when a generated asset disappoints (PLAN risk note).
+//
+// All one-shots take a destination node (a bus or a positional input) and
+// self-clean when the envelope dies. Loops return a stop() handle.
+
+import { TUNING } from '../tuning';
+
+export type StopFn = () => void;
+
+let noiseBuf: AudioBuffer | null = null;
+function noise(ctx: BaseAudioContext): AudioBuffer {
+  if (!noiseBuf || noiseBuf.sampleRate !== ctx.sampleRate) {
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return noiseBuf;
+}
+
+interface NoiseOpts {
+  filter?: BiquadFilterType;
+  hz?: number;
+  q?: number;
+  attack?: number;
+  hold?: number;
+  release?: number;
+  gain?: number;
+  rate?: number;
+}
+
+/** Filtered-noise one-shot with an A/H/R envelope. */
+function noiseBurst(ctx: BaseAudioContext, out: AudioNode, o: NoiseOpts): void {
+  const src = ctx.createBufferSource();
+  src.buffer = noise(ctx);
+  src.loop = true;
+  src.playbackRate.value = o.rate ?? 1;
+  const f = ctx.createBiquadFilter();
+  f.type = o.filter ?? 'bandpass';
+  f.frequency.value = o.hz ?? 800;
+  f.Q.value = o.q ?? 1;
+  const g = ctx.createGain();
+  const t = ctx.currentTime;
+  const a = o.attack ?? 0.005;
+  const h = o.hold ?? 0.02;
+  const r = o.release ?? 0.15;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(o.gain ?? 0.5, t + a);
+  g.gain.setValueAtTime(o.gain ?? 0.5, t + a + h);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + a + h + r);
+  src.connect(f);
+  f.connect(g);
+  g.connect(out);
+  src.start(t);
+  src.stop(t + a + h + r + 0.05);
+  src.onended = () => g.disconnect();
+}
+
+interface ToneOpts {
+  type?: OscillatorType;
+  hz: number;
+  hzEnd?: number;
+  attack?: number;
+  hold?: number;
+  release?: number;
+  gain?: number;
+  detune?: number;
+}
+
+function tone(ctx: BaseAudioContext, out: AudioNode, o: ToneOpts): void {
+  const osc = ctx.createOscillator();
+  osc.type = o.type ?? 'sine';
+  osc.frequency.value = o.hz;
+  if (o.detune) osc.detune.value = o.detune;
+  const t = ctx.currentTime;
+  const a = o.attack ?? 0.005;
+  const h = o.hold ?? 0.05;
+  const r = o.release ?? 0.2;
+  if (o.hzEnd !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.hzEnd), t + a + h + r);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(o.gain ?? 0.3, t + a);
+  g.gain.setValueAtTime(o.gain ?? 0.3, t + a + h);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + a + h + r);
+  osc.connect(g);
+  g.connect(out);
+  osc.start(t);
+  osc.stop(t + a + h + r + 0.05);
+  osc.onended = () => g.disconnect();
+}
+
+// ── weapons (one voice per gun family; papped adds a bright zing) ──
+export function gunShot(ctx: BaseAudioContext, out: AudioNode, gunId: string, papped: boolean): void {
+  const v = TUNING.audio.sfxGain;
+  switch (gunId) {
+    case 'wristDart':
+      noiseBurst(ctx, out, { hz: 2400, q: 2, release: 0.06, gain: 0.25 * v });
+      tone(ctx, out, { hz: 900, hzEnd: 300, release: 0.05, gain: 0.12 * v });
+      break;
+    case 'pneuDriver':
+      noiseBurst(ctx, out, { hz: 1800, q: 1.5, release: 0.05, gain: 0.22 * v });
+      tone(ctx, out, { type: 'square', hz: 420, hzEnd: 200, release: 0.04, gain: 0.08 * v });
+      break;
+    case 'speargun':
+    case 'twinfish':
+      noiseBurst(ctx, out, { hz: 900, q: 1, release: 0.12, gain: 0.4 * v });
+      tone(ctx, out, { hz: 240, hzEnd: 90, release: 0.12, gain: 0.25 * v });
+      break;
+    case 'flechette':
+      noiseBurst(ctx, out, { filter: 'lowpass', hz: 1400, release: 0.18, gain: 0.55 * v });
+      tone(ctx, out, { hz: 140, hzEnd: 60, release: 0.16, gain: 0.3 * v });
+      break;
+    case 'harpoon':
+    case 'sonicLance':
+      noiseBurst(ctx, out, { filter: 'lowpass', hz: 900, release: 0.3, gain: 0.6 * v });
+      tone(ctx, out, { hz: 110, hzEnd: 45, release: 0.3, gain: 0.4 * v });
+      break;
+    case 'arcProjector':
+      noiseBurst(ctx, out, { hz: 3200, q: 4, release: 0.22, gain: 0.35 * v });
+      tone(ctx, out, { type: 'sawtooth', hz: 1200, hzEnd: 500, release: 0.2, gain: 0.12 * v });
+      break;
+    case 'vortexMaw':
+      tone(ctx, out, { hz: 300, hzEnd: 950, attack: 0.05, release: 0.35, gain: 0.3 * v });
+      noiseBurst(ctx, out, { hz: 600, q: 2, attack: 0.05, release: 0.3, gain: 0.25 * v });
+      break;
+    case 'bangStick':
+      noiseBurst(ctx, out, { filter: 'lowpass', hz: 700, release: 0.4, gain: 0.8 * v });
+      tone(ctx, out, { hz: 80, hzEnd: 35, release: 0.4, gain: 0.5 * v });
+      break;
+    default:
+      noiseBurst(ctx, out, { hz: 1100, release: 0.1, gain: 0.35 * v });
+      tone(ctx, out, { hz: 200, hzEnd: 80, release: 0.1, gain: 0.2 * v });
+  }
+  if (papped) tone(ctx, out, { hz: 1568, hzEnd: 2093, release: 0.1, gain: 0.08 * v });
+}
+
+export function knifeSwing(ctx: BaseAudioContext, out: AudioNode, hit: boolean): void {
+  const v = TUNING.audio.sfxGain;
+  noiseBurst(ctx, out, { hz: 1600, q: 0.8, attack: 0.02, release: 0.1, gain: 0.2 * v, rate: 1.4 });
+  if (hit) noiseBurst(ctx, out, { filter: 'lowpass', hz: 500, release: 0.12, gain: 0.4 * v });
+}
+
+export function reloadClack(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.sfxGain;
+  noiseBurst(ctx, out, { hz: 2800, q: 6, release: 0.04, gain: 0.18 * v });
+  setTimeout(() => noiseBurst(ctx, out, { hz: 2200, q: 6, release: 0.05, gain: 0.22 * v }), 140);
+}
+
+// ── the body ──
+export function heartThump(ctx: BaseAudioContext, out: AudioNode, intensity: number): void {
+  tone(ctx, out, { hz: 55, hzEnd: 38, release: 0.12, gain: 0.5 * intensity });
+  setTimeout(() => tone(ctx, out, { hz: 48, hzEnd: 34, release: 0.1, gain: 0.32 * intensity }), 180);
+}
+
+/** One breath cycle: regulator draw (inhale) + bubble exhale. Synced by the
+ *  director to the same clock as the visible bubble stream. */
+export function breathCycle(ctx: BaseAudioContext, out: AudioNode, panic: number): void {
+  const v = TUNING.audio.breathGain * (0.6 + 0.4 * panic);
+  noiseBurst(ctx, out, { filter: 'bandpass', hz: 1100 + panic * 500, q: 0.7, attack: 0.15, hold: 0.35 - panic * 0.15, release: 0.25, gain: 0.16 * v });
+  const exhaleDelay = (0.9 - panic * 0.35) * 1000;
+  setTimeout(() => {
+    noiseBurst(ctx, out, { filter: 'highpass', hz: 2000, attack: 0.05, hold: 0.4, release: 0.5, gain: 0.1 * v });
+    // a few bubble blips riding the hiss
+    for (let i = 0; i < 4; i++) {
+      setTimeout(() => tone(ctx, out, { hz: 700 + Math.random() * 900, hzEnd: 1400 + Math.random() * 800, release: 0.06, gain: 0.05 * v }), i * 110 + Math.random() * 60);
+    }
+  }, exhaleDelay);
+}
+
+export function drownPulse(ctx: BaseAudioContext, out: AudioNode): void {
+  tone(ctx, out, { hz: 220, hzEnd: 90, attack: 0.02, release: 0.5, gain: 0.25 });
+  noiseBurst(ctx, out, { filter: 'lowpass', hz: 400, attack: 0.05, release: 0.5, gain: 0.3 });
+}
+
+// ── the world ──
+export function grabImpact(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.sfxGain;
+  noiseBurst(ctx, out, { filter: 'lowpass', hz: 350, release: 0.25, gain: 0.7 * v });
+  tone(ctx, out, { hz: 90, hzEnd: 50, release: 0.25, gain: 0.4 * v });
+}
+
+export function moan(ctx: BaseAudioContext, out: AudioNode): void {
+  // wet, muffled: two detuned saws through a slow-swept vowel-ish bandpass
+  const t = ctx.currentTime;
+  const dur = 1.4 + Math.random() * 1.2;
+  const base = 82 + Math.random() * 50;
+  const f = ctx.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.setValueAtTime(300 + Math.random() * 200, t);
+  f.frequency.linearRampToValueAtTime(500 + Math.random() * 400, t + dur * 0.6);
+  f.frequency.linearRampToValueAtTime(250, t + dur);
+  f.Q.value = 1.8;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(TUNING.audio.moanGain, t + dur * 0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  f.connect(g);
+  g.connect(out);
+  for (const det of [0, 9 + Math.random() * 8]) {
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(base, t);
+    osc.frequency.linearRampToValueAtTime(base * (0.82 + Math.random() * 0.1), t + dur);
+    osc.detune.value = det;
+    osc.connect(f);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+    osc.onended = () => osc.disconnect();
+  }
+}
+
+/** The Angler's lure hum: a quiet, faintly WRONG dyad (a flat tritone-ish
+ *  interval that never resolves — LORE: subtly wrong color temperature,
+ *  but for the ear). Loop until stopped. */
+export function anglerHum(ctx: BaseAudioContext, out: AudioNode): StopFn {
+  const g = ctx.createGain();
+  g.gain.value = 0;
+  g.gain.setTargetAtTime(TUNING.audio.anglerGain, ctx.currentTime, 1.2);
+  g.connect(out);
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 0.17;
+  const lfoG = ctx.createGain();
+  lfoG.gain.value = 4;
+  lfo.connect(lfoG);
+  const oscs = [196, 271].map((hz) => {
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = hz;
+    lfoG.connect(o.detune);
+    o.connect(g);
+    o.start();
+    return o;
+  });
+  lfo.start();
+  return () => {
+    g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.4);
+    setTimeout(() => {
+      for (const o of oscs) o.stop();
+      lfo.stop();
+      g.disconnect();
+    }, 2000);
+  };
+}
+
+/** Guardian presence: sub-bass breathing loop + slow metallic groan. */
+export function guardianPresence(ctx: BaseAudioContext, out: AudioNode): StopFn {
+  const g = ctx.createGain();
+  g.gain.value = 0;
+  g.gain.setTargetAtTime(TUNING.audio.guardianGain, ctx.currentTime, 1.5);
+  g.connect(out);
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.value = 31;
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 0.11;
+  const lfoG = ctx.createGain();
+  lfoG.gain.value = 0.5;
+  lfo.connect(lfoG);
+  const subG = ctx.createGain();
+  subG.gain.value = 0.6;
+  lfoG.connect(subG.gain);
+  sub.connect(subG);
+  subG.connect(g);
+  sub.start();
+  lfo.start();
+  const iv = window.setInterval(() => {
+    if (Math.random() < 0.4) noiseBurst(ctx, g, { filter: 'bandpass', hz: 180 + Math.random() * 120, q: 8, attack: 0.4, hold: 0.5, release: 1.2, gain: 0.5 });
+  }, 3500);
+  return () => {
+    window.clearInterval(iv);
+    g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.6);
+    setTimeout(() => {
+      sub.stop();
+      lfo.stop();
+      g.disconnect();
+    }, 2500);
+  };
+}
+
+export function siltWhump(ctx: BaseAudioContext, out: AudioNode): void {
+  // the whump + the tinnitus dip's ring (§14)
+  noiseBurst(ctx, out, { filter: 'lowpass', hz: 220, attack: 0.01, hold: 0.15, release: 0.9, gain: 0.9 });
+  tone(ctx, out, { hz: 46, hzEnd: 28, release: 1.0, gain: 0.5 });
+  setTimeout(() => tone(ctx, out, { hz: 3800, attack: 0.02, hold: 1.6, release: 1.4, gain: 0.028 }), 200);
+}
+
+// ── music-ish stingers & motifs (minor, dark, original) ──
+const ST = { d3: 146.8, f3: 174.6, gs3: 207.7, a3: 220, c4: 261.6, d4: 293.7, e4: 329.6, f4: 349.2, a4: 440, d5: 587.3 };
+
+/** Round-change stinger: somber low horn, minor second bloom. */
+export function roundStinger(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.musicGain;
+  for (const [hz, delay, gain] of [
+    [ST.d3, 0, 0.3],
+    [ST.a3, 0.05, 0.2],
+    [ST.f3, 0.4, 0.24],
+    [ST.gs3, 1.1, 0.14],
+  ] as const) {
+    setTimeout(() => tone(ctx, out, { type: 'sawtooth', hz, attack: 0.3, hold: 0.9, release: 1.6, gain: gain * v, detune: Math.random() * 10 - 5 }), delay * 1000);
+  }
+}
+
+/** The Cave Stirs: a rising unresolved swell. */
+export function stirsStinger(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.musicGain;
+  tone(ctx, out, { type: 'sawtooth', hz: ST.d3, hzEnd: ST.f3, attack: 1.2, hold: 1.2, release: 1.2, gain: 0.22 * v });
+  tone(ctx, out, { type: 'sine', hz: ST.d4, hzEnd: ST.e4, attack: 1.4, hold: 1.0, release: 1.2, gain: 0.12 * v });
+}
+
+/** Perk jingle: four dark music-box notes (short, dark-goofy, §14). */
+export function perkJingle(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.musicGain;
+  const seq = [ST.d4, ST.f4, ST.a4, ST.d5];
+  seq.forEach((hz, i) => setTimeout(() => tone(ctx, out, { type: 'triangle', hz, attack: 0.005, hold: 0.05, release: 0.6, gain: 0.2 * v }), i * 190));
+  setTimeout(() => tone(ctx, out, { type: 'triangle', hz: ST.c4, attack: 0.005, hold: 0.08, release: 1.0, gain: 0.16 * v }), 4 * 190 + 120);
+}
+
+/** Requisition Roulette tease: a little cranked music-box turn. */
+export function boxTease(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.musicGain;
+  const seq = [ST.a4, ST.f4, ST.e4, ST.f4, ST.a4, ST.d5];
+  seq.forEach((hz, i) => setTimeout(() => tone(ctx, out, { type: 'triangle', hz, attack: 0.004, hold: 0.03, release: 0.4, gain: 0.14 * v }), i * 150));
+}
+
+/** PaP motif: a slow choir-ish groan bloom (detuned voices through lowpass). */
+export function papMotif(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.musicGain;
+  for (const [hz, det] of [
+    [ST.d3, 0],
+    [ST.d3, 12],
+    [ST.a3, -8],
+    [ST.f3, 6],
+    [ST.d4, -4],
+  ] as const) {
+    tone(ctx, out, { type: 'sawtooth', hz, attack: 0.9, hold: 1.4, release: 1.5, gain: 0.1 * v, detune: det });
+  }
+}
+
+export function dropChime(ctx: BaseAudioContext, out: AudioNode, good: boolean): void {
+  const v = TUNING.audio.sfxGain;
+  tone(ctx, out, { type: 'triangle', hz: good ? ST.a4 : ST.gs3, attack: 0.005, hold: 0.05, release: 0.5, gain: 0.25 * v });
+  setTimeout(() => tone(ctx, out, { type: 'triangle', hz: good ? ST.d5 : ST.d3, attack: 0.005, hold: 0.06, release: 0.7, gain: 0.22 * v }), 130);
+}
+
+export function doorGrind(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.sfxGain;
+  noiseBurst(ctx, out, { filter: 'lowpass', hz: 300, attack: 0.1, hold: 1.2, release: 0.8, gain: 0.6 * v });
+  noiseBurst(ctx, out, { filter: 'bandpass', hz: 900, q: 3, attack: 0.2, hold: 1.0, release: 0.6, gain: 0.2 * v, rate: 0.7 });
+  tone(ctx, out, { hz: 60, hzEnd: 40, attack: 0.1, hold: 1.2, release: 0.8, gain: 0.3 * v });
+}
+
+export function buyClick(ctx: BaseAudioContext, out: AudioNode, ok: boolean): void {
+  const v = TUNING.audio.sfxGain;
+  if (ok) {
+    tone(ctx, out, { type: 'square', hz: 660, release: 0.06, gain: 0.08 * v });
+    setTimeout(() => tone(ctx, out, { type: 'square', hz: 880, release: 0.08, gain: 0.08 * v }), 70);
+  } else {
+    tone(ctx, out, { type: 'square', hz: 220, hzEnd: 180, release: 0.12, gain: 0.1 * v });
+  }
+}
+
+/** Geiger crackle near the Pile (flavor ONLY — no mechanic, §14). */
+export function geigerTick(ctx: BaseAudioContext, out: AudioNode): void {
+  noiseBurst(ctx, out, { filter: 'highpass', hz: 3000, attack: 0.001, hold: 0.004, release: 0.015, gain: 0.12 });
+}
+
+export function powerOnThunk(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.sfxGain;
+  noiseBurst(ctx, out, { filter: 'lowpass', hz: 200, release: 0.4, gain: 0.7 * v });
+  tone(ctx, out, { hz: 50, hzEnd: 60, attack: 0.2, hold: 1.5, release: 1.5, gain: 0.2 * v });
+  setTimeout(() => tone(ctx, out, { type: 'sine', hz: 120, attack: 0.5, hold: 2.0, release: 2.0, gain: 0.06 * v }), 400);
+}
+
+export function deathSting(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.musicGain;
+  tone(ctx, out, { type: 'sawtooth', hz: ST.d3, hzEnd: ST.d3 * 0.5, attack: 0.05, hold: 1.0, release: 2.5, gain: 0.3 * v });
+  tone(ctx, out, { type: 'sawtooth', hz: ST.gs3, hzEnd: ST.gs3 * 0.5, attack: 0.05, hold: 1.0, release: 2.5, gain: 0.2 * v });
+}
+
+export function winSting(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.musicGain;
+  const seq = [ST.d3, ST.a3, ST.d4, ST.f4, ST.a4];
+  seq.forEach((hz, i) => setTimeout(() => tone(ctx, out, { type: 'triangle', hz, attack: 0.02, hold: 0.4, release: 2.0, gain: 0.2 * v }), i * 260));
+}

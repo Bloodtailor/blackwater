@@ -34,6 +34,7 @@ import { Shops } from './economy/shops';
 import { MysteryBox } from './economy/mysteryBox';
 import { PapBench } from './economy/pap';
 import { Drops, type DropId } from './economy/drops';
+import { AudioDirector } from './audio/director';
 import { Hud } from './ui/hud';
 import { SETTINGS, saveSettings } from './ui/settings';
 import { TUNING } from './tuning';
@@ -129,10 +130,16 @@ function initGame(): void {
   //  layer 1: fullscreen + Keyboard Lock on play → Chromium delivers
   //           Ctrl+W / Ctrl+R / Ctrl+T to the game instead of acting on them
   //  layer 2: once a dive has started, closing the tab asks first
+  // ── audio (M8a): the director owns every sound; the context wakes on the
+  // same first click that enters fullscreen (autoplay policy) ──
+  const pileNode = NODES.find((n) => n.tags.includes('power'));
+  const audio = new AudioDirector(pileNode ? [...pileNode.pos] : null);
+
   const kb = (navigator as { keyboard?: { lock?: (keys?: string[]) => Promise<void> } }).keyboard;
   let played = false;
   renderer.domElement.addEventListener('click', () => {
     played = true;
+    audio.ensure();
     if (SETTINGS.fullscreenOnPlay && !document.fullscreenElement) {
       document.documentElement
         .requestFullscreen()
@@ -208,6 +215,7 @@ function initGame(): void {
     onPerkBought: (id) => {
       applyPerkEffects();
       run.draughts++;
+      audio.perkBought();
       if (id === 'barnacleHide') vitals.hp = perks.mods.maxHp; // the dose heals whole
     },
     onVendor: (v) => {
@@ -225,6 +233,7 @@ function initGame(): void {
     },
     onPowerOn: () => {
       pap.setPowered(true);
+      audio.powerOn();
       flashStatus('power on — the arteries are lit');
     },
   });
@@ -235,7 +244,11 @@ function initGame(): void {
   const impactGlow = new ImpactGlow(scene);
   const drops = new Drops({
     scene,
-    toast: (m) => hud.toast(m),
+    // every drop toast IS a drop event — the chime rides along
+    toast: (m) => {
+      hud.toast(m);
+      audio.drop();
+    },
     applyMaxAmmo: () => weapons.refillAll(),
     applyBatterySurge: () => (vitals.battery = 1),
     applyPressureWave: () => {
@@ -249,6 +262,7 @@ function initGame(): void {
 
   // ── M7: the specials, the Heart, the Ascent, the ledger ──
   const takeSpecialHit = (damage: number, fromDir: THREE.Vector3, airLoss: number): void => {
+    audio.grab();
     vitals.damage(damage);
     if (airLoss > 0 && !vitals.god && !vitals.infiniteAir) vitals.air = Math.max(0, vitals.air - airLoss);
     hud.damageFlash();
@@ -318,6 +332,7 @@ function initGame(): void {
       const pz = oz + dz * t;
       for (const m of moundSpots) {
         if (columnDistSq(m, px, py, pz) < 0.9 && silt.detonate(m.nodeId)) {
+          audio.siltOut(getNode(m.nodeId).pos);
           flashStatus(`chalk column shot — ${m.nodeId}`);
           return;
         }
@@ -342,6 +357,7 @@ function initGame(): void {
     // stab weapons (Line Lance, Bang Stick): a fast close sweep, not a ray
     if (def.stabRangeM !== undefined) {
       const targets = zombies.meleeTargets(camera.position, lookDir, def.stabRangeM, TUNING.weapons.knife.arcDeg, def.stabPierce ?? 1);
+      audio.melee(targets.length > 0);
       for (const t of targets) {
         shotDir.copy(t.pos).sub(camera.position).normalize();
         zombies.knockback(t, shotDir, def.id === 'bangStick' ? 7 : 5);
@@ -355,6 +371,7 @@ function initGame(): void {
       }
       return;
     }
+    audio.shot(def.id, def.papped ?? false);
     beamRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
     beamUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
     for (let ray = 0; ray < rays; ray++) {
@@ -412,6 +429,7 @@ function initGame(): void {
     const bang = weapons.owns('bangStick');
     const dmg = bang ? TUNING.weapons.bangStick.damage : TUNING.weapons.knife.damage;
     const target = zombies.meleeTarget(camera.position, lookDir);
+    audio.melee(target !== null);
     if (target) {
       shotDir.copy(target.pos).sub(camera.position).normalize();
       zombies.knockback(target, shotDir, bang ? 7 : 4); // the shove (user 2026-07-20)
@@ -465,7 +483,7 @@ function initGame(): void {
 
   // ── hotkeys & debug ──
   // shared control state (tick writes, hotkeys read)
-  const ctl = { grabbing: false, tTime: 0, xTime: 0, lineWasDeployed: false, reelBlockToasted: false };
+  const ctl = { grabbing: false, tTime: 0, xTime: 0, lineWasDeployed: false, reelBlockToasted: false, doorsOpen: 0, boxWasSpinning: false, papWasWorking: false };
   // H toggles the DEBUG layer only — the game HUD stays up (user 2026-07-20:
   // "move all the required hud items to the game hud")
   debug.hotkey('KeyH', 'Toggle debug layer (fps/panel)', () => dbgLayer.classList.toggle('hidden'));
@@ -487,7 +505,10 @@ function initGame(): void {
   // 12). When dead OR won it restarts the dive instead.
   debug.hotkey('KeyR', 'Reload / restart when dead or won', () => {
     if (vitals.dead || heart.won) location.reload();
-    else if (player.mode !== 'noclip') weapons.startReload({ reloadMult: perks.mods.reloadMult, fireDelayMult: 1 });
+    else if (player.mode !== 'noclip') {
+      weapons.startReload({ reloadMult: perks.mods.reloadMult, fireDelayMult: 1 });
+      audio.reload();
+    }
   });
   // knife: RMB (bound in weapons) or V — instant, clear of every line key
   debug.hotkey('KeyV', 'Knife', () => {
@@ -723,6 +744,31 @@ function initGame(): void {
     debug.button(doorSec, `Open ${d.id} (${d.kind}${d.cost ? ` ${d.cost}` : ''})`, () => openDoor(doors, d.id));
   }
 
+  // ── M8a: the soundscape, triggerable in 10 seconds (the harness rule) ──
+  const audSec = debug.section('Audio');
+  debug.button(audSec, 'Enable audio (context resume)', () => {
+    audio.ensure();
+    flashStatus(`audio: ${audio.engine?.ctx.state ?? 'none'}`);
+  });
+  debug.slider(audSec, 'Master volume', 0, 1, 0.05, () => SETTINGS.volumeMaster, (v) => {
+    SETTINGS.volumeMaster = v;
+    saveSettings();
+    audio.engine?.setMasterVolume(v);
+  });
+  debug.button(audSec, 'Round stinger', () => sfxTest('round'));
+  debug.button(audSec, 'Cave Stirs swell', () => sfxTest('stirs'));
+  debug.button(audSec, 'Perk jingle', () => audio.perkBought());
+  debug.button(audSec, 'Box tease', () => audio.boxSpin());
+  debug.button(audSec, 'PaP motif', () => audio.papWork());
+  debug.button(audSec, 'Door grind', () => audio.doorOpen());
+  debug.button(audSec, 'Silt whump (here)', () => audio.siltOut([camera.position.x, camera.position.y, camera.position.z]));
+  debug.button(audSec, 'Grab impact', () => audio.grab());
+  debug.button(audSec, 'Shot (current gun)', () => audio.shot(weapons.current.def.id, weapons.current.def.papped ?? false));
+  const sfxTest = (which: 'round' | 'stirs'): void => {
+    const e = audio.ensure();
+    void import('./audio/sfx').then((s) => (which === 'round' ? s.roundStinger(e.ctx, e.master) : s.stirsStinger(e.ctx, e.master)));
+  };
+
   buildTuningUI(debug.section('Tuning'));
 
   const info = debug.section('Info');
@@ -924,6 +970,7 @@ function initGame(): void {
     if (player.mode !== 'noclip' && !vitals.dead) {
       for (const m of moundSpots) {
         if (columnDistSq(m, p.x, p.y, p.z) < TUNING.silt.moundTouchM ** 2 && silt.detonate(m.nodeId)) {
+          audio.siltOut(getNode(m.nodeId).pos);
           flashStatus(`chalk column detonated — ${m.nodeId}`);
         }
       }
@@ -1079,6 +1126,7 @@ function initGame(): void {
       onGrab: (fromDir) => {
         // the grab: damage + regulator rip + a shove and a roll kick — the
         // way a recovery diver takes hold of a body
+        audio.grab();
         vitals.grabbed();
         hud.damageFlash();
         player.vel.addScaledVector(fromDir, TUNING.zombies.grabShoveSpeed);
@@ -1090,6 +1138,34 @@ function initGame(): void {
     hud.updateWeapon(weapons);
     hud.update(dt, vitals, -p.y);
     hud.updateKit(guideLine, chems, following, ctl.grabbing, guideLine.nearEnd(hand));
+
+    // ── audio (M8a): state edges + the per-tick snapshot ──
+    const openNow = doors.filter((d) => d.open).length;
+    if (openNow > ctl.doorsOpen) audio.doorOpen();
+    ctl.doorsOpen = openNow;
+    if (box.state === 'spinning' && !ctl.boxWasSpinning) audio.boxSpin();
+    ctl.boxWasSpinning = box.state === 'spinning';
+    if (pap.state === 'working' && !ctl.papWasWorking) audio.papWork();
+    ctl.papWasWorking = pap.state === 'working';
+    beamRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    audio.update(dt, {
+      playerPos: p,
+      right: beamRight,
+      headAbove,
+      hr: vitals.hr,
+      air: vitals.air,
+      lowAir: vitals.lowAir,
+      inReserve: vitals.inReserve,
+      drowning: !headAbove && vitals.air <= 0 && !vitals.inReserve && !vitals.dead,
+      dead: vitals.dead,
+      won: heart.won,
+      round: rounds.round,
+      caveStirs: rounds.caveStirsActive,
+      siltThickness,
+      zombies: zombies.zombies,
+      specials: specials.specials,
+      powered: shops.powered,
+    });
     if (statusFlash > 0) statusFlash -= dt;
   };
 
@@ -1142,6 +1218,8 @@ function initGame(): void {
     specials,
     heart,
     runStats,
+    audio,
+    audioVerify: () => import('./audio/verify'),
     applyPerkEffects,
     doShot,
     doMelee,

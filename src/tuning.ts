@@ -474,6 +474,25 @@ export const TUNING = {
     // wall-gun price sheet (DESIGN §10.1); ammo refill = half gun cost
     gunCost: { speargun: 500, pneuDriver: 1000, flechette: 1250, harpoon: 1500, lineLance: 1750 },
   },
+  audio: {
+    // ── the M8a synth soundscape; volumes are 0..1 pre-master gains ──
+    underwaterLowpassHz: 850, // the global "you are underwater" filter
+    siltMuffleHz: 450, // low-pass floor during a full silt-out ("cottony")
+    occlusionLowpassHz: 420, // sound through rock: duller…
+    occlusionGain: 0.35, // …and quieter (§13 honest sound)
+    sfxGain: 0.8, // weapons/impacts/interactions family volume
+    musicGain: 0.7, // stingers/jingles/motifs family volume
+    breathGain: 0.9, // the regulator cycle
+    moanGain: 0.5, // per-moan pre-positional level
+    anglerGain: 0.16, // the lure hum is deliberately FAINT
+    guardianGain: 0.5, // sub-bass presence
+    moanIntervalSec: 7, // mean seconds between moans (scales down with crowd)
+    moanRefDistM: 7, // distance where a moan is at half power
+    anglerRefDistM: 5,
+    guardianRefDistM: 8,
+    whumpRefDistM: 12, // a silt-out is a big event — carries far
+    geigerRangeM: 14, // crackle radius around the Pile (flavor only)
+  },
   guideLine: {
     reelLengthM: 200,
     maxDeployedM: 400,

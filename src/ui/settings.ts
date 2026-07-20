@@ -8,11 +8,13 @@ export interface Settings {
    *  hand Ctrl+W/R/T to the game instead of closing/refreshing the tab
    *  (Ctrl is the wall-grab key — user report 2026-07-19). */
   fullscreenOnPlay: boolean;
+  /** Master volume 0..1 (M8a; per-family levels live in tuning.audio). */
+  volumeMaster: number;
 }
 
 const KEY = 'bw-settings';
 
-const DEFAULTS: Settings = { maxTiltDeg: 180, fullscreenOnPlay: true };
+const DEFAULTS: Settings = { maxTiltDeg: 180, fullscreenOnPlay: true, volumeMaster: 0.8 };
 
 function load(): Settings {
   try {
