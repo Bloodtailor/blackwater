@@ -15,7 +15,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
-import { EDGES, NODES, ZONE_COLORS, ZONE_HUBS, getNode, refreshNodeMap, type CaveEdge, type CaveNode, type Zone } from '../cave/data';
+import { EDGES, NODES, ZONE_COLORS, ZONE_HUBS, getNode, refreshNodeMap, roomWaterPlane, type CaveEdge, type CaveNode, type Zone } from '../cave/data';
+import { buildWaterSurfaces } from '../cave/waterViz';
 import { buildPanel, type PanelApi } from './panel';
 import { initSdf } from '../cave/sdf';
 import { buildCaveMesh } from '../cave/mesh';
@@ -92,6 +93,28 @@ export function initEditor(): void {
     labelGroup.add(sprite);
   };
 
+  // Water surfaces (shared with the game) + falseUp arrows. Separate from
+  // rebuild() so the water gizmo can refresh them live mid-drag.
+  const waterMarkMat = new THREE.MeshBasicMaterial({ color: 0x2a6a80, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
+  function rebuildMarkers(): void {
+    for (let i = markerGroup.children.length - 1; i >= 0; i--) markerGroup.remove(markerGroup.children[i]);
+    markerGroup.add(buildWaterSurfaces(waterMarkMat));
+    for (const n of NODES) {
+      if (n.falseUp) markerGroup.add(new THREE.ArrowHelper(new THREE.Vector3(...n.falseUp), new THREE.Vector3(...n.pos), n.radius + 2, 0xff4488, 1.2, 0.7));
+    }
+    for (const e of EDGES) {
+      if (!e.falseUp) continue;
+      try {
+        const a = getNode(e.a).pos;
+        const b = getNode(e.b).pos;
+        const mid = new THREE.Vector3((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+        markerGroup.add(new THREE.ArrowHelper(new THREE.Vector3(...e.falseUp), mid, 3.5, 0xff4488, 1.0, 0.6));
+      } catch {
+        // dangling edge mid-edit
+      }
+    }
+  }
+
   function rebuild(): void {
     for (const g of [nodeGroup, edgeGroup, wpGroup, labelGroup, markerGroup]) {
       for (let i = g.children.length - 1; i >= 0; i--) g.remove(g.children[i]);
@@ -115,26 +138,6 @@ export function initEditor(): void {
       nodeGroup.add(m);
       nodeMeshes.set(n.id, m);
       makeLabel(n.id, n.pos, n.radius * s[1]);
-      if (n.dry && n.waterY !== undefined) {
-        const ry = n.radius * s[1];
-        const rel = (n.waterY - n.pos[1]) / ry;
-        if (rel > -1 && rel < 1) {
-          // the room's own ellipse cross-section, tilted to its falseUp —
-          // matches what the game now draws (user 2026-07-19)
-          const chord = Math.sqrt(1 - rel * rel);
-          const disc = new THREE.Mesh(
-            new THREE.CircleGeometry(1, 20),
-            new THREE.MeshBasicMaterial({ color: 0x2a6a80, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }),
-          );
-          disc.geometry.scale(chord * n.radius * s[0] * 1.08, chord * n.radius * s[2] * 1.08, 1);
-          disc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...(n.falseUp ?? [0, 1, 0])).normalize());
-          disc.position.set(n.pos[0], n.waterY, n.pos[2]);
-          markerGroup.add(disc);
-        }
-      }
-      if (n.falseUp) {
-        markerGroup.add(new THREE.ArrowHelper(new THREE.Vector3(...n.falseUp), new THREE.Vector3(...n.pos), n.radius + 2, 0xff4488, 1.2, 0.7));
-      }
     }
     EDGES.forEach((e, index) => {
       let pts: THREE.Vector3[];
@@ -173,10 +176,6 @@ export function initEditor(): void {
         picker.frustumCulled = false;
         edgeGroup.add(picker);
       }
-      if (e.falseUp) {
-        const mid = pts[Math.floor(pts.length / 2)];
-        markerGroup.add(new THREE.ArrowHelper(new THREE.Vector3(...e.falseUp), mid.clone(), 3.5, 0xff4488, 1.0, 0.6));
-      }
       // waypoint handles for the selected edge
       if ((selection?.kind === 'edge' && selection.index === index) || (selection?.kind === 'waypoint' && selection.edgeIndex === index)) {
         (e.waypoints ?? []).forEach((w, wpIndex) => {
@@ -189,6 +188,7 @@ export function initEditor(): void {
         });
       }
     });
+    rebuildMarkers();
     panel.refresh();
   }
 
@@ -274,9 +274,11 @@ export function initEditor(): void {
   };
 
   // ── selection & gizmo ──
-  // orient mode (user 2026-07-19): the same gizmo switches to rotation rings
-  // and drags the selection's falseUp — which also tilts its water and floor.
-  let orientMode = false;
+  // Three gizmo tools on the same TransformControls (user 2026-07-19):
+  //  move  — translate the selection (default)
+  //  orient — rotation rings drag the selection's falseUp (water tilts along)
+  //  water — a single arrow along the room's up drags its water LEVEL
+  let gizmoTool: 'move' | 'orient' | 'water' = 'move';
   const selCenter = (): [number, number, number] | null => {
     if (selection?.kind === 'node') return getNode(selection.id).pos;
     if (selection?.kind === 'edge') {
@@ -293,7 +295,12 @@ export function initEditor(): void {
     return undefined;
   };
   const attachGizmo = (): void => {
-    if (orientMode && (selection?.kind === 'node' || selection?.kind === 'edge')) {
+    // reset per-tool axis constraints before applying the current tool's
+    gizmo.showX = true;
+    gizmo.showY = true;
+    gizmo.showZ = true;
+    gizmo.setSpace('world');
+    if (gizmoTool === 'orient' && (selection?.kind === 'node' || selection?.kind === 'edge')) {
       gizmo.setMode('rotate');
       const c = selCenter()!;
       dragProxy.position.set(...c);
@@ -301,6 +308,20 @@ export function initEditor(): void {
       gizmo.attach(dragProxy);
       return;
     }
+    if (gizmoTool === 'water' && selection?.kind === 'node') {
+      const pl = roomWaterPlane(getNode(selection.id));
+      if (pl) {
+        gizmo.setMode('translate');
+        gizmo.setSpace('local');
+        gizmo.showX = false;
+        gizmo.showZ = false; // one arrow: along the room's (false) up
+        dragProxy.position.set(...pl.p);
+        dragProxy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(...pl.up).normalize());
+        gizmo.attach(dragProxy);
+        return;
+      }
+    }
+    gizmoTool = 'move';
     gizmo.setMode('translate');
     dragProxy.quaternion.identity();
     if (selection?.kind === 'node') {
@@ -314,12 +335,23 @@ export function initEditor(): void {
     }
   };
   gizmo.addEventListener('objectChange', () => {
-    if (orientMode && (selection?.kind === 'node' || selection?.kind === 'edge')) {
+    if (gizmoTool === 'orient' && (selection?.kind === 'node' || selection?.kind === 'edge')) {
       const up = new THREE.Vector3(0, 1, 0).applyQuaternion(dragProxy.quaternion).normalize();
       const fu: [number, number, number] = [up.x, up.y, up.z];
       if (selection.kind === 'node') getNode(selection.id).falseUp = fu;
       else EDGES[selection.index].falseUp = fu;
-      return; // markers + panel redraw on drag-end commit
+      rebuildMarkers(); // live: the water tilts under the rings
+      return;
+    }
+    if (gizmoTool === 'water' && selection?.kind === 'node') {
+      const n = getNode(selection.id);
+      const up = n.falseUp ?? [0, 1, 0];
+      const ry = n.radius * (n.stretch?.[1] ?? 1);
+      const d =
+        up[0] * (dragProxy.position.x - n.pos[0]) + up[1] * (dragProxy.position.y - n.pos[1]) + up[2] * (dragProxy.position.z - n.pos[2]);
+      n.water = Math.round(THREE.MathUtils.clamp((d / ry + 1) / 2, -0.5, 1) * 1000) / 1000;
+      rebuildMarkers(); // live: the surface rides the arrow
+      return;
     }
     if (selection?.kind === 'node') {
       const n = getNode(selection.id);
@@ -335,7 +367,7 @@ export function initEditor(): void {
 
   const select = (sel: Selection): void => {
     selection = sel;
-    orientMode = false; // new selection always starts in move mode
+    gizmoTool = 'move'; // new selection always starts in move mode
     attachGizmo();
     rebuild();
   };
@@ -548,10 +580,33 @@ export function initEditor(): void {
         panel.toast('SELECT A ROOM OR TUNNEL FIRST');
         return;
       }
-      orientMode = !orientMode;
-      if (orientMode) markerGroup.visible = true; // you want to SEE what you tilt
+      gizmoTool = gizmoTool === 'orient' ? 'move' : 'orient';
+      if (gizmoTool === 'orient') markerGroup.visible = true; // you want to SEE what you tilt
       attachGizmo();
-      panel.toast(orientMode ? 'ORIENT MODE — drag the rings to tilt falseUp (water follows)' : 'MOVE MODE');
+      panel.toast(gizmoTool === 'orient' ? 'ORIENT MODE — drag the rings to tilt falseUp (water follows)' : 'MOVE MODE');
+    },
+    toggleWater: () => {
+      if (selection?.kind !== 'node') {
+        panel.toast('SELECT A ROOM FIRST');
+        return;
+      }
+      if (gizmoTool === 'water') {
+        gizmoTool = 'move';
+        attachGizmo();
+        panel.toast('MOVE MODE');
+        return;
+      }
+      const n = getNode(selection.id);
+      if (!n.dry || n.water === undefined) {
+        // make it a half-full air room so there is a surface to grab
+        n.dry = true;
+        n.water = n.water ?? 0.5;
+        commit();
+      }
+      gizmoTool = 'water';
+      markerGroup.visible = true;
+      attachGizmo();
+      panel.toast('WATER MODE — drag the arrow to set the water level');
     },
     waypointToRoom: () => {
       if (selection?.kind !== 'waypoint') return;
@@ -614,6 +669,7 @@ export function initEditor(): void {
     if (e.code === 'KeyZ' && e.ctrlKey) undo();
     if (e.code === 'KeyF') api.frame();
     if (e.code === 'KeyR') api.toggleOrient();
+    if (e.code === 'KeyW') api.toggleWater();
   });
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -636,6 +692,8 @@ export function initEditor(): void {
     camera,
     orbit,
     scene,
+    gizmo,
+    dragProxy,
     rebuild,
     shot: async (name: string): Promise<string> => {
       renderer.render(scene, camera);

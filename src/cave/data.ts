@@ -13,6 +13,7 @@
 // the scale retired, so editor coordinates = game coordinates forever.
 
 import layoutJson from './layout.json';
+import { TUNING } from '../tuning';
 
 export type Zone = 'sinkhole' | 'galleries' | 'maze' | 'throat' | 'abyss';
 
@@ -61,12 +62,22 @@ export interface CaveNode {
   /** Rock columns floor-to-ceiling inside the chamber (count). */
   pillars?: number;
   /**
-   * Part of an AIR region (air bell / dry passage). Requires `waterY`: the
-   * absolute y of this region's local water surface. Air must be physically
-   * coherent (user rework 2026-07-18).
+   * Part of an AIR region (air bell / dry passage). Air must be physically
+   * coherent (user rework 2026-07-18). No `water` field = the room is ALL
+   * air (user 2026-07-19: fully-dry rooms shouldn't need a water line).
    */
   dry?: boolean;
-  /** Local water surface (absolute y, world units) for dry regions. */
+  /**
+   * Local water level as a FILL FRACTION of the room along its up axis
+   * (falseUp if set — tilted rooms carry tilted water), like `floor`:
+   * 0 = surface at the room's bottom, 0.5 = half full, 1 = full. Slightly
+   * negative (≥ −0.5) puts the surface below the room, down its entrance
+   * shaft — connected passages inherit it so you surface in the shaft.
+   * Replaces the absolute `waterY` (user 2026-07-19: an absolute height
+   * stopped making sense once water could tilt and rooms could move).
+   */
+  water?: number;
+  /** @deprecated legacy absolute water height — auto-migrated to `water` at load. */
   waterY?: number;
   /**
    * DECEPTION (user 2026-07-19): this region's "up" is a lie. The flat floor
@@ -111,10 +122,17 @@ export interface CaveEdge {
   /** Wet one-way slide (user 2026-07-18): walking here loses all traction and
    *  gravity hauls you down the shaft; you cannot climb back up. */
   slide?: boolean;
-  /** Water surface override for this passage (absolute y, world units) —
-   *  a slide's plunge line, or a thin breathing gap along a tunnel top. */
+  /**
+   * Thin breathing gap along the tunnel CEILING: this many meters of air
+   * under the rock, following the passage profile (slopes and all).
+   * Replaces edge `waterY` for tunnels (user 2026-07-19: an absolute plane
+   * only made air where the tunnel happened to cross it).
+   */
+  airGap?: number;
+  /** SLIDES ONLY: the plunge line — absolute y where the chute hits its pool. */
   waterY?: number;
-  /** Deceptive reference-up for this passage (see CaveNode.falseUp). */
+  /** Deceptive reference-up for this passage — camera orientation only; an
+   *  `airGap` surface follows the tunnel geometry regardless. */
   falseUp?: [number, number, number];
 }
 
@@ -152,6 +170,27 @@ const norm = (v: [number, number, number]): [number, number, number] => {
 };
 for (const n of NODES) if (n.falseUp) n.falseUp = norm(n.falseUp);
 for (const e of EDGES) if (e.falseUp) e.falseUp = norm(e.falseUp);
+
+// Legacy water migration (2026-07-19): absolute node `waterY` → relative
+// `water` fill fraction; non-slide edge `waterY` → `airGap`. Keeps old JSON
+// exports loadable; layout.json itself is migrated on disk.
+for (const n of NODES) {
+  if (n.waterY !== undefined && n.water === undefined) {
+    const up = n.falseUp ?? [0, 1, 0];
+    const ry = n.radius * (n.stretch?.[1] ?? 1);
+    // signed distance from center to the old plane (through (cx,waterY,cz))
+    const d = up[1] * (n.waterY - n.pos[1]);
+    const frac = (d / ry + 1) / 2;
+    if (frac > -0.5) n.water = Math.round(Math.min(1, frac) * 1000) / 1000;
+  }
+  n.waterY = undefined;
+}
+for (const e of EDGES) {
+  if (!e.slide && e.waterY !== undefined) {
+    if (e.airGap === undefined) e.airGap = 0.5; // best guess for hand-me-downs
+    e.waterY = undefined;
+  }
+}
 
 // ── Helpers (graph utilities shared by all systems) ──
 
@@ -203,41 +242,108 @@ export function buildAdjacency(edges: CaveEdge[] = EDGES): Adjacency {
  * water line; transition passages inherit it so you surface exactly where the
  * shaft breaches the pool.
  */
-export interface WaterSurface {
-  /** Water line height at the region's center (absolute y, world units). */
-  y: number;
-  /** Surface normal. Follows the region's falseUp when the region lies about
-   *  up (user 2026-07-19: tilted rooms need tilted water); world up otherwise. */
-  up?: [number, number, number];
-  /** Point the plane pivots around (region center, xz). */
-  c: [number, number];
+/** A region's local water surface. Three shapes (user 2026-07-19 rework):
+ *  `plane` — a room's (possibly tilted) pool; `air` — the whole region is
+ *  breathable, no water anywhere; `gap` — a thin air layer hugging a tunnel
+ *  ceiling, following the passage profile. */
+export type WaterSurface =
+  | { kind: 'plane'; y: number; up: [number, number, number]; c: [number, number] }
+  | { kind: 'air' }
+  | { kind: 'gap'; pts: [number, number, number][]; r: number; gap: number };
+
+/** Effectively "no water below you anywhere in this region". Finite so the
+ *  physics (buoyancy distances, splash checks) stay well-behaved. */
+export const AIR_LEVEL_Y = -100000;
+
+/** The plane of a dry room's pool: point + normal, from its `water` fraction
+ *  along its (false) up. Null when the room holds no water. */
+export function roomWaterPlane(n: CaveNode): { p: [number, number, number]; up: [number, number, number]; ry: number } | null {
+  if (!n.dry || n.water === undefined) return null;
+  const up = n.falseUp ?? [0, 1, 0];
+  const ry = n.radius * (n.stretch?.[1] ?? 1);
+  const d = ry * (2 * n.water - 1);
+  return { p: [n.pos[0] + up[0] * d, n.pos[1] + up[1] * d, n.pos[2] + up[2] * d], up, ry };
 }
 
-/** Height of a (possibly tilted) water surface at world (x,z). */
-export function waterSurfaceLevel(ws: WaterSurface, x: number, z: number): number {
-  if (!ws.up || Math.abs(ws.up[1]) < 0.2) return ws.y; // near-vertical "up": treat as flat
-  return ws.y - (ws.up[0] * (x - ws.c[0]) + ws.up[2] * (z - ws.c[1])) / ws.up[1];
+/** Tunnel bore radius for a width class (mirrors the SDF's carve radii). */
+export function edgeRadius(width: CaveEdge['width']): number {
+  return width === 'open' ? TUNING.geometry.radiusOpen : width === 'squeeze' ? TUNING.geometry.radiusSqueeze : TUNING.geometry.radiusNormal;
+}
+
+/** Height of the local water surface at world (x,y,z) — the y you compare
+ *  your head against. Planes tilt; gaps follow the tunnel; air is bottomless. */
+export function waterSurfaceLevel(ws: WaterSurface, x: number, y: number, z: number): number {
+  if (ws.kind === 'air') return AIR_LEVEL_Y;
+  if (ws.kind === 'plane') {
+    if (Math.abs(ws.up[1]) < 0.2) return ws.y; // near-horizontal "up": treat as flat
+    return ws.y - (ws.up[0] * (x - ws.c[0]) + ws.up[2] * (z - ws.c[1])) / ws.up[1];
+  }
+  // gap: nearest polyline point → local ceiling minus the air gap
+  let best = Infinity;
+  let ceilY = y;
+  for (let i = 1; i < ws.pts.length; i++) {
+    const [ax, ay, az] = ws.pts[i - 1];
+    const [bx, by, bz] = ws.pts[i];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const dz = bz - az;
+    const len2 = dx * dx + dy * dy + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy + (z - az) * dz) / len2));
+    const qx = ax + dx * t;
+    const qy = ay + dy * t;
+    const qz = az + dz * t;
+    const d2 = (x - qx) ** 2 + (y - qy) ** 2 + (z - qz) ** 2;
+    if (d2 < best) {
+      best = d2;
+      ceilY = qy + ws.r;
+    }
+  }
+  return ceilY - ws.gap;
+}
+
+function planeFor(n: CaveNode): WaterSurface | undefined {
+  if (!n.dry) return undefined;
+  const pl = roomWaterPlane(n);
+  if (!pl) return { kind: 'air' }; // dry + no water field = ALL air
+  return { kind: 'plane', y: pl.p[1], up: pl.up, c: [pl.p[0], pl.p[2]] };
 }
 
 export function buildAirWaterMap(): Map<string, WaterSurface> {
   const map = new Map<string, WaterSurface>();
   for (const n of NODES) {
-    if (n.dry && n.waterY !== undefined) map.set(n.id, { y: n.waterY, up: n.falseUp, c: [n.pos[0], n.pos[2]] });
+    const ws = planeFor(n);
+    if (ws) map.set(n.id, ws);
   }
   for (const e of EDGES) {
     const ref = `${e.a}~${e.b}`;
-    const a = getNode(e.a);
-    const b = getNode(e.b);
-    const mid: [number, number] = [(a.pos[0] + b.pos[0]) / 2, (a.pos[2] + b.pos[2]) / 2];
-    if (e.waterY !== undefined) {
-      map.set(ref, { y: e.waterY, up: e.falseUp, c: mid });
+    if (e.airGap !== undefined) {
+      map.set(ref, { kind: 'gap', pts: [getNode(e.a).pos, ...(e.waypoints ?? []), getNode(e.b).pos], r: edgeRadius(e.width), gap: e.airGap });
       continue;
     }
-    if (a.dry && b.dry) {
-      const src = (a.waterY ?? Infinity) <= (b.waterY ?? Infinity) ? a : b;
-      if (src.waterY !== undefined) map.set(ref, { y: src.waterY, up: src.falseUp, c: mid });
-    } else if (a.dry && a.waterY !== undefined) map.set(ref, { y: a.waterY, up: a.falseUp, c: mid });
-    else if (b.dry && b.waterY !== undefined) map.set(ref, { y: b.waterY, up: b.falseUp, c: mid });
+    if (e.slide && e.waterY !== undefined) {
+      const a = getNode(e.a).pos;
+      const b = getNode(e.b).pos;
+      map.set(ref, { kind: 'plane', y: e.waterY, up: [0, 1, 0], c: [(a[0] + b[0]) / 2, (a[2] + b[2]) / 2] });
+      continue;
+    }
+    // passages inherit their dry endpoints' water so you surface exactly
+    // where the shaft breaches the pool. A real pool plane beats "all air";
+    // with two planes, the lower one wins at the passage midpoint.
+    const sa = planeFor(getNode(e.a));
+    const sb = planeFor(getNode(e.b));
+    const planes = [sa, sb].filter((s): s is Extract<WaterSurface, { kind: 'plane' }> => s?.kind === 'plane');
+    if (planes.length === 2) {
+      const a = getNode(e.a).pos;
+      const b = getNode(e.b).pos;
+      const mx = (a[0] + b[0]) / 2;
+      const my = (a[1] + b[1]) / 2;
+      const mz = (a[2] + b[2]) / 2;
+      map.set(ref, waterSurfaceLevel(planes[0], mx, my, mz) <= waterSurfaceLevel(planes[1], mx, my, mz) ? planes[0] : planes[1]);
+    } else if (planes.length === 1) {
+      map.set(ref, planes[0]);
+    } else if (sa?.kind === 'air' || sb?.kind === 'air') {
+      map.set(ref, { kind: 'air' });
+    }
   }
   return map;
 }

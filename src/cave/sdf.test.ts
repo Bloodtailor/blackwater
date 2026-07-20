@@ -71,31 +71,28 @@ describe('cave SDF traversability', () => {
     setDoorBlocks([]);
   });
 
-  // Air/water rework (user 2026-07-18): every air region declares waterY;
-  // there must be real air space above the line (or above the flat floor),
-  // and where the line cuts the cavity, swimmable water below it.
-  it('air regions hold air above their line and water below where it cuts', () => {
+  // Air/water rework v2 (user 2026-07-19): water is a fill FRACTION of the
+  // room along its (false) up; no `water` field = fully air. Where a surface
+  // sits inside the cavity there must be air above it and water below it.
+  it('air regions hold air above their surface and water below where it cuts', () => {
     for (const n of NODES.filter((n) => n.dry && !n.falseUp)) {
-      expect(n.waterY, `${n.id} declares waterY`).toBeDefined();
-      const w = n.waterY!;
       const ry = n.radius * (n.stretch?.[1] ?? 1);
       const floorY = n.floor !== undefined ? n.pos[1] - ry * n.floor : undefined;
       // effective cavity bottom: the flat floor if the room has one
       const effBottom = floorY ?? n.pos[1] - ry;
-      const probeY = w > effBottom ? w + 0.5 : Math.max(effBottom + 0.6, Math.min(n.pos[1], effBottom + 2));
+      const w = n.water !== undefined ? n.pos[1] + ry * (2 * n.water - 1) : undefined;
+      const probeY = w !== undefined && w > effBottom ? w + 0.5 : Math.max(effBottom + 0.6, Math.min(n.pos[1], effBottom + 2));
       expect(sdf(n.pos[0], probeY, n.pos[2], false), `${n.id} air space @y=${probeY.toFixed(1)}`).toBeLessThan(-0.15);
-      // open-water pool only where the line sits above the effective bottom
-      // (bells keep their pool down the entrance shaft instead)
-      if (w > effBottom) {
+      // open-water pool only where the surface sits above the effective
+      // bottom (bells keep their pool down the entrance shaft instead)
+      if (w !== undefined && w > effBottom) {
         expect(sdf(n.pos[0], w - 0.6, n.pos[2], false), `${n.id} pool below line`).toBeLessThan(-0.15);
       }
     }
-    // the Listing Room (falseUp): air above its tilted floor near center, and
-    // its horizontal pool line must cut the cavity on the downhill side
+    // tilted rooms (falseUp): air along the false up near center
     for (const n of NODES.filter((n) => n.dry && n.falseUp)) {
       const u = n.falseUp!;
       expect(sdf(n.pos[0] + u[0], n.pos[1] + u[1], n.pos[2] + u[2], false), `${n.id} air along falseUp`).toBeLessThan(-0.15);
-      expect(n.waterY, `${n.id} declares waterY`).toBeDefined();
     }
   });
 

@@ -24,6 +24,7 @@ export interface PanelApi {
   toggleLabels(): void;
   toggleMarkers(): void;
   toggleOrient(): void;
+  toggleWater(): void;
   waypointToRoom(): void;
   playtest(): void;
 }
@@ -82,7 +83,7 @@ export function buildPanel(api: PanelApi): Panel {
   const hint = document.createElement('div');
   hint.className = 'ed-hint';
   hint.textContent =
-    'click select · drag gizmo · R orient (tilt falseUp+water) · shift-click 2nd room = tunnel · dbl-click tunnel = waypoint · DEL delete · F frame · ctrl+Z undo · 🧭 water/up gizmos · TEST plays the UNSAVED layout in noclip, F4 in game returns here';
+    'click select · drag gizmo · R orient (tilt falseUp+water) · W water level (drag the arrow) · shift-click 2nd room = tunnel · dbl-click tunnel = waypoint · DEL delete · F frame · ctrl+Z undo · 🧭 markers · TEST plays the UNSAVED layout in noclip, F4 in game returns here';
   root.appendChild(hint);
 
   const form = document.createElement('div');
@@ -215,7 +216,7 @@ export function buildPanel(api: PanelApi): Panel {
     numField(form, 'spikes', () => n.spikes, (v) => (n.spikes = v), 1);
     numField(form, 'floor 0..1', () => n.floor, (v) => (n.floor = v), 0.05);
     boolField(form, 'dry (air)', () => !!n.dry, (v) => (n.dry = v || undefined));
-    numField(form, 'waterY', () => n.waterY, (v) => (n.waterY = v), 0.25);
+    numField(form, 'water 0..1', () => n.water, (v) => (n.water = v), 0.05);
     vecField(form, 'falseUp', () => n.falseUp, (v) => (n.falseUp = v ?? undefined));
     // tags
     const tagBox = document.createElement('div');
@@ -255,6 +256,7 @@ export function buildPanel(api: PanelApi): Panel {
     for (const [label, fn] of [
       ['⌖ frame', api.frame],
       ['⟲ orient (R)', api.toggleOrient],
+      ['💧 water (W)', api.toggleWater],
       ['⧉ duplicate', api.duplicateNode],
       ['✕ delete', api.deleteSelection],
     ] as const) {
@@ -285,7 +287,8 @@ export function buildPanel(api: PanelApi): Panel {
     boolField(form, 'powerGate', () => !!e.powerGate, (v) => (e.powerGate = v || undefined));
     numField(form, 'gateAt 0..1', () => e.gateAt, (v) => (e.gateAt = v), 0.05);
     boolField(form, 'slide (wet chute)', () => !!e.slide, (v) => (e.slide = v || undefined));
-    numField(form, 'waterY (air gap)', () => e.waterY, (v) => (e.waterY = v), 0.25);
+    numField(form, 'airGap m', () => e.airGap, (v) => (e.airGap = v), 0.1);
+    if (e.slide) numField(form, 'waterY (plunge)', () => e.waterY, (v) => (e.waterY = v), 0.25);
     vecField(form, 'falseUp', () => e.falseUp, (v) => (e.falseUp = v ?? undefined));
     const wp = document.createElement('div');
     wp.className = 'ed-note';

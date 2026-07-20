@@ -4,16 +4,19 @@ Open the game with **`?edit=1`** (or the debug panel → "Open level editor").
 The whole cave appears as a labeled 3D diagram you can edit directly:
 
 - **Click** a room, tunnel, or orange waypoint to select it — every field
-  appears in the side panel (zone, radius, stretch, air/waterY, floor,
-  spikes, falseUp, tags, doors, slides, tilt…).
+  appears in the side panel (zone, radius, stretch, dry/water, floor,
+  spikes, falseUp, tags, doors, slides, airGap, tilt…).
 - **Drag the gizmo** to move rooms and waypoints.
 - **Shift-click** a second room to connect a tunnel. **Double-click** a
   tunnel to add a waypoint (bend it).
 - **+ ROOM** adds a room at the camera target. **DEL** deletes (rooms take
   their tunnels with them). **Ctrl+Z** undoes. **F** frames the selection.
 - **R** (or ⟲ in the panel) switches the gizmo to ROTATION RINGS that drag
-  the selection's `falseUp` — the water surface and floor tilt with it.
-  **🧭** toggles the water discs and falseUp arrows (hidden by default).
+  the selection's `falseUp` — the water surface and floor tilt with it, live.
+- **W** (or 💧 in the panel) is the WATER gizmo: one arrow along the room's
+  up — drag it to raise/lower the pool. On a non-water room it first makes
+  it a half-full air room. **🧭** toggles the water surfaces and falseUp
+  arrows outside these modes (hidden by default).
 - Waypoint panel → **⭘ → room** replaces a waypoint with a small turnaround
   room (splits the tunnel). Squeezes need this at every sharp bend — you
   cannot turn around inside a squeeze, and a rule check flags such bends.
@@ -55,9 +58,11 @@ and the exact spot lands in `docs/probes.jsonl` for a precise fix later.
 - `floor: 0.35` — flat walkable floor that far below center (fraction of the
   vertical radius). **Rule of thumb: for a walkable room, the floor should
   end up ~1.5 m below the tunnels that enter it**, or mouths become ledges.
-- Air rooms: `dry: true, waterY: <absolute y of the water surface>`. Water
-  below that height, air above. Put waterY under the floor for a fully dry
-  room; slightly below the floor for a bell with a pool hole.
+- Air rooms: `dry: true`. That alone = the whole room is air. Add
+  `water: 0..1` for a pool — the FILL FRACTION of the room along its (false)
+  up, like `floor`: 0.3 = bottom 30% is water. It moves and tilts with the
+  room. Slightly negative (≥ −0.5) puts the surface below the room, down its
+  entrance shaft (bells). Easiest set with the editor's W water gizmo.
 - `falseUp: [0.5, 0.866, 0]` — the DECEPTION knob: tilts the floor/spikes,
   the WATER SURFACE, and the camera's sense of up (see the Listing Room).
   Easiest set with the editor's R rotate gizmo.
@@ -74,8 +79,10 @@ and the exact spot lands in `docs/probes.jsonl` for a precise fix later.
   forward, no turning around).
 - `waypoints: [[x,y,z], ...]` — bend the tunnel through these points.
 - `door: { cost: 1250, kind: 'debris' | 'grate' | 'hatch' }` — a buyable door.
-- `slide: true` + `waterY` — a wet one-way chute (steep = uncontrollable).
-- `waterY` alone — a thin breathing gap along the tunnel ceiling.
+- `slide: true` + `waterY` — a wet one-way chute; `waterY` is the absolute
+  plunge line where it hits its pool.
+- `airGap: 0.5` — a breathing gap: that many meters of air hugging the
+  tunnel CEILING, following the passage profile the whole way.
 - `tilt: { maxDeg: 90 }` — a disorientation zone (camera roll drifts).
 - `falseUp: [...]` — deceptive up for the passage's air gap.
 

@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import './style.css';
 import { DebugPanel } from './debug/panel';
 import { buildTuningUI } from './debug/tuningPanel';
-import { EDGES, NODES, buildAirWaterMap, buildFalseUpMap, getNode, waterSurfaceLevel, type Zone } from './cave/data';
+import { NODES, buildAirWaterMap, buildFalseUpMap, getNode, waterSurfaceLevel, type Zone } from './cave/data';
+import { buildWaterSurfaces } from './cave/waterViz';
 import { initSdf, regionAt, resolveCollision, sdf } from './cave/sdf';
 import { buildCaveMesh } from './cave/mesh';
 import { buildDoors, openAllDoors, openDoor } from './cave/doors';
@@ -94,46 +95,13 @@ function initGame(): void {
     if (Math.hypot(x, z) < 18 && y > -16) return WATER_Y; // open cenote water
     const ref = regionAt(x, y, z)?.ref;
     const ws = ref !== undefined ? airWater.get(ref) : undefined;
-    // tilted rooms tilt their water too (user 2026-07-19): the surface is a
-    // plane normal to the region's falseUp, so the level varies across x,z
-    return ws ? waterSurfaceLevel(ws, x, z) : null;
+    // room pools tilt with falseUp, tunnel air gaps follow the passage
+    // ceiling, all-air regions report a bottomless level (user 2026-07-19)
+    return ws ? waterSurfaceLevel(ws, x, y, z) : null;
   };
-  // pool surfaces: drawn only where a region's water line actually cuts its
-  // cavity (flat-floored bells occlude theirs except down the entrance hole).
-  // Shaped as the room's own ellipse cross-section (not a max-radius circle,
-  // which spilled outside stretched rooms) and tilted to the room's falseUp.
-  const orientDisc = (disc: THREE.Mesh, up?: [number, number, number]): void => {
-    disc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...(up ?? [0, 1, 0])).normalize());
-  };
-  for (const n of NODES) {
-    if (!n.dry || n.waterY === undefined) continue;
-    const s = n.stretch ?? [1, 1, 1];
-    const ry = n.radius * s[1];
-    const rel = (n.waterY - n.pos[1]) / ry;
-    if (rel <= -1 || rel >= 1) continue; // line misses this room entirely
-    const chord = Math.sqrt(1 - rel * rel);
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(1, 24), waterMat);
-    disc.geometry.scale(chord * n.radius * s[0] * 1.08, chord * n.radius * s[2] * 1.08, 1);
-    orientDisc(disc, n.falseUp);
-    disc.position.set(n.pos[0], n.waterY, n.pos[2]);
-    scene.add(disc);
-  }
-  // the slide's plunge surface: a disc where the chute meets its pool
-  for (const e of EDGES.filter((e) => e.slide && e.waterY !== undefined)) {
-    const pts: [number, number, number][] = [getNode(e.a).pos, ...(e.waypoints ?? []), getNode(e.b).pos];
-    for (let i = 1; i < pts.length; i++) {
-      const [ax, ay, az] = pts[i - 1];
-      const [bx, by, bz] = pts[i];
-      const w = e.waterY!;
-      if ((ay - w) * (by - w) > 0) continue;
-      const t = (w - ay) / (by - ay || 1);
-      const disc = new THREE.Mesh(new THREE.CircleGeometry(2.8, 20), waterMat);
-      orientDisc(disc, e.falseUp);
-      disc.position.set(ax + (bx - ax) * t, w, az + (bz - az) * t);
-      scene.add(disc);
-      break;
-    }
-  }
+  // local water surfaces (room pools, air-gap ribbons, plunge discs) — the
+  // exact same meshes the level editor previews (src/cave/waterViz.ts)
+  scene.add(buildWaterSurfaces(waterMat));
 
   // ── atmosphere & silt (M4) ──
   const fog = new THREE.FogExp2(0x062226, 0.035);
