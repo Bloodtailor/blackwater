@@ -557,6 +557,7 @@ export const TUNING = {
     occlusionGain: 0.35, // …and quieter (§13 honest sound)
     sfxGain: 0.8, // weapons/impacts/interactions family volume
     musicGain: 0.7, // stingers/jingles/motifs family volume
+    partyGain: 0.55, // Morale Night in the Annex (M16 — dry room, open air)
     breathGain: 0.9, // the regulator cycle
     moanGain: 0.5, // per-moan pre-positional level
     anglerGain: 0.16, // the lure hum is deliberately FAINT

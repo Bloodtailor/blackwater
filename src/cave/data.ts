@@ -104,6 +104,13 @@ export interface CaveNode {
    */
   teaser?: boolean;
   /**
+   * MUSEUM room (M16, DESIGN §12.1): dry, lit, fully playable — but OFF the
+   * zombie pathing graph entirely (a true safe zone: the Drowned never
+   * enter, never wander here, never chase in). Carved and collided like any
+   * room; only the enemies pretend it doesn't exist.
+   */
+  museum?: boolean;
+  /**
    * AUDIO EMITTER node (user 2026-07-20): no geometry, no cavity — a pure
    * positional sound source, usually placed INSIDE solid rock so machinery /
    * airflow / settling sounds leak through the walls (the SDF occlusion

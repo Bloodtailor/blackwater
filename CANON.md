@@ -17,7 +17,8 @@
 | Sky shaft / cenote daylight | ✅ | Explained — the sinkhole is open air; Lowe's world upstairs |
 | Lowe's 2008 camp (shore) | ✅ | Explained — §3: nylon/plastic/LED so his gear reads as from another world |
 | Audio-emitter nodes (Pile machinery, Listing Room airflow, abyss groan) | ✅ | Unexplained-by-design — §1.1 "the site works": it is audibly still doing something, and no text finds that strange |
-| The Museum Annex (off the rec room) | 🔜 M16 | Wrongness — §4 v3: a kept, lit museum on no schematic, plaques in a hand nobody identifies. The room's existence is its own wrongness |
+| The Museum Annex (✅ M16: dry bell off gal-rec, poured floor, brass rails, glass cases, museum spots; exhibits mirror THIS run — tapes/toys/flasks/guns/photograph wall fill as gathered; figures of the deep ones on plinths with plaques reusing only existing canon phrases (`THE COMPLEMENT — FULL`, `THE LIGHT`, `THE OTHER LIGHT`, `RETURNED — EMPTY`, `THERMAL-1 — REPLICA`); a TRUE safe zone — the site does not follow you in, and no one remarks on that either) | ✅ | Wrongness — §4 v3: a kept, lit museum on no schematic, plaques in a hand nobody identifies. The room's existence is its own wrongness. museum.1/rem.museum.1 fire on first entry |
+| The morale button + "Morale Night" (✅ M16: guarded red button, mirror ball, saturated party light, dancing exhibit figures, the generated party record through the ONE music slot; press again = stops mid-song, somehow worse) | ✅ | Explained (the ritual: `MORALE NIGHT — AUTHORIZED PERSONNEL`) + Wrongness (§6.1: the lyrics assume the dance never has permission to end — "Nobody goes home—" cut clean) |
 
 ## 2. Enemies
 

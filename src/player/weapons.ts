@@ -58,7 +58,7 @@ export interface WeaponDef {
   papped: boolean;
 }
 
-const GUN_META: Record<GunId, { name: string; tracer: number; life?: number }> = {
+export const GUN_META: Record<GunId, { name: string; tracer: number; life?: number }> = {
   wristDart: { name: 'WRIST DART', tracer: 0xd8e8c8 },
   speargun: { name: 'SPEARGUN', tracer: 0xc8d8e8, life: 0.2 },
   pneuDriver: { name: 'PNEU-DRIVER', tracer: 0xd8e0c0, life: 0.08 },

@@ -46,9 +46,10 @@ import { arbitrate } from './audio/speech';
 import { REMORA_LINES, TAPES } from './audio/lines';
 import { TapeDeck, TapeProps } from './game/tapes';
 import { Toys } from './game/toys';
-import { loadImageManifest } from './game/media';
+import { loadImageManifest, toyPhotoDataUrl } from './game/media';
 import { GALLERY } from './game/gallery';
 import { buildPosters } from './game/posters';
+import { Annex } from './game/annex';
 import { Hud } from './ui/hud';
 import { Menus } from './ui/menus';
 import { SETTINGS, saveSettings } from './ui/settings';
@@ -474,6 +475,23 @@ function initGame(): void {
     voice.request(tape.reactionId); // queued; plays while he's still surfaced
   };
   const toys = new Toys(scene, interact, () => audio.engine);
+  // ── M16: the Museum Annex (DESIGN §12.1) — exhibits mirror the run;
+  // the morale button rides the ONE music slot like everything else ──
+  const annex = new Annex(scene, interact, {
+    tapesCollected: () => [...deck.collected],
+    toysWound: () => toys.wound,
+    perksOwned: (id) => perks.owned.has(id),
+    gunOwned: (id) => weapons.owns(id),
+    onParty: (on) => {
+      if (on) MUSIC.play('party', '/music/morale-night.mp3', TUNING.audio.partyGain, { loop: true, name: 'Morale Night' });
+      else MUSIC.stop('party');
+    },
+    onFirstEntry: () => {
+      voice.request('museum.1');
+      remora.request('rem.museum.1'); // she'll say it next time he's under
+    },
+    toast: (m) => hud.toast(m),
+  });
   // ── M8c: posters/labels in-world + the menus ──
   buildPosters(scene, interact, hud);
   const applyDisplay = (): void => {
@@ -1100,6 +1118,17 @@ function initGame(): void {
           : `armed — next surge in ${undertow.waitT.toFixed(0)}s`,
     ),
   );
+  // M16: the Annex
+  const annexSec = debug.section('The Annex (M16)');
+  debug.toggle(annexSec, 'Unlock all exhibits', () => annex.unlockAll, (v) => (annex.unlockAll = v));
+  debug.button(annexSec, 'Party toggle', () => annex.setParty(!annex.partyOn));
+  debug.button(annexSec, 'Teleport to the Annex', () => teleport('annex'));
+  debug.button(annexSec, 'Gallery: fill with placeholders', () => {
+    for (let i = 0; i < 9; i++) {
+      GALLERY.unlock({ id: `debug-${i}`, title: `PLACEHOLDER ${i + 1}`, url: toyPhotoDataUrl(i % 3), caption: 'debug print' });
+    }
+    flashStatus(`gallery: ${GALLERY.items.length} prints`);
+  });
   debug.toggle(m7Sec, 'Flow-field arrows', () => flowArrows?.visible ?? false, (v) => {
     if (v && !flowArrows && undertow.field) {
       flowArrows = new THREE.Group();
@@ -1551,6 +1580,7 @@ function initGame(): void {
       onHit: takeSpecialHit,
     });
     heart.update(dt, time);
+    annex.update(dt, time, p, MUSIC.current?.id === 'party');
     // ── M15.5 the Undertow: the cave inhales (position-only — the pull
     // rides the shared current sampler; bubbles and the gauge stay honest) ──
     const ut = undertow.update(dt, heart.ascentActive && !combatFrozen);

@@ -69,6 +69,27 @@ const TRACKS = {
       'one subtly detuned guitar note recurring in the main riff. Instrumental, no vocals. About 2 minutes 20 seconds. ' +
       'Song title: The Cormorant Twist.',
   },
+  'morale-night': {
+    out: 'public/music/morale-night.mp3',
+    ms: 120000,
+    prompt:
+      'Upbeat early-1960s rock and roll dance party track, honking saxophone, handclaps, twangy surf guitar, ' +
+      'energetic male crooner MC vocal working a crowd, live-dancehall energy, short and punchy, about 2 minutes. ' +
+      'Bright and fun throughout; the final refrain repeats like a record that refuses to end, then cuts clean. ' +
+      'Song title: Morale Night. Lyrics: ' +
+      '[Verse 1] Grab your partner off the wall, the bell says nineteen-hundred / ' +
+      'The foreman waxed the rec-room floor, the lights are on — don’t wonder / ' +
+      'Shake it like the drill head, spin her like a spool / ' +
+      'Morale is mandatory, man — you know the standing rule. ' +
+      '[Chorus] It’s morale night! (morale night!) Everybody’s here tonight! ' +
+      'It’s morale night! (morale night!) Nobody goes home tonight — Ain’t that right, boys? — That’s right! ' +
+      '[Verse 2] The juke’s been fed, the cards are dealt, the coffee’s short as ever / ' +
+      'Dance in your boots, dance in your suit, tin helmet — hey, whatever / ' +
+      'The doc says keep your pulse up, the chief says keep in time / ' +
+      'Everybody keeps in time down here... everybody keeps in time. ' +
+      '[Chorus x2, second time half-step up, crowd louder] It’s morale night! (morale night!) Everybody’s here tonight! ' +
+      'It’s morale night! (morale night!) Nobody goes home tonight — Nobody goes home — Nobody goes home — Nobody goes—',
+  },
   'forty-one-forty-two': {
     out: 'public/music/easteregg/forty-one-forty-two.mp3',
     ms: 160000,

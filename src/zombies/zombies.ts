@@ -118,6 +118,8 @@ export class ZombieManager {
   private pack: { burrow: string; count: number; t: number } | null = null;
   private wanderGraph: GraphPath;
   private wanderIds: string[];
+  /** M16: museum node ids — rooms the Drowned pretend don't exist. */
+  private museumIds: Set<string> = new Set();
 
   constructor(
     private scene: THREE.Scene,
@@ -129,7 +131,14 @@ export class ZombieManager {
      *  along true down instead of the lie). */
     private falseUpAt: (ref: string) => [number, number, number] | undefined = () => undefined,
   ) {
-    this.graph = new GraphPath(isEdgeOpen);
+    // M16 (DESIGN §12.1): museum rooms are OFF the pathing graph entirely —
+    // a true safe zone. The Drowned never chase, wander, or spawn into one;
+    // only the enemies pretend the room doesn't exist.
+    this.museumIds = new Set(NODES.filter((n) => n.museum).map((n) => n.id));
+    const museumIds = this.museumIds;
+    const openNonMuseum = (e: import('../cave/data').CaveEdge): boolean =>
+      isEdgeOpen(e) && !museumIds.has(e.a) && !museumIds.has(e.b);
+    this.graph = new GraphPath(openNonMuseum);
     this.burrows = NODES.filter((n) => n.tags.includes('burrow'));
     // old workstations: facility-tagged spots the crew pauses at, as if
     // remembering a task (LORE §4 directive — cheap idle, deeply wrong)
@@ -139,14 +148,14 @@ export class ZombieManager {
     // squeezes, they just don't drift into them; wander TARGETS also exclude
     // burrows and leaf dead-ends (no vanishing into cracks, no loitering at
     // false ends the player will never visit)
-    this.wanderGraph = new GraphPath((e) => isEdgeOpen(e) && e.width !== 'squeeze');
+    this.wanderGraph = new GraphPath((e) => openNonMuseum(e) && e.width !== 'squeeze');
     const degree = new Map<string, number>();
     for (const e of EDGES) {
       degree.set(e.a, (degree.get(e.a) ?? 0) + 1);
       degree.set(e.b, (degree.get(e.b) ?? 0) + 1);
     }
     this.wanderIds = NODES.filter(
-      (n) => !n.teaser && n.kind !== 'audio' && !n.tags.includes('burrow') && (degree.get(n.id) ?? 0) >= 2,
+      (n) => !n.teaser && n.kind !== 'audio' && !n.museum && !n.tags.includes('burrow') && (degree.get(n.id) ?? 0) >= 2,
     ).map((n) => n.id);
   }
 
@@ -361,12 +370,13 @@ export class ZombieManager {
     // wanderers idle) — the ESCAPE leg may use any open edge (they can
     // physically do squeezes; they just don't loiter in them), still never
     // toward another burrow.
-    const hops = EDGES.filter(
-      (e) =>
-        (e.a === from || e.b === from) &&
-        this.isEdgeOpen(e) &&
-        !getNodeSafe(e.a === from ? e.b : e.a)?.tags.includes('burrow'),
-    );
+    const hops = EDGES.filter((e) => {
+      if (e.a !== from && e.b !== from) return false;
+      if (!this.isEdgeOpen(e)) return false;
+      const other = getNodeSafe(e.a === from ? e.b : e.a);
+      // never stroll into a burrow — or the museum (M16: off their world)
+      return !other?.tags.includes('burrow') && !other?.museum;
+    });
     if (hops.length > 0) {
       const e = hops[Math.floor(Math.random() * hops.length)];
       const to = e.a === from ? e.b : e.a;
@@ -526,11 +536,24 @@ export class ZombieManager {
       // ── mode (M14, DESIGN §9): near = the hunt, far = the wander; the
       // Ascent hunts with everything the site has ──
       const ascent = this.ascentSpeedCap !== null;
+      // M16 (DESIGN §12.1): a player inside a museum room does not exist to
+      // the site — no aggro, and every hunter loses the scent. The graph
+      // exclusion alone is NOT enough: direct chase and the failed-repath
+      // fallback both beeline at raw player position (observed: 5/5 hunters
+      // inside the Annex at 0.6 m).
+      const playerShielded = this.museumIds.has(this.playerNodeId);
+      if (playerShielded && z.mode === 'hunt') {
+        z.mode = 'wander';
+        z.wanderTo = null;
+        z.path = [];
+        z.loseT = 0;
+      }
       if (z.mode === 'wander') {
         if (
-          ascent ||
-          distToPlayer < Z.aggroM ||
-          (distToPlayer < Z.aggroLosM && this.hasLos(z.pos.x, z.pos.y, z.pos.z, ctx.playerPos, Z.aggroLosM))
+          !playerShielded &&
+          (ascent ||
+            distToPlayer < Z.aggroM ||
+            (distToPlayer < Z.aggroLosM && this.hasLos(z.pos.x, z.pos.y, z.pos.z, ctx.playerPos, Z.aggroLosM)))
         ) {
           z.mode = 'hunt';
           z.path = []; // repath at the player immediately

@@ -1615,6 +1615,31 @@
         "falloff": 2.5
       },
       "tags": []
+    },
+    {
+      "id": "annex",
+      "pos": [
+        -45,
+        -28.5,
+        0
+      ],
+      "radius": 5.2,
+      "stretch": [
+        1.45,
+        0.62,
+        1.25
+      ],
+      "dry": true,
+      "floor": 0.3,
+      "water": 0.28,
+      "museum": true,
+      "zone": "galleries",
+      "tags": [
+        "landmark"
+      ],
+      "contents": {
+        "landmarkName": "The Annex"
+      }
     }
   ],
   "edges": [
@@ -2301,6 +2326,23 @@
       "a": "throat-rim-air-teaser-copy",
       "b": "throat-rim-air",
       "width": "normal"
+    },
+    {
+      "a": "gal-rec",
+      "b": "annex",
+      "width": "normal",
+      "waypoints": [
+        [
+          -36,
+          -32,
+          4
+        ],
+        [
+          -42,
+          -30.5,
+          1.5
+        ]
+      ]
     }
   ],
   "zoneHubs": {
