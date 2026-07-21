@@ -5,11 +5,11 @@
 
 import * as THREE from 'three';
 import { TUNING } from '../tuning';
-import { NODES, type CaveNode } from '../cave/data';
+import { EDGES, NODES, type CaveNode } from '../cave/data';
 import { gradient, regionAt, resolveCollision, sdf } from '../cave/sdf';
 import { sampleCurrent } from '../player/current';
 import { GraphPath, nearestNodeId, refToNodeId, type Vec3 } from './pathing';
-import { RoundSystem, roundHp, roundSpeed } from './rounds';
+import { ShiftSystem, roundHp, roundSpeed } from './rounds';
 import { animateDrowned, buildDrowned, DROWNED_VARIANTS, type DrownedPose, type DrownedRig } from './drowned';
 
 export type ZombieState = 'emerging' | 'pursuing' | 'attacking' | 'pausing' | 'dead';
@@ -47,6 +47,20 @@ export interface Zombie {
   /** Closest it has ever been to the player (progress metric). */
   bestDist: number;
   prevPathIdx: number;
+  /** M14 (DESIGN §9): far bodies WANDER the graph; near = the hunt. */
+  mode: 'wander' | 'hunt';
+  /** Wander destination node id (null = pick one). */
+  wanderTo: string | null;
+  /** Time on the current wander leg (arrival/timeout upkeep). */
+  wanderT: number;
+  /** Hunt mode: time spent beyond deaggro range (drop the hunt after a while). */
+  loseT: number;
+  /** Countdown to the next minecraft-style despawn roll. */
+  despawnT: number;
+  /** This frame's far flag (LOD: reduced animation, no separation). */
+  far: boolean;
+  /** Accumulated time since the last (possibly skipped) animation tick. */
+  animT: number;
 }
 
 export interface ShotResult {
@@ -67,10 +81,16 @@ export interface ZombieCtx {
 
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
+function getNodeSafe(id: string): CaveNode | undefined {
+  return NODES.find((n) => n.id === id);
+}
+
 export class ZombieManager {
   readonly zombies: Zombie[] = [];
   /** Kills this run (Lowe's ledger — the stats screens read it). */
   recovered = 0;
+  /** Debug: freeze the minecraft despawn rolls (watch a wanderer forever). */
+  despawnEnabled = true;
   /** The Ascent (DESIGN §11): a hard speed ceiling — pursuit, not capture. */
   ascentSpeedCap: number | null = null;
   private nextId = 1;
@@ -86,10 +106,17 @@ export class ZombieManager {
   private qTmp = new THREE.Quaternion();
   private current = new THREE.Vector3();
 
+  /** Staggered pack emergence (M14): members surface one by one from the
+   *  same proven burrow point — separation strings them out, and no invented
+   *  placement math can ever put one inside rock or outside the map. */
+  private pack: { burrow: string; count: number; t: number } | null = null;
+  private wanderGraph: GraphPath;
+  private wanderIds: string[];
+
   constructor(
     private scene: THREE.Scene,
-    readonly rounds: RoundSystem,
-    isEdgeOpen: (e: import('../cave/data').CaveEdge) => boolean,
+    readonly rounds: ShiftSystem,
+    private isEdgeOpen: (e: import('../cave/data').CaveEdge) => boolean,
     private waterLevelAt: (x: number, y: number, z: number) => number | null,
     /** Region falseUp lookup — deceived rooms lie about up for BODIES too
      *  (user bug 2026-07-20: zombies hauling out in a falseUp air room fell
@@ -102,16 +129,29 @@ export class ZombieManager {
     // remembering a task (LORE §4 directive — cheap idle, deeply wrong)
     const stationTags = ['perk', 'wallBuy', 'boxSpot', 'power', 'pap', 'jukebox'] as const;
     this.stations = NODES.filter((n) => stationTags.some((t) => n.tags.includes(t))).map((n) => [...n.pos]);
+    // M14 wander graph (DESIGN §9): squeeze-free — they still CHASE through
+    // squeezes, they just don't drift into them; wander TARGETS also exclude
+    // burrows and leaf dead-ends (no vanishing into cracks, no loitering at
+    // false ends the player will never visit)
+    this.wanderGraph = new GraphPath((e) => isEdgeOpen(e) && e.width !== 'squeeze');
+    const degree = new Map<string, number>();
+    for (const e of EDGES) {
+      degree.set(e.a, (degree.get(e.a) ?? 0) + 1);
+      degree.set(e.b, (degree.get(e.b) ?? 0) + 1);
+    }
+    this.wanderIds = NODES.filter(
+      (n) => !n.teaser && n.kind !== 'audio' && !n.tags.includes('burrow') && (degree.get(n.id) ?? 0) >= 2,
+    ).map((n) => n.id);
   }
 
   get aliveCount(): number {
     return this.zombies.filter((z) => z.state !== 'dead').length;
   }
 
-  /** Ascent spawner: any burrow, round gates ignored — the site empties
-   *  everything it has (DESIGN §11). Same burrow-choice rules otherwise. */
+  /** Ascent spawner: any burrow, shift gates ignored, NEAR spawns allowed —
+   *  the site empties everything it has at the thief (DESIGN §11). */
   spawnNearPlayer(playerPos: THREE.Vector3, round: number): Zombie | null {
-    const burrow = this.pickBurrow(playerPos, 999);
+    const burrow = this.pickBurrow(playerPos, 999, TUNING.zombies.minSpawnDistM);
     return burrow ? this.spawnAt(burrow, round) : null;
   }
 
@@ -151,6 +191,13 @@ export class ZombieManager {
       noProgressT: 0,
       bestDist: Infinity,
       prevPathIdx: -1,
+      mode: 'wander', // near the player it aggros on its first tick
+      wanderTo: null,
+      wanderT: 0,
+      loseT: 0,
+      despawnT: Math.random() * TUNING.zombies.despawnCheckSec,
+      far: false,
+      animT: 0,
     };
     this.zombies.push(z);
     for (const m of rig.meshes) {
@@ -160,33 +207,38 @@ export class ZombieManager {
     return z;
   }
 
-  /** Pick a burrow for the next spawn (DESIGN §5.1/§13): active this round,
-   *  ≥12 m from the player, out of sight and same-zone preferred. */
-  private pickBurrow(playerPos: THREE.Vector3, round: number): string | null {
+  /** Pick a burrow for the next spawn (DESIGN §9/§13): active this shift,
+   *  ≥12 m from the player, out of sight preferred. M14: MAP-WIDE — the cave
+   *  is populated, not summoned; a mild randomization spreads the packs so
+   *  the same nearest burrow doesn't produce the whole population. */
+  private pickBurrow(playerPos: THREE.Vector3, shift: number, minDistM?: number): string | null {
     const Z = TUNING.zombies;
-    const playerZone = regionAt(playerPos.x, playerPos.y, playerPos.z)?.zone;
-    let best: CaveNode | null = null;
-    let bestScore = Infinity;
+    // M14 map-wide population: a UNIFORM pick over every valid burrow —
+    // any distance bias at all funnels the whole cave through the burrows
+    // nearest the player (observed in the DoD run: 16/16 hunters, 0
+    // wanderers). Population spawns additionally keep OUT OF AGGRO RANGE:
+    // without that floor, despawn-respawn cycles ratchet the whole cave
+    // into hunters camped on the player (observed: 23/24). Fresh bodies
+    // start as wanderers; pressure arrives by drifting in — the design.
+    const floor = minDistM ?? Math.max(Z.minSpawnDistM, Z.aggroLosM + 4);
+    const unseen: CaveNode[] = [];
+    const seen: CaveNode[] = [];
     let farthest: CaveNode | null = null;
     let farthestD = -1;
     for (const b of this.burrows) {
       const from = b.contents?.burrowActiveFromRound ?? 1;
-      if (round < from) continue;
+      if (shift < from) continue;
       const d = Math.hypot(b.pos[0] - playerPos.x, b.pos[1] - playerPos.y, b.pos[2] - playerPos.z);
       if (d > farthestD) {
         farthestD = d;
         farthest = b;
       }
-      if (d < Z.minSpawnDistM) continue;
-      let score = d;
-      if (this.hasLos(b.pos[0], b.pos[1], b.pos[2], playerPos, 30)) score += 40; // avoid spawning in view
-      if (playerZone && b.zone !== playerZone) score += 15; // prefer the player's zone
-      if (score < bestScore) {
-        bestScore = score;
-        best = b;
-      }
+      if (d < floor) continue;
+      (this.hasLos(b.pos[0], b.pos[1], b.pos[2], playerPos, 30) ? seen : unseen).push(b);
     }
-    return (best ?? farthest)?.id ?? null;
+    const pool = unseen.length > 0 ? unseen : seen;
+    const pick = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : farthest;
+    return pick?.id ?? null;
   }
 
   /** SDF line-of-sight: clear water the whole way? */
@@ -265,16 +317,98 @@ export class ZombieManager {
     }
   }
 
+  /** Pick a fresh wander destination and path to it (squeeze-free graph;
+   *  targets exclude burrows/leaves — see the constructor set). With doors
+   *  closed the graph is heavily PARTITIONED — random cross-cave targets
+   *  mostly fail (observed: 0 wanderers with targets), so after a few tries
+   *  fall back to a guaranteed one-hop stroll to a random open neighbor. */
+  private rewander(z: Zombie): void {
+    const from = refToNodeId(regionAt(z.pos.x, z.pos.y, z.pos.z)?.ref ?? nearestNodeId(z.pos.x, z.pos.y, z.pos.z), z.pos.x, z.pos.y, z.pos.z);
+    for (let tries = 0; tries < 8; tries++) {
+      const to = this.wanderIds[Math.floor(Math.random() * this.wanderIds.length)];
+      if (!to || to === from || to === z.wanderTo) continue;
+      const path = this.wanderGraph.findPath(from, to);
+      if (path && path.length > 1) {
+        z.wanderTo = to;
+        z.path = this.wanderGraph.expand(path);
+        z.pathIdx = 0;
+        z.wanderT = 0;
+        return;
+      }
+    }
+    // no squeeze-free journey exists from here. The usual reason: freshly
+    // emerged at a burrow whose ONLY exit is its crack (observed: 8/9
+    // wanderers idle) — the ESCAPE leg may use any open edge (they can
+    // physically do squeezes; they just don't loiter in them), still never
+    // toward another burrow.
+    const hops = EDGES.filter(
+      (e) =>
+        (e.a === from || e.b === from) &&
+        this.isEdgeOpen(e) &&
+        !getNodeSafe(e.a === from ? e.b : e.a)?.tags.includes('burrow'),
+    );
+    if (hops.length > 0) {
+      const e = hops[Math.floor(Math.random() * hops.length)];
+      const to = e.a === from ? e.b : e.a;
+      const path = this.graph.findPath(from, to); // full graph carries the escape
+      if (path && path.length > 1) {
+        z.wanderTo = to;
+        z.path = this.graph.expand(path);
+        z.pathIdx = 0;
+        z.wanderT = 0;
+        return;
+      }
+    }
+    // truly isolated: idle — the despawn roll recycles it elsewhere
+    z.wanderTo = null;
+    z.path = [];
+    z.wanderT = 0;
+  }
+
+  /** Strip the into-wall component of this.vTmp near rock (shared by the
+   *  hunt and the wander — tight passages steer ALONG the channel). */
+  private slideOffWalls(z: Zombie): void {
+    const Z = TUNING.zombies;
+    if (sdf(z.pos.x, z.pos.y, z.pos.z) > -(Z.radius + 0.3)) {
+      const g: [number, number, number] = [0, 0, 0];
+      gradient(z.pos.x, z.pos.y, z.pos.z, g);
+      const into = this.vTmp.x * g[0] + this.vTmp.y * g[1] + this.vTmp.z * g[2];
+      if (into > 0) {
+        this.vTmp.x -= g[0] * into;
+        this.vTmp.y -= g[1] * into;
+        this.vTmp.z -= g[2] * into;
+        if (this.vTmp.lengthSq() > 1e-4) this.vTmp.normalize();
+      }
+    }
+  }
+
   update(dt: number, ctx: ZombieCtx): void {
     const Z = TUNING.zombies;
     // player's current graph node (shared by every pursuer)
     const ref = regionAt(ctx.playerPos.x, ctx.playerPos.y, ctx.playerPos.z)?.ref;
     if (ref) this.playerNodeId = refToNodeId(ref, ctx.playerPos.x, ctx.playerPos.y, ctx.playerPos.z);
 
-    // spawning (rounds own pacing/caps; we own burrow choice)
-    if (!ctx.playerDead && this.rounds.wantSpawn(this.aliveCount)) {
-      const burrow = this.pickBurrow(ctx.playerPos, this.rounds.round);
-      if (burrow) this.spawnAt(burrow, this.rounds.round);
+    // ── population spawning (M14): the shift clock owns cap + pacing; we
+    // own burrow choice and staggered pack emergence (1..packMax surface one
+    // by one from the same proven point — DESIGN §9, paranoia note honored
+    // by never inventing new placement math) ──
+    if (!ctx.playerDead) {
+      if (!this.pack) {
+        const n = this.rounds.wantSpawnPack(this.aliveCount);
+        if (n > 0) {
+          const burrow = this.pickBurrow(ctx.playerPos, this.rounds.round);
+          if (burrow) this.pack = { burrow, count: n, t: 0 };
+        }
+      }
+      if (this.pack) {
+        this.pack.t -= dt;
+        if (this.pack.t <= 0) {
+          this.spawnAt(this.pack.burrow, this.rounds.round);
+          this.pack.count--;
+          this.pack.t = TUNING.shifts.emergeStaggerSec;
+          if (this.pack.count <= 0) this.pack = null;
+        }
+      }
     }
 
     for (let i = this.zombies.length - 1; i >= 0; i--) {
@@ -357,7 +491,94 @@ export class ZombieManager {
         continue;
       }
 
-      // ── pursuing ──
+      // ── mode (M14, DESIGN §9): near = the hunt, far = the wander; the
+      // Ascent hunts with everything the site has ──
+      const ascent = this.ascentSpeedCap !== null;
+      if (z.mode === 'wander') {
+        if (
+          ascent ||
+          distToPlayer < Z.aggroM ||
+          (distToPlayer < Z.aggroLosM && this.hasLos(z.pos.x, z.pos.y, z.pos.z, ctx.playerPos, Z.aggroLosM))
+        ) {
+          z.mode = 'hunt';
+          z.path = []; // repath at the player immediately
+          z.loseT = 0;
+          z.noProgressT = 0;
+          z.bestDist = Infinity;
+        }
+      } else if (!ascent && distToPlayer > Z.deaggroM) {
+        z.loseT += dt;
+        if (z.loseT >= Z.deaggroSec) {
+          z.mode = 'wander';
+          z.wanderTo = null; // pick a fresh destination
+          z.path = [];
+          z.loseT = 0;
+        }
+      } else {
+        z.loseT = 0;
+      }
+      z.far = z.mode === 'wander' && distToPlayer > Z.lodDistM;
+
+      // ── wandering (M14): drift the graph, avoid squeezes/burrows/dead
+      // ends, and roll the minecraft despawn far from unseen eyes ──
+      if (z.mode === 'wander') {
+        z.despawnT -= dt;
+        if (z.despawnT <= 0 && this.despawnEnabled) {
+          z.despawnT = Z.despawnCheckSec;
+          if (
+            distToPlayer > Z.despawnMinDistM &&
+            !this.hasLos(z.pos.x, z.pos.y, z.pos.z, ctx.playerPos, 60) &&
+            Math.random() < Z.despawnChance
+          ) {
+            this.remove(z, i); // slips below; the population refills elsewhere
+            continue;
+          }
+        }
+        z.wanderT += dt;
+        const end = z.path[z.path.length - 1];
+        const arrived = end && (z.pos.x - end[0]) ** 2 + (z.pos.y - end[1]) ** 2 + (z.pos.z - end[2]) ** 2 < 4;
+        if (!z.wanderTo || z.path.length === 0 || arrived || z.wanderT > Z.wanderTargetTimeoutSec) this.rewander(z);
+        // workstation pause reads even better on a wanderer
+        if (z.pauseCooldown <= 0) {
+          for (const s of this.stations) {
+            const d2 = (s[0] - z.pos.x) ** 2 + (s[1] - z.pos.y) ** 2 + (s[2] - z.pos.z) ** 2;
+            if (d2 < Z.pauseNearM * Z.pauseNearM) {
+              if (Math.random() < Z.pauseChance) {
+                z.state = 'pausing';
+                z.stateT = 0;
+              } else {
+                z.pauseCooldown = 8;
+              }
+              break;
+            }
+          }
+          if (z.state === 'pausing') continue;
+        }
+        const wRegion = regionAt(z.pos.x, z.pos.y, z.pos.z);
+        const wt = this.pathTarget(z, wRegion?.width === 'squeeze' ? 1.1 : 2.5);
+        if (wt) {
+          this.vTmp.set(wt[0] - z.pos.x, wt[1] - z.pos.y, wt[2] - z.pos.z).normalize();
+          this.slideOffWalls(z);
+          let wSpeed = Math.min(z.speed * z.speedScale, Z.speedCap) * Z.wanderSpeedFactor;
+          if (wRegion?.width === 'squeeze') wSpeed = Math.min(wSpeed, Z.squeezeSpeed);
+          this.vTmp.multiplyScalar(wSpeed);
+          z.vel.lerp(this.vTmp, Math.min(1, Z.turnRatePerSec * dt));
+        } else {
+          z.vel.multiplyScalar(Math.max(0, 1 - dt));
+        }
+        z.pos.addScaledVector(z.vel, dt);
+        resolveCollision(z.pos, Z.radius);
+        this.face(z, this.vTmp2.copy(z.pos).add(z.vel), dt);
+        // LOD: a far wanderer animates at ~8 Hz — nobody is watching closely
+        z.animT += dt;
+        if (!z.far || z.animT > 0.12) {
+          animateDrowned(z.rig, ctx.time + z.phase, Math.min(1, z.vel.length() / 4), 'swim', z.animT);
+          z.animT = 0;
+        }
+        continue;
+      }
+
+      // ── hunting ──
       // only a few may attack at once; the rest crowd in and jostle
       if (distToPlayer <= Z.grabRangeM && z.grabCooldown <= 0) {
         const attackers = this.zombies.filter((x) => x.state === 'attacking').length;
@@ -470,7 +691,7 @@ export class ZombieManager {
         z.noProgressT += dt;
       }
       if (z.noProgressT >= Z.stuckDespawnSec && distToPlayer > Z.stuckDespawnMinDistM) {
-        this.rounds.toSpawn++; // the site keeps its complement — it re-emerges
+        // the site keeps its complement — the population spawner refills
         this.remove(z, i);
         continue;
       }
@@ -491,6 +712,7 @@ export class ZombieManager {
       for (let b = a + 1; b < live.length; b++) {
         const za = live[a];
         const zb = live[b];
+        if (za.far && zb.far) continue; // LOD (M14): far pairs skip the solve
         this.vTmp.copy(zb.pos).sub(za.pos);
         let d = this.vTmp.length();
         if (d >= Zt.separationRadiusM) continue;

@@ -28,7 +28,6 @@ export interface AudioSnapshot {
   dead: boolean;
   won: boolean;
   round: number;
-  caveStirs: boolean;
   /** Silt thickness 0..1 at the player's chamber (drives the cottony muffle). */
   siltThickness: number;
   zombies: { pos: THREE.Vector3; state: string }[];
@@ -59,7 +58,6 @@ export class AudioDirector {
   syncRound(n: number): void {
     this.lastRound = n;
   }
-  private stirsWas = false;
   private deadWas = false;
   private wonWas = false;
   private anglerLoops = new Map<object, TrackedLoop>();
@@ -173,16 +171,13 @@ export class AudioDirector {
     // ── stingers on state edges ──
     if (s.round !== this.lastRound) {
       if (this.lastRound > 0) {
-        sfx.roundStinger(e.ctx, e.master);
-        this.note('roundStinger');
+        // M14 (DESIGN §14): the shift change rings the site's watch BELL —
+        // the somber horn retired with the rounds it announced
+        sfx.shiftBell(e.ctx, e.master);
+        this.note('shiftBell');
       }
       this.lastRound = s.round;
     }
-    if (s.caveStirs && !this.stirsWas) {
-      sfx.stirsStinger(e.ctx, e.master);
-      this.note('stirsStinger');
-    }
-    this.stirsWas = s.caveStirs;
     if (s.dead && !this.deadWas) {
       sfx.deathSting(e.ctx, e.master);
       this.note('deathSting');

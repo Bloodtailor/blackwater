@@ -834,7 +834,8 @@ function initGame(): void {
   });
 
   const zSec = debug.section('Zombies & Rounds');
-  debug.toggle(zSec, 'Rounds paused', () => rounds.paused, (v) => (rounds.paused = v));
+  debug.toggle(zSec, 'Shift clock paused', () => rounds.paused, (v) => (rounds.paused = v));
+  debug.toggle(zSec, 'Despawn rolls', () => zombies.despawnEnabled, (v) => (zombies.despawnEnabled = v));
   const roundInput = document.createElement('input');
   roundInput.type = 'number';
   roundInput.min = '1';
@@ -1317,16 +1318,16 @@ function initGame(): void {
     const combatFrozen = vitals.dead || player.mode === 'noclip' || heart.won;
     if (!combatFrozen) {
       run.timeSec += dt;
-      const ev = rounds.update(dt, zombies.aliveCount);
+      const ev = rounds.update(dt); // M14: pure time — alive counts are irrelevant
       if (ev.roundStarted) {
         hud.setRound(ev.roundStarted);
         specials.onRoundStart(ev.roundStarted, p);
-        flashStatus(`round ${ev.roundStarted} begins`);
+        flashStatus(`shift ${ev.roundStarted} — the bell`);
       }
-      // the Ascent: global pressure on a flat clock, alive cap still rules
+      // the Ascent: global pressure on a flat clock, the hard cap still rules
       if (heart.ascentActive) {
         run.ascentSpawnT -= dt;
-        if (run.ascentSpawnT <= 0 && zombies.aliveCount < TUNING.rounds.aliveCap) {
+        if (run.ascentSpawnT <= 0 && zombies.aliveCount < TUNING.shifts.hardCap) {
           zombies.spawnNearPlayer(p, Math.max(1, rounds.round));
           run.ascentSpawnT = TUNING.ascent.spawnEverySec;
         }
@@ -1388,7 +1389,6 @@ function initGame(): void {
       },
     });
     tracers.update(dt);
-    hud.setCaveStirs(rounds.caveStirsActive && !combatFrozen ? rounds.stirsT : null);
     hud.updateWeapon(weapons);
     hud.update(dt, vitals, -p.y);
     hud.updateKit(guideLine, chems, following, ctl.grabbing, guideLine.nearEnd(hand));
@@ -1560,7 +1560,6 @@ function initGame(): void {
       dead: vitals.dead,
       won: heart.won,
       round: rounds.round,
-      caveStirs: rounds.caveStirsActive,
       siltThickness,
       zombies: zombies.zombies,
       specials: specials.specials,
@@ -1581,7 +1580,7 @@ function initGame(): void {
       if (statusFlash <= 0) {
         const p = camera.position;
         const r = regionAt(p.x, p.y, p.z);
-        status.textContent = `${player.mode} | depth ${(-p.y).toFixed(1)} m | ${r ? `${r.zone}/${r.width}` : 'off-graph'} | vis ${atmo.visM.toFixed(0)} m | roll ${tilt.rollDeg.toFixed(0)}° | R${rounds.round} ${rounds.phase}${rounds.caveStirsActive ? ' STIRS' : ''} · ${zombies.aliveCount} alive / ${rounds.toSpawn} to come`;
+        status.textContent = `${player.mode} | depth ${(-p.y).toFixed(1)} m | ${r ? `${r.zone}/${r.width}` : 'off-graph'} | vis ${atmo.visM.toFixed(0)} m | roll ${tilt.rollDeg.toFixed(0)}° | S${rounds.shift} bell in ${rounds.shiftT.toFixed(0)}s · ${zombies.aliveCount} alive (${zombies.zombies.filter((z) => z.state !== 'dead' && z.mode === 'hunt').length} hunting)`;
       }
       frames = 0;
       fpsTime = 0;

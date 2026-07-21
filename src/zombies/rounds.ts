@@ -1,127 +1,92 @@
-// Round system (DESIGN §9) — pure logic, no three dependency (unit-testable).
+// SHIFTS (M14 rewrite, DESIGN §9 — was kill-gated rounds):
 //
-//  • Round N spawns 6+4N Drowned (cap 60), max 9 alive.
-//  • Kill all → 40 s intermission ON A GLOBAL TIMER → next round starts
-//    wherever the player is. No "take a break when ready."
-//  • THE CAVE STIRS (the user's anti-crawler rule): when a round's remaining
-//    zombies drop to ≤ max(3, 15% of the round total) capped at 10, a visible
-//    45 s countdown starts — when it expires the next round begins REGARDLESS.
-//    Survivors carry over (they count against the alive cap). A round cannot
-//    be held open; there is no keepable crawler by rule.
+//  • The clock is PURE TIME: a shift lasts shiftSec and advances no matter
+//    what the player does. Kills change nothing. The shift bell rings on
+//    every change (the director watches the number).
+//  • Shift number scales the POPULATION CAP, not a spawn budget: the cave
+//    fills toward mobCap(shift) continuously, in packs of 1..packMax.
+//  • Intermissions and the Cave Stirs are DELETED — with no kill gate there
+//    is no round to hold open, so the anti-crawler machinery has nothing to
+//    guard (pillar 2, rewritten 2026-07-21).
 //
-// The manager polls wantSpawn(alive) for pacing and reports kills/alive back
-// through update(). HP/speed curves for the current round live here too.
+// Pure logic, unit-tested; the ZombieManager owns burrow choice and bodies.
+// HP/speed curves for the current shift live here too (same curves as the
+// old rounds — the wall past lateRound stands).
 
 import { TUNING } from '../tuning';
 
-export type RoundPhase = 'intermission' | 'active';
-
-export interface RoundEvents {
-  /** A new round just began (its number). Triggers the tally stinger. */
+export interface ShiftEvents {
+  /** A new shift just began (its number). Rings the bell + tally flicker.
+   *  (Field name kept from the rounds era — specials/main listen to it.) */
   roundStarted?: number;
-  /** The Cave Stirs countdown just began. */
-  caveStirsStarted?: boolean;
 }
 
-/** Zombies a round spawns in total. */
-export function roundCount(round: number): number {
-  const R = TUNING.rounds;
-  return Math.min(R.baseCount + R.perRound * round, R.countCap);
-}
-
-/** Drowned HP at a round: ×1.12/round through 20, ×1.18 after (the wall). */
-export function roundHp(round: number): number {
+/** Drowned HP at a shift: ×1.12/shift through 20, ×1.18 after (the wall). */
+export function roundHp(shift: number): number {
   const Z = TUNING.zombies;
-  const early = Math.min(round, Z.lateRound) - 1;
-  const late = Math.max(0, round - Z.lateRound);
+  const early = Math.min(shift, Z.lateRound) - 1;
+  const late = Math.max(0, shift - Z.lateRound);
   return Z.baseHp * Z.hpGrowth ** early * Z.hpGrowthLate ** late;
 }
 
-/** Drowned swim speed at a round (capped below player sprint — always escapable). */
-export function roundSpeed(round: number): number {
+/** Drowned swim speed at a shift (capped below player sprint — escapable). */
+export function roundSpeed(shift: number): number {
   const Z = TUNING.zombies;
-  return Math.min(Z.baseSpeed + Z.speedPerRound * (round - 1), Z.speedCap);
+  return Math.min(Z.baseSpeed + Z.speedPerRound * (shift - 1), Z.speedCap);
 }
 
-/** The Cave Stirs threshold for a round total: max(min, 15%) capped. */
-export function caveStirsThreshold(total: number): number {
-  const C = TUNING.rounds.caveStirs;
-  return Math.min(Math.max(C.minRemaining, Math.round(C.fraction * total)), C.maxRemaining);
+/** The population the cave sustains at a shift (DESIGN §9). */
+export function mobCap(shift: number): number {
+  const S = TUNING.shifts;
+  if (shift <= 0) return 0;
+  return Math.min(Math.floor(S.capBase + S.capPerShift * shift), S.hardCap);
 }
 
-export class RoundSystem {
-  round = 0; // 0 = pre-game grace; round 1 starts after firstRoundDelaySec
-  phase: RoundPhase = 'intermission';
-  /** Zombies still unspawned this round. */
-  toSpawn = 0;
-  /** Seconds left in the intermission (phase 'intermission'). */
-  intermissionT: number = TUNING.rounds.firstRoundDelaySec;
-  /** Cave Stirs countdown, seconds left; negative = not running. */
-  stirsT = -1;
-  /** Debug: freeze the whole system (no timers, no spawns). */
+export class ShiftSystem {
+  /** Current shift. 0 = pre-game grace; shift 1 starts after the delay. */
+  shift = 0;
+  /** Seconds until the next bell. */
+  shiftT: number = TUNING.shifts.firstShiftDelaySec;
+  /** Debug: freeze the whole system (no clock, no spawns). */
   paused = false;
 
-  private spawnT = 0;
+  private spawnCooldown = 0;
 
-  /** Total zombies this round spawns (constant per round). */
-  get roundTotal(): number {
-    return roundCount(this.round);
+  /** Legacy alias — HUD, director, specials, and the ledger read `.round`. */
+  get round(): number {
+    return this.shift;
   }
 
-  get caveStirsActive(): boolean {
-    return this.stirsT >= 0;
+  /** Jump straight to a shift (debug "start shift N", the hatch's +5 toll).
+   *  Resets the clock so the arrival shift runs its full length. */
+  startRound(n: number): ShiftEvents {
+    this.shift = Math.max(1, Math.round(n));
+    this.shiftT = TUNING.shifts.shiftSec;
+    return { roundStarted: this.shift };
   }
 
-  /** Jump straight to a round (debug "start round N"). */
-  startRound(n: number): RoundEvents {
-    this.round = n;
-    this.phase = 'active';
-    this.toSpawn = roundCount(n);
-    this.stirsT = -1;
-    this.spawnT = 0;
-    return { roundStarted: n };
-  }
-
-  /**
-   * Advance timers. `alive` is the live zombie count (survivors included —
-   * they carry over and count against the cap by construction).
-   */
-  update(dt: number, alive: number): RoundEvents {
+  /** Advance the clock. Time is the only input — alive counts, kills, and
+   *  the player's location are all irrelevant to the bell. */
+  update(dt: number): ShiftEvents {
     if (this.paused) return {};
-    this.spawnT = Math.max(0, this.spawnT - dt);
-
-    if (this.phase === 'intermission') {
-      this.intermissionT -= dt;
-      if (this.intermissionT <= 0) return this.startRound(this.round + 1);
-      return {};
-    }
-
-    // active
-    const remaining = this.toSpawn + alive;
-    if (remaining === 0) {
-      this.phase = 'intermission';
-      this.intermissionT = TUNING.rounds.intermissionSec;
-      this.stirsT = -1;
-      return {};
-    }
-    if (this.stirsT < 0 && remaining <= caveStirsThreshold(this.roundTotal)) {
-      this.stirsT = TUNING.rounds.caveStirs.countdownSec;
-      return { caveStirsStarted: true };
-    }
-    if (this.stirsT >= 0) {
-      this.stirsT -= dt;
-      if (this.stirsT <= 0) return this.startRound(this.round + 1); // regardless
-    }
+    this.spawnCooldown = Math.max(0, this.spawnCooldown - dt);
+    this.shiftT -= dt;
+    if (this.shiftT <= 0) return this.startRound(this.shift + 1);
     return {};
   }
 
-  /** Manager polls this once per frame; true = spawn one zombie now. */
-  wantSpawn(alive: number): boolean {
-    if (this.paused || this.phase !== 'active' || this.toSpawn <= 0) return false;
-    if (alive >= TUNING.rounds.aliveCap || this.spawnT > 0) return false;
-    const R = TUNING.rounds;
-    this.spawnT = Math.max(R.spawnEveryMinSec, R.spawnEverySec - R.spawnAccelPerRound * (this.round - 1));
-    this.toSpawn--;
-    return true;
+  /**
+   * Population spawner: how many bodies to place RIGHT NOW as one pack
+   * (0 = none). The manager owns burrow choice and staggered emergence.
+   */
+  wantSpawnPack(alive: number): number {
+    if (this.paused || this.shift <= 0 || this.spawnCooldown > 0) return 0;
+    const room = mobCap(this.shift) - alive;
+    if (room <= 0) return 0;
+    this.spawnCooldown = TUNING.shifts.spawnCooldownSec;
+    return Math.min(room, 1 + Math.floor(Math.random() * TUNING.shifts.packMax));
   }
 }
+
+/** Legacy export name — a few call sites still say RoundSystem. */
+export { ShiftSystem as RoundSystem };

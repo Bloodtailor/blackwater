@@ -174,18 +174,16 @@ export const TUNING = {
     lightRadiusM: 6, // pooled real lights on the nearest few
     lightPool: 6, // nearest N chemlights get real point lights
   },
-  rounds: {
-    intermissionSec: 40, // seconds between rounds (global timer, no safe break)
-    firstRoundDelaySec: 8, // grace before round 1 after the dive starts
-    baseCount: 6, // zombies in round 1 (count = base + perRound x N, capped)
-    perRound: 4, // extra zombies per round number
-    countCap: 60, // max zombies a single round spawns in total
-    aliveCap: 9, // max zombies alive at once (perf + readability)
-    // spawn pacing: seconds between spawns, accelerating with the round
-    spawnEverySec: 2.4, // seconds between spawns at round 1
-    spawnEveryMinSec: 1.0, // spawn-interval floor at high rounds
-    spawnAccelPerRound: 0.08, // spawn-interval reduction per round (s)
-    caveStirs: { minRemaining: 3, fraction: 0.15, maxRemaining: 10, countdownSec: 45 },
+  shifts: {
+    // M14 (DESIGN §9): the shift clock is PURE TIME — kills change nothing
+    shiftSec: 90, // seconds per shift; the bell rings on every change
+    firstShiftDelaySec: 8, // grace before shift 1 after the dive starts
+    capBase: 4, // mob cap at shift 1 (cap = base + perShift x N)
+    capPerShift: 1.5, // mob-cap growth per shift
+    hardCap: 24, // absolute alive ceiling (perf budget — LOD carries it)
+    packMax: 5, // spawn events place 1..packMax as a loose pack
+    emergeStaggerSec: 1.1, // seconds between pack members surfacing from the burrow
+    spawnCooldownSec: 3.5, // pause between spawn events (population fills steadily)
   },
   zombies: {
     baseSpeed: 2.8, // Drowned swim speed at round 1 (m/s)
@@ -223,6 +221,17 @@ export const TUNING = {
     // ── death & corpses (go limp and drift, DESIGN §8.1) ──
     corpseDriftSec: 5.5, // seconds a corpse drifts before settling
     corpseFadeSec: 2.0, // seconds a settled corpse takes to fade out
+    // ── M14 the living cave (DESIGN §9): far bodies WANDER the graph ──
+    wanderSpeedFactor: 0.45, // wander drift speed as a fraction of chase speed
+    aggroM: 25, // inside this, a wanderer turns hunter regardless of sight
+    aggroLosM: 38, // inside this WITH line of sight, it turns hunter
+    deaggroM: 48, // a hunter farther than this for deaggroSec goes back to wandering
+    deaggroSec: 6, // seconds beyond deaggroM before the hunt is dropped
+    wanderTargetTimeoutSec: 45, // give up on an unreached wander target
+    despawnCheckSec: 4, // minecraft-style despawn roll cadence (far + unseen only)
+    despawnChance: 0.12, // chance per roll to slip below and respawn elsewhere
+    despawnMinDistM: 42, // never despawn nearer than this (and never in sight)
+    lodDistM: 40, // beyond this (and unseen): reduced animation + no separation
     // ── workstation-pause idle (LORE §4: remembering a task) ──
     pauseChance: 0.25, // chance to pause when drifting past an old station
     pauseSec: 3.0, // workstation-pause length (the crew remembers a task)
