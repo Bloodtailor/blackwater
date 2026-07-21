@@ -269,7 +269,7 @@ export class Shops {
     const name = gunName(id);
     const label = new THREE.Mesh(
       new THREE.PlaneGeometry(1.0, 0.5),
-      new THREE.MeshBasicMaterial({ map: labelTexture([name, 'IN STOCK']), transparent: true }),
+      new THREE.MeshBasicMaterial({ map: labelTexture([name, 'FREE ISSUE']), transparent: true }),
     );
     label.position.set(0, 0.28, 0.06);
     g.add(label);

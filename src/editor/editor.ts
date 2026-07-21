@@ -20,6 +20,8 @@ import { buildWaterSurfaces } from '../cave/waterViz';
 import { buildPanel, type PanelApi } from './panel';
 import { initSdf } from '../cave/sdf';
 import { buildCaveMesh } from '../cave/mesh';
+import { doorPlacement } from '../cave/doors';
+import { TUNING } from '../tuning';
 
 export type Selection =
   | { kind: 'node'; id: string }
@@ -86,6 +88,8 @@ export function initEditor(): void {
   let tagFilter = 'all';
   let showTeasers = false;
   let showAudio = false;
+  // M13b tunnel view: tunnels at their real width-class radius + door markers
+  let showTunnels = false;
   const nodeMatchesFilter = (n: CaveNode): boolean => {
     if (tagFilter === 'all') return true;
     if (tagFilter === 'teaser') return !!n.teaser;
@@ -209,7 +213,12 @@ export function initEditor(): void {
       if (filtered) m.raycast = () => undefined;
       nodeGroup.add(m);
       nodeMeshes.set(n.id, m);
-      if (!filtered) makeLabel(n.teaser ? `👻 ${n.id}` : n.id, n.pos, n.radius * s[1]);
+      if (!filtered) {
+        // M13b: pickups read at a glance (🧨 dynamite · 🔑 key · ⚛ slug)
+        const pk = n.contents?.pickup;
+        const suffix = pk ? (pk.kind === 'dynamite' ? ' 🧨' : pk.kind === 'key' ? ` 🔑${pk.label ? '·' + pk.label : ''}` : ' ⚛') : '';
+        makeLabel((n.teaser ? `👻 ${n.id}` : n.id) + suffix, n.pos, n.radius * s[1]);
+      }
     }
     EDGES.forEach((e, index) => {
       let pts: THREE.Vector3[];
@@ -266,6 +275,53 @@ export function initEditor(): void {
           h.userData.wpIndex = wpIndex;
           wpGroup.add(h);
         });
+      }
+      // ── M13b tunnel view: the passage at its real width-class radius,
+      // per-segment cylinders (honest to the capsule sweep, cheap) + a knee
+      // sphere at each bend; doors/gates get a ring at their true arc spot ──
+      if (showTunnels && !dimmed) {
+        const G = TUNING.geometry;
+        const tunnelR = e.width === 'open' ? G.radiusOpen : e.width === 'squeeze' ? G.radiusSqueeze : G.radiusNormal;
+        const tubeMat = new THREE.MeshLambertMaterial({
+          color: WIDTH_COLORS[e.width],
+          transparent: true,
+          opacity: 0.22,
+          depthWrite: false,
+        });
+        for (let i = 1; i < pts.length; i++) {
+          const a = pts[i - 1];
+          const b = pts[i];
+          const len = a.distanceTo(b);
+          if (len < 0.01) continue;
+          const seg = new THREE.Mesh(new THREE.CylinderGeometry(tunnelR, tunnelR, len, 12, 1, true), tubeMat);
+          seg.raycast = () => undefined; // view-only — never steals clicks
+          seg.position.copy(a).add(b).multiplyScalar(0.5);
+          seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+          seg.renderOrder = 2;
+          edgeGroup.add(seg);
+          if (i < pts.length - 1) {
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(tunnelR, 12, 8), tubeMat);
+            knee.raycast = () => undefined;
+            knee.position.copy(b);
+            knee.renderOrder = 2;
+            edgeGroup.add(knee);
+          }
+        }
+        if (e.door || e.powerGate) {
+          const kind = e.powerGate ? 'powerGate' : e.door!.kind;
+          const DOOR_MARK: Record<string, number> = { debris: 0xb0623a, grate: 0x9aa4a8, hatch: 0xd9534f, powerGate: 0x3fc8e8 };
+          const place = doorPlacement(e);
+          const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(place.blockR, 0.14, 8, 24),
+            new THREE.MeshBasicMaterial({ color: DOOR_MARK[kind], transparent: true, opacity: 0.95, depthWrite: false }),
+          );
+          ring.raycast = () => undefined;
+          ring.position.set(...place.pos);
+          ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...place.dir));
+          ring.renderOrder = 3;
+          edgeGroup.add(ring);
+          makeLabel(kind === 'powerGate' ? '⚡ powerGate' : `⛔ ${kind}`, place.pos, place.blockR + 0.4);
+        }
       }
     });
     rebuildMarkers();
@@ -615,6 +671,12 @@ export function initEditor(): void {
       rebuild();
       panel.toast(showTeasers ? 'TEASER ROOMS SHOWN (ghosts)' : 'TEASER ROOMS HIDDEN');
       return showTeasers;
+    },
+    toggleTunnels: () => {
+      showTunnels = !showTunnels;
+      rebuild();
+      panel.toast(showTunnels ? 'TUNNEL VIEW — real widths + door markers' : 'TUNNEL VIEW OFF');
+      return showTunnels;
     },
     toggleAudio: () => {
       showAudio = !showAudio;

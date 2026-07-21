@@ -24,6 +24,7 @@ export interface PanelApi {
   getFilter(): string;
   toggleTeasers(): boolean;
   toggleAudio(): boolean;
+  toggleTunnels(): boolean;
   previewRock(): void;
   hideRock(): void;
   toggleLabels(): void;
@@ -93,6 +94,10 @@ export function buildPanel(api: PanelApi): Panel {
     audioBtn.classList.toggle('ed-on', api.toggleAudio());
   });
   audioBtn.title = 'Show/hide AUDIO nodes (hidden by default — they clutter level work)';
+  const tunnelBtn = btn('⬭', () => {
+    tunnelBtn.classList.toggle('ed-on', api.toggleTunnels());
+  });
+  tunnelBtn.title = 'TUNNEL VIEW (M13b): draw every tunnel at its real width-class radius, with door/gate rings at their true positions';
 
   // ── node-type filter (user 2026-07-20: "just see all boxSpots") ──
   const filterRow = document.createElement('div');
@@ -343,6 +348,36 @@ export function buildPanel(api: PanelApi): Panel {
       tagBox.appendChild(l);
     }
     form.appendChild(tagBox);
+    // ── M13b pickup placement (DESIGN §10.3/§10.6): the found-item economy
+    // is authored here — dynamite blasts debris, a key cuts its tagged
+    // grate, a slug feeds the Bench ──
+    selectField(form, 'pickup', ['none', 'dynamite', 'key', 'slug'], () => n.contents?.pickup?.kind ?? 'none', (v) => {
+      if (v === 'none') {
+        if (n.contents?.pickup) delete n.contents.pickup;
+      } else {
+        const grates = EDGES.filter((e) => e.door?.kind === 'grate').map((e) => `${e.a}→${e.b}`);
+        n.contents = {
+          ...(n.contents ?? {}),
+          pickup:
+            v === 'key'
+              ? { kind: 'key', keyFor: grates[0] ?? '', label: 'KEY' }
+              : { kind: v as 'dynamite' | 'slug' },
+        };
+      }
+    });
+    if (n.contents?.pickup?.kind === 'key') {
+      const pk = n.contents.pickup;
+      const doorIds = EDGES.filter((e) => e.door).map((e) => `${e.a}→${e.b}`);
+      selectField(form, 'keyFor (its door)', doorIds, () => pk.keyFor ?? doorIds[0], (v) => (pk.keyFor = v));
+      const r = row(form, 'key tag label');
+      const i = document.createElement('input');
+      i.value = pk.label ?? '';
+      i.addEventListener('change', () => {
+        pk.label = i.value.trim() || undefined;
+        api.commit();
+      });
+      r.appendChild(i);
+    }
     // contents JSON
     const ta = document.createElement('textarea');
     ta.className = 'ed-json';
