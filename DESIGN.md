@@ -162,7 +162,7 @@ The Angler was originally conceived as a lamp-carrying figure; the fish shipped 
 - He is not killable, not shootable (shots pass through the dark where a body should be — never confirmed either way). He has no pathing, no AI: he is a placed dread object.
 - Fiction hook (LORE §4): the site had lamp-men on the roster. One of them is on a MISSING notice that no crew book supports. Nothing in the game connects these facts out loud.
 
-### 8.6 The Roster of 41 (NEW 2026-07-21, user idea — every Drowned is a PERSON; builds at M14.5)
+### 8.6 The Roster of 41 (NEW 2026-07-21, user idea — every Drowned is a PERSON; built at M14.5)
 The "deliberately few variants" doctrine is superseded by something better: **there are exactly 41 Drowned, and each is an individual.** A crew book (internal data, never shown to the player) gives every man a name, a role, a bespoke procedural design (build, gear props, rig colors), a voice identity (per-man pitch/timbre over the moan set), base-stat multipliers, and optionally a behavior quirk (the workstation-pauser, the runner, the one who stands too long at the burrow mouth).
 - **Never more than one of each man exists at a time.** The population IS the roster: spawning = a man coming on watch; despawning = going below. (The M14 population system's spawn tickets carry a crew id.)
 - **The player is never told any of this.** They simply notice, run after run, that it is the same men — same face, same denim, same tool belt — which is the §1.1 wrongness made visceral. Lowe's "Barrow, was it" line stops being flavor and becomes observation.

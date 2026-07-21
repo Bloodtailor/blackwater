@@ -195,12 +195,15 @@ export function grabImpact(ctx: BaseAudioContext, out: AudioNode): void {
   tone(ctx, out, { hz: 90, hzEnd: 50, release: 0.25, gain: 0.4 * v });
 }
 
-export function moan(ctx: BaseAudioContext, out: AudioNode): void {
-  if (SAMPLES.play(ctx, out, `moan-${1 + Math.floor(Math.random() * 3)}`, { gain: TUNING.audio.moanGain * 2.2, rateJitter: 0.07 })) return;
+/** `voice` (M14.5, DESIGN §8.6): a man's fixed moan identity from the crew
+ *  book — same sample, same pitch, every watch. Omitted = anonymous. */
+export function moan(ctx: BaseAudioContext, out: AudioNode, voice?: { sample: number; rate: number }): void {
+  const sample = voice?.sample ?? 1 + Math.floor(Math.random() * 3);
+  if (SAMPLES.play(ctx, out, `moan-${sample}`, { gain: TUNING.audio.moanGain * 2.2, rateJitter: 0.05, rate: voice?.rate })) return;
   // wet, muffled: two detuned saws through a slow-swept vowel-ish bandpass
   const t = ctx.currentTime;
   const dur = 1.4 + Math.random() * 1.2;
-  const base = 82 + Math.random() * 50;
+  const base = (82 + Math.random() * 50) * (voice?.rate ?? 1);
   const f = ctx.createBiquadFilter();
   f.type = 'bandpass';
   f.frequency.setValueAtTime(300 + Math.random() * 200, t);

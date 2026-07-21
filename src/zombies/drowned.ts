@@ -1,10 +1,14 @@
 // The Drowned — procedural drift-swimmer rig (DESIGN §8.1, LORE §4).
 // Site personnel, 40 years down: 1968 denim/canvas work gear, tool belts,
 // faces ruined by water (a pale blank — murk is the art style; silhouettes
-// carry). Variants are deliberately FEW: the same men recur, and Lowe
-// notices ("You again. Barrow, was it") — the small model count is canon.
+// carry). M14.5 (DESIGN §8.6): the few-variants doctrine is superseded —
+// every rig is A MAN from the crew book (roster.ts), deterministic from his
+// rigSeed: build, palette, and exactly ONE gear prop from his role. Strong
+// enough to RECOGNIZE run after run ("You again. Barrow, was it") — the
+// recurrence of individuals is the §1.1 wrongness made visceral.
 
 import * as THREE from 'three';
+import { mulberry32, type CrewProfile } from './roster';
 
 export interface DrownedRig {
   group: THREE.Group;
@@ -25,30 +29,47 @@ export interface DrownedRig {
 // One shared unit-box geometry; every part is a scaled instance of it.
 let unitBox: THREE.BoxGeometry | null = null;
 
-// The three men of the complement (skin, shirt, pants, accent/hat, scale).
-// Murk palette: dark, desaturated 1968 workwear — pale skin carries the
-// silhouette; nothing may read saturated (DESIGN §15).
-const VARIANTS = [
-  { skin: 0x5f6d58, shirt: 0x1e2b38, pants: 0x1b2530, accent: 0x120e09, scale: 1.0, hat: false }, // denim coverall
-  { skin: 0x66735f, shirt: 0x3b3627, pants: 0x202e3c, accent: 0x0f0c08, scale: 0.94, hat: false }, // canvas shirt
-  { skin: 0x57644f, shirt: 0x23262b, pants: 0x1f2328, accent: 0x453c1c, scale: 1.08, hat: true }, // big man, hard hat
+// Base workwear cuts the crew's gear varies around (skin, shirt, pants,
+// accent). Murk palette: dark, desaturated 1968 workwear — pale skin carries
+// the silhouette; nothing may read saturated (DESIGN §15).
+const BASE_KITS = [
+  { skin: 0x5f6d58, shirt: 0x1e2b38, pants: 0x1b2530, accent: 0x120e09 }, // denim coverall
+  { skin: 0x66735f, shirt: 0x3b3627, pants: 0x202e3c, accent: 0x0f0c08 }, // canvas shirt
+  { skin: 0x57644f, shirt: 0x23262b, pants: 0x1f2328, accent: 0x453c1c }, // dark wool
 ];
 
-export const DROWNED_VARIANTS = VARIANTS.length;
+/** Deterministic per-man color: base kit color nudged in hue/lightness by
+ *  his seed — enough to tell Carver's denim from Flores's, never saturated. */
+function crewColor(base: number, rng: () => number): number {
+  const c = new THREE.Color(base);
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  c.setHSL(
+    (hsl.h + (rng() * 2 - 1) * 0.05 + 1) % 1,
+    Math.min(0.45, Math.max(0, hsl.s + (rng() * 2 - 1) * 0.08)),
+    Math.min(0.42, Math.max(0.04, hsl.l + (rng() * 2 - 1) * 0.06)),
+  );
+  return c.getHex();
+}
 
-export function buildDrowned(variant: number): DrownedRig {
+export function buildDrowned(crew: CrewProfile): DrownedRig {
   if (!unitBox) unitBox = new THREE.BoxGeometry(1, 1, 1);
-  const v = VARIANTS[variant % VARIANTS.length];
+  const rng = mulberry32(crew.rigSeed);
+  const kit = BASE_KITS[Math.floor(rng() * BASE_KITS.length)];
   const mats: THREE.MeshStandardMaterial[] = [];
   const mat = (color: number): THREE.MeshStandardMaterial => {
     const m = new THREE.MeshStandardMaterial({ color, roughness: 0.92, flatShading: true });
     mats.push(m);
     return m;
   };
-  const skin = mat(v.skin);
-  const shirt = mat(v.shirt);
-  const pants = mat(v.pants);
-  const accent = mat(v.accent);
+  const skin = mat(crewColor(kit.skin, rng));
+  const shirt = mat(crewColor(kit.shirt, rng));
+  const pants = mat(crewColor(kit.pants, rng));
+  const accent = mat(crewColor(kit.accent, rng));
+  // build: per-man silhouette — height, shoulder width, limb length
+  const scale = 0.9 + rng() * 0.2;
+  const torsoW = 0.9 + rng() * 0.22;
+  const limbLen = 0.92 + rng() * 0.18;
 
   const meshes: THREE.Mesh[] = [];
   const part = (m: THREE.MeshStandardMaterial, sx: number, sy: number, sz: number, x: number, y: number, z: number, parent: THREE.Object3D): THREE.Mesh => {
@@ -62,16 +83,15 @@ export function buildDrowned(variant: number): DrownedRig {
 
   const group = new THREE.Group();
   const body = new THREE.Group();
-  body.scale.setScalar(v.scale);
+  body.scale.setScalar(scale);
   group.add(body);
 
   // torso: chest + hips + tool belt. Origin = chest center.
-  part(shirt, 0.52, 0.62, 0.3, 0, 0, 0, body);
-  part(pants, 0.44, 0.34, 0.27, 0, -0.48, 0, body);
-  part(accent, 0.5, 0.09, 0.33, 0, -0.33, 0, body); // the belt
+  part(shirt, 0.52 * torsoW, 0.62, 0.3, 0, 0, 0, body);
+  part(pants, 0.44 * torsoW, 0.34, 0.27, 0, -0.48, 0, body);
+  part(accent, 0.5 * torsoW, 0.09, 0.33, 0, -0.33, 0, body); // the belt
   const head = part(skin, 0.24, 0.28, 0.25, 0, 0.5, 0.02, body);
   head.userData.head = true;
-  if (v.hat) part(accent, 0.3, 0.1, 0.31, 0, 0.68, 0.02, body);
 
   // limbs pivot at shoulder/hip groups so they can sway
   const limb = (m: THREE.MeshStandardMaterial, skinM: THREE.MeshStandardMaterial, x: number, y: number, len: number, thick: number): THREE.Group => {
@@ -82,10 +102,51 @@ export function buildDrowned(variant: number): DrownedRig {
     body.add(g);
     return g;
   };
-  const armL = limb(shirt, skin, -0.33, 0.26, 0.62, 0.13);
-  const armR = limb(shirt, skin, 0.33, 0.26, 0.62, 0.13);
-  const legL = limb(pants, accent, -0.14, -0.66, 0.7, 0.15);
-  const legR = limb(pants, accent, 0.14, -0.66, 0.7, 0.15);
+  const armX = 0.33 * torsoW;
+  const armL = limb(shirt, skin, -armX, 0.26, 0.62 * limbLen, 0.13);
+  const armR = limb(shirt, skin, armX, 0.26, 0.62 * limbLen, 0.13);
+  const legL = limb(pants, accent, -0.14, -0.66, 0.7 * limbLen, 0.15);
+  const legR = limb(pants, accent, 0.14, -0.66, 0.7 * limbLen, 0.15);
+
+  // ── the gear prop: exactly ONE per man, from his role (DESIGN §8.6).
+  // A carrier's equipment is ALWAYS visible — consistency is absolute. ──
+  const pale = mat(crewColor(0x6e7263, rng)); // faded issue-equipment grey-green
+  const role = crew.role;
+  if (role === 'lamps') {
+    // Barrow: the dry-cell on his chest and the lamp above it — the man who
+    // always has his battery, because a lamps-man without one isn't one
+    part(pale, 0.18, 0.22, 0.12, 0.14 * torsoW, 0.05, 0.19, body);
+    part(accent, 0.1, 0.1, 0.08, 0.14 * torsoW, 0.24, 0.19, body);
+  } else if (role === 'stores') {
+    // the satchel, slung at the hip
+    part(pale, 0.24, 0.3, 0.14, -0.3 * torsoW, -0.42, 0.1, body);
+  } else if (role === 'pile watch') {
+    // the output-slug canister on his back
+    part(pale, 0.16, 0.42, 0.16, 0, 0.05, -0.26, body);
+  } else if (role === 'drill') {
+    part(accent, 0.3, 0.1, 0.31, 0, 0.68, 0.02, body); // hard hat
+  } else if (role === 'forward watch' || role === 'hull watch') {
+    part(shirt, 0.26, 0.08, 0.27, 0, 0.66, 0.02, body); // watch cap
+  } else if (role === 'galley' || role === 'mess') {
+    part(pale, 0.4 * torsoW, 0.5, 0.04, 0, -0.18, 0.17, body); // apron
+  } else if (role === 'winch' || role === 'rigging' || role === 'boats') {
+    part(accent, 0.26, 0.12, 0.26, -0.26 * torsoW, 0.28, -0.08, body); // rope coil, shouldered
+  } else if (role === 'infirmary') {
+    part(pale, 0.2, 0.24, 0.12, 0.3 * torsoW, -0.44, 0.08, body); // kit box
+  } else if (role === 'comms') {
+    part(accent, 0.1, 0.16, 0.09, 0.16 * torsoW, 0.12, 0.18, body); // handset on strap
+  } else if (role === 'survey') {
+    part(pale, 0.1, 0.5, 0.1, 0.12, 0.1, -0.24, body); // chart tube on back
+  } else if (role === 'blasting') {
+    part(accent, 0.2, 0.16, 0.14, 0.28 * torsoW, -0.42, 0.06, body); // charge satchel
+  } else if (role === 'quartermaster') {
+    part(pale, 0.2, 0.26, 0.03, -0.2 * torsoW, -0.04, 0.17, body); // the clipboard
+  } else if (role === 'diving') {
+    part(pale, 0.14, 0.44, 0.14, -0.12, 0.02, -0.25, body); // spare bottle
+  } else {
+    // workshop / fitter / machinist / stray roles: a tool off the belt
+    part(accent, 0.07, 0.24, 0.07, 0.24 * torsoW, -0.42, 0.12, body);
+  }
 
   for (const mesh of meshes) mesh.userData.rigGroup = group;
   return { group, body, head, armL, armR, legL, legR, mats, meshes };

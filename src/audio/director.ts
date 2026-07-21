@@ -30,7 +30,7 @@ export interface AudioSnapshot {
   round: number;
   /** Silt thickness 0..1 at the player's chamber (drives the cottony muffle). */
   siltThickness: number;
-  zombies: { pos: THREE.Vector3; state: string }[];
+  zombies: { pos: THREE.Vector3; state: string; crew?: { name: string; voice: { sample: number; rate: number } } }[];
   specials: { kind: string; pos: THREE.Vector3; state: string }[];
   powered: boolean;
 }
@@ -130,8 +130,9 @@ export class AudioDirector {
       const z = alive[Math.floor(Math.random() * alive.length)];
       const h = e.positional(A.moanRefDistM);
       h.setPosition(z.pos.x, z.pos.y, z.pos.z);
-      sfx.moan(e.ctx, h.input);
-      this.note(`moan gain=${h.state.gain.toFixed(2)} pan=${h.state.pan.toFixed(2)} occ=${h.state.occluded}`);
+      // his own voice (M14.5): every man moans at his own pitch, every watch
+      sfx.moan(e.ctx, h.input, z.crew?.voice);
+      this.note(`moan ${z.crew?.name ?? '?'} gain=${h.state.gain.toFixed(2)} pan=${h.state.pan.toFixed(2)} occ=${h.state.occluded}`);
       window.setTimeout(() => h.dispose(), 3200);
       this.moanT = A.moanIntervalSec * (0.6 + Math.random() * 0.8) * Math.max(0.4, 1 - alive.length * 0.06);
     }

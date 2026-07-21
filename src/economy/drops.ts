@@ -7,7 +7,9 @@
 import * as THREE from 'three';
 import { TUNING } from '../tuning';
 
-export type DropId = 'maxAmmo' | 'doublePoints' | 'instaKill' | 'clearWaters' | 'batterySurge' | 'pressureWave';
+// 'fuelSlug' (M14.5) never enters the random roll — it is the pile watch's
+// personal equipment (roster.ts CARRY_DROP): he always carries, always drops.
+export type DropId = 'maxAmmo' | 'doublePoints' | 'instaKill' | 'clearWaters' | 'batterySurge' | 'pressureWave' | 'fuelSlug';
 
 export interface DropCtx {
   scene: THREE.Scene;
@@ -16,6 +18,7 @@ export interface DropCtx {
   applyBatterySurge: () => void;
   applyPressureWave: () => void;
   applyClearWaters: () => void; // the instant settle + re-arm
+  applySlug: () => void; // fuel slug to the belt (the pile watch's drop)
   setPointsMultiplier: (m: number) => void;
 }
 
@@ -26,6 +29,7 @@ const DROP_LOOK: Record<DropId, { label: string; color: string }> = {
   clearWaters: { label: 'CLEAR', color: '#9fe8f8' },
   batterySurge: { label: 'CELL', color: '#b8d477' },
   pressureWave: { label: 'WAVE', color: '#d89ff8' },
+  fuelSlug: { label: '⚛', color: '#9fd4b8' },
 };
 
 function dropTexture(id: DropId): THREE.CanvasTexture {
@@ -80,8 +84,9 @@ export class Drops {
   }
 
   roll(): DropId {
+    // fuelSlug deliberately absent from the weights — never randomly rolled
     const W = TUNING.drops.weights;
-    const ids = Object.keys(W) as DropId[];
+    const ids = Object.keys(W) as (keyof typeof W)[];
     let total = 0;
     for (const id of ids) total += W[id];
     let r = Math.random() * total;
@@ -133,6 +138,10 @@ export class Drops {
       case 'pressureWave':
         this.ctx.applyPressureWave();
         this.ctx.toast('PRESSURE WAVE');
+        break;
+      case 'fuelSlug':
+        this.ctx.applySlug();
+        this.ctx.toast('OUTPUT SLUG — STENCILLED CORMORANT');
         break;
     }
   }

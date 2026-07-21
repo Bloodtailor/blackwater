@@ -10,12 +10,16 @@ import { gradient, regionAt, resolveCollision, sdf } from '../cave/sdf';
 import { sampleCurrent } from '../player/current';
 import { GraphPath, nearestNodeId, refToNodeId, type Vec3 } from './pathing';
 import { ShiftSystem, roundHp, roundSpeed } from './rounds';
-import { animateDrowned, buildDrowned, DROWNED_VARIANTS, type DrownedPose, type DrownedRig } from './drowned';
+import { animateDrowned, buildDrowned, type DrownedPose, type DrownedRig } from './drowned';
+import { Roster, type CrewProfile } from './roster';
 
 export type ZombieState = 'emerging' | 'pursuing' | 'attacking' | 'pausing' | 'dead';
 
 export interface Zombie {
   id: number;
+  /** The man (M14.5, DESIGN §8.6): one of each, ever — the population IS the
+   *  roster. His slot frees when the body leaves the world (remove). */
+  crew: CrewProfile;
   rig: DrownedRig;
   pos: THREE.Vector3; // = rig.group.position
   vel: THREE.Vector3;
@@ -38,7 +42,7 @@ export interface Zombie {
   /** Vortex Maw: seconds left being dragged toward pullPoint. */
   pulledT: number;
   pullPoint: THREE.Vector3;
-  /** This body's own pace (±speedVariance) — the pack strings out. */
+  /** This man's own pace (roster speedMult) — the pack strings out. */
   speedScale: number;
   /** This attack's total windup (base + jitter) — hits desync. */
   windupTotal: number;
@@ -87,6 +91,8 @@ function getNodeSafe(id: string): CaveNode | undefined {
 
 export class ZombieManager {
   readonly zombies: Zombie[] = [];
+  /** The watch bill (M14.5): who is on watch, who walks how often. */
+  readonly roster = new Roster();
   /** Kills this run (Lowe's ledger — the stats screens read it). */
   recovered = 0;
   /** Debug: freeze the minecraft despawn rolls (watch a wanderer forever). */
@@ -155,21 +161,27 @@ export class ZombieManager {
     return burrow ? this.spawnAt(burrow, round) : null;
   }
 
-  /** Spawn one Drowned at a node (burrow spawning + the debug button). */
-  spawnAt(nodeId: string, round: number): Zombie {
+  /** Spawn one Drowned at a node (burrow spawning + the debug button).
+   *  M14.5: the man comes from the crew book — null when the complement is
+   *  already on watch (never two of one man; the spawner waits). */
+  spawnAt(nodeId: string, round: number, crewName?: string): Zombie | null {
+    const crew = crewName ? this.roster.checkoutByName(crewName) : this.roster.checkout();
+    if (!crew) return null;
     const n = NODES.find((x) => x.id === nodeId);
     const pos = n ? n.pos : [0, -5, 0];
-    const rig = buildDrowned(this.nextId % DROWNED_VARIANTS);
+    const rig = buildDrowned(crew);
     rig.group.position.set(pos[0], pos[1] - 0.4, pos[2]);
     rig.group.scale.setScalar(0.4);
     this.scene.add(rig.group);
+    const R = TUNING.roster;
     const z: Zombie = {
       id: this.nextId++,
+      crew,
       rig,
       pos: rig.group.position,
       vel: new THREE.Vector3(),
-      hp: roundHp(round),
-      maxHp: roundHp(round),
+      hp: roundHp(round) * crew.hpMult,
+      maxHp: roundHp(round) * crew.hpMult,
       speed: roundSpeed(round),
       state: 'emerging',
       stateT: 0,
@@ -186,7 +198,9 @@ export class ZombieManager {
       fading: false,
       pulledT: 0,
       pullPoint: new THREE.Vector3(),
-      speedScale: 1 + (Math.random() * 2 - 1) * TUNING.zombies.speedVariance,
+      // his own pace, from the book — the pack strings out AND the same man
+      // swims the same way every watch (speedVariance superseded by M14.5)
+      speedScale: crew.speedMult * (crew.quirk === 'runner' ? R.runnerSpeedBonus : 1),
       windupTotal: TUNING.zombies.grabWindupSec,
       noProgressT: 0,
       bestDist: Infinity,
@@ -239,6 +253,12 @@ export class ZombieManager {
     const pool = unseen.length > 0 ? unseen : seen;
     const pick = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : farthest;
     return pick?.id ?? null;
+  }
+
+  /** Workstation-pause odds for this man (the pauser quirk stops more). */
+  private pauseChanceOf(z: Zombie): number {
+    const base = TUNING.zombies.pauseChance;
+    return z.crew.quirk === 'pauser' ? Math.min(1, base * TUNING.roster.pauserChanceMult) : base;
   }
 
   /** SDF line-of-sight: clear water the whole way? */
@@ -403,10 +423,14 @@ export class ZombieManager {
       if (this.pack) {
         this.pack.t -= dt;
         if (this.pack.t <= 0) {
-          this.spawnAt(this.pack.burrow, this.rounds.round);
-          this.pack.count--;
-          this.pack.t = TUNING.shifts.emergeStaggerSec;
-          if (this.pack.count <= 0) this.pack = null;
+          // roster exhausted (whole complement on watch) = the pack waits below
+          if (!this.spawnAt(this.pack.burrow, this.rounds.round)) {
+            this.pack = null;
+          } else {
+            this.pack.count--;
+            this.pack.t = TUNING.shifts.emergeStaggerSec;
+            if (this.pack.count <= 0) this.pack = null;
+          }
         }
       }
     }
@@ -434,7 +458,15 @@ export class ZombieManager {
         const t = Math.min(1, z.stateT / Z.emergeSec);
         z.rig.group.scale.setScalar(0.4 + 0.6 * t);
         z.pos.y += 0.4 * dt;
-        if (t >= 1) z.state = 'pursuing';
+        if (t >= 1) {
+          if (z.crew.quirk === 'lingerer') {
+            // the one who stands too long at the burrow mouth (DESIGN §8.6)
+            z.state = 'pausing';
+            z.stateT = -TUNING.roster.lingerExtraSec;
+          } else {
+            z.state = 'pursuing';
+          }
+        }
         animateDrowned(z.rig, ctx.time + z.phase, 0.3, 'swim', dt);
         continue;
       }
@@ -538,12 +570,13 @@ export class ZombieManager {
         const end = z.path[z.path.length - 1];
         const arrived = end && (z.pos.x - end[0]) ** 2 + (z.pos.y - end[1]) ** 2 + (z.pos.z - end[2]) ** 2 < 4;
         if (!z.wanderTo || z.path.length === 0 || arrived || z.wanderT > Z.wanderTargetTimeoutSec) this.rewander(z);
-        // workstation pause reads even better on a wanderer
-        if (z.pauseCooldown <= 0) {
+        // workstation pause reads even better on a wanderer (quirks, M14.5:
+        // the pauser stops far more; the runner never stops)
+        if (z.pauseCooldown <= 0 && z.crew.quirk !== 'runner') {
           for (const s of this.stations) {
             const d2 = (s[0] - z.pos.x) ** 2 + (s[1] - z.pos.y) ** 2 + (s[2] - z.pos.z) ** 2;
             if (d2 < Z.pauseNearM * Z.pauseNearM) {
-              if (Math.random() < Z.pauseChance) {
+              if (Math.random() < this.pauseChanceOf(z)) {
                 z.state = 'pausing';
                 z.stateT = 0;
               } else {
@@ -591,11 +624,11 @@ export class ZombieManager {
       }
       // workstation pause: drifting past an old post, they sometimes stop —
       // as if remembering a task
-      if (z.pauseCooldown <= 0 && distToPlayer > 6) {
+      if (z.pauseCooldown <= 0 && distToPlayer > 6 && z.crew.quirk !== 'runner') {
         for (const s of this.stations) {
           const d2 = (s[0] - z.pos.x) ** 2 + (s[1] - z.pos.y) ** 2 + (s[2] - z.pos.z) ** 2;
           if (d2 < Z.pauseNearM * Z.pauseNearM) {
-            if (Math.random() < Z.pauseChance) {
+            if (Math.random() < this.pauseChanceOf(z)) {
               z.state = 'pausing';
               z.stateT = 0;
             } else {
@@ -768,6 +801,9 @@ export class ZombieManager {
     for (const m of z.rig.mats) m.dispose();
     this.shootables = this.shootables.filter((m) => m.userData.zombie !== z);
     this.zombies.splice(index, 1);
+    // the man goes below — his slot on the watch bill frees (a killed man
+    // returns only when his body leaves the water: one of each, always)
+    this.roster.return(z.crew.name);
   }
 
   /** Weapon damage. Returns what happened (caller awards the points). */

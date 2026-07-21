@@ -22,6 +22,7 @@ import { SiltSystem, chambersFromNodes } from './effects/silt';
 import { SiltParticles } from './effects/siltParticles';
 import { RoundSystem } from './zombies/rounds';
 import { ZombieManager } from './zombies/zombies';
+import { CARRY_DROP, CREW } from './zombies/roster';
 import { SpecialManager } from './zombies/specials';
 import { HeartRun, photographDataUrl } from './game/heart';
 import { wallSpot, orientToWall } from './economy/shops';
@@ -295,6 +296,7 @@ function initGame(): void {
       flashStatus(`pressure wave — ${killed} recovered`);
     },
     applyClearWaters: () => silt.clearAll(),
+    applySlug: () => inventory.addSlug(),
     setPointsMultiplier: (m) => (points.multiplier = m),
   });
 
@@ -451,6 +453,13 @@ function initGame(): void {
     const fresh = ids.filter((id) => !voice.played.has(id));
     if (fresh.length > 0) voice.request(fresh[Math.floor(Math.random() * fresh.length)]);
   };
+  // "…You again. Barrow, was it. Third time this week." — surface.5 joins
+  // the rotation only once Barrow has actually walked that many watches
+  // (M14.5: the line points at a real recurring man now)
+  const surfacingPool = (): string[] =>
+    zombies.roster.timesOnWatch('Barrow') >= TUNING.roster.barrowLineAfterWatch
+      ? ['surface.1', 'surface.2', 'surface.3', 'surface.4', 'surface.5']
+      : ['surface.1', 'surface.2', 'surface.3', 'surface.4'];
   debug.hotkey('KeyB', 'Skip tape', () => {
     if (deck.skip()) hud.toast('TAPE STOPPED — FILED');
   });
@@ -484,6 +493,9 @@ function initGame(): void {
     if (outcome === 'killed') {
       points.award(melee ? E.meleeKill : head ? E.headshotKill : E.kill);
       drops.onKill(z.pos);
+      // personal equipment (M14.5, DESIGN §8.6): a carrier ALWAYS drops what
+      // he visibly carries — balance lives in the watch bill, never here
+      if (z.crew.carry) drops.spawn(CARRY_DROP[z.crew.carry], z.pos);
     }
     hud.hitmark(head);
   };
@@ -846,7 +858,10 @@ function initGame(): void {
     const ev = rounds.startRound(Math.max(1, Number(roundInput.value) || 1));
     if (ev.roundStarted) hud.setRound(ev.roundStarted);
   });
-  debug.button(zSec, 'Spawn 1 at selected node', () => zombies.spawnAt(select.value, Math.max(1, rounds.round)));
+  debug.button(zSec, 'Spawn 1 at selected node', () => {
+    const z = zombies.spawnAt(select.value, Math.max(1, rounds.round));
+    flashStatus(z ? `${z.crew.name} (${z.crew.role}) on watch` : 'roster full — all 41 accounted for');
+  });
   debug.button(zSec, 'Spawn 5 at selected node', () => {
     for (let i = 0; i < 5; i++) zombies.spawnAt(select.value, Math.max(1, rounds.round));
   });
@@ -854,6 +869,41 @@ function initGame(): void {
   debug.button(zSec, 'Kill all but 2 (Cave Stirs test)', () => flashStatus(`recovered ${zombies.killAll(2)}`));
   debug.button(zSec, 'Refill current weapon', () => weapons.refill(weapons.current.def.id));
   debug.button(zSec, 'Give 5000 points', () => points.award(5000));
+
+  // ── M14.5: the Roster of 41 (crew book is internal; this panel is the
+  // only place the names are ever visible) ──
+  const rosterSec = debug.section('Roster of 41');
+  const crewSelect = document.createElement('select');
+  crewSelect.style.width = '100%';
+  for (const p of CREW) {
+    const o = document.createElement('option');
+    o.value = p.name;
+    o.textContent = `${p.name} — ${p.role}${p.carry ? ' ⚑' : ''}${p.quirk ? ` (${p.quirk})` : ''}`;
+    crewSelect.appendChild(o);
+  }
+  rosterSec.appendChild(crewSelect);
+  debug.button(rosterSec, 'Spawn crewman at selected node', () => {
+    const z = zombies.spawnAt(select.value, Math.max(1, rounds.round), crewSelect.value);
+    flashStatus(z ? `${z.crew.name} (${z.crew.role}) on watch` : `${crewSelect.value} is already out there`);
+  });
+  debug.button(rosterSec, "Who's on watch", () => {
+    const names = [...zombies.roster.onWatch.values()].map((p) => p.name);
+    flashStatus(`on watch (${names.length}/41): ${names.join(', ') || '—'}`);
+  });
+  debug.button(rosterSec, 'Watch counts (walked this run)', () => {
+    const walked = [...zombies.roster.watches.entries()].sort((a, b) => b[1] - a[1]);
+    flashStatus(walked.map(([n, c]) => `${n}×${c}`).join(' ') || 'nobody yet');
+  });
+  debug.slider(
+    rosterSec,
+    'Weight override (selected man)',
+    0,
+    10,
+    0.1,
+    () => zombies.roster.weightOverrides.get(crewSelect.value) ?? CREW.find((p) => p.name === crewSelect.value)?.weight ?? 1,
+    (v) => zombies.roster.weightOverrides.set(crewSelect.value, v),
+  );
+  debug.button(rosterSec, 'Clear weight overrides', () => zombies.roster.weightOverrides.clear());
 
   const econSec = debug.section('Economy');
   debug.toggle(econSec, 'Power on', () => shops.powered, (v) => shops.setPowered(v));
@@ -912,7 +962,7 @@ function initGame(): void {
   debug.button(econSec, 'Force box move on next spin', () => (box.forceMoveNext = true));
   const dropSelect = document.createElement('select');
   dropSelect.style.width = '100%';
-  for (const id of ['maxAmmo', 'doublePoints', 'instaKill', 'clearWaters', 'batterySurge', 'pressureWave'] as DropId[]) {
+  for (const id of ['maxAmmo', 'doublePoints', 'instaKill', 'clearWaters', 'batterySurge', 'pressureWave', 'fuelSlug'] as DropId[]) {
     const o = document.createElement('option');
     o.value = id;
     o.textContent = id;
@@ -979,7 +1029,7 @@ function initGame(): void {
   });
   debug.button(audSec, 'Skip tape (B)', () => deck.skip());
   debug.button(audSec, 'Wind all 3 toys (jukebox)', () => toys.windAll());
-  debug.button(audSec, 'Say a surfacing line', () => requestOneOf(['surface.1', 'surface.2', 'surface.3', 'surface.4', 'surface.5']));
+  debug.button(audSec, 'Say a surfacing line', () => requestOneOf(surfacingPool()));
   debug.button(audSec, 'VO queue state', () => flashStatus(`queue ${voice.queue.map((l) => l.id).join(',') || '—'} | played ${voice.played.size} | cooldown ${voice.ambientCooldown.toFixed(0)}s`));
   const sfxTest = (which: 'round' | 'stirs'): void => {
     const e = audio.ensure();
@@ -1404,7 +1454,7 @@ function initGame(): void {
       // he's properly out: the surfacing beat, judged by the air he ARRIVED
       // with (it refills fast while he catches his breath)
       if (ctl.airAtBreach < TUNING.voice.closeCallAir + 2) requestOneOf(['closecall.1', 'closecall.2', 'closecall.3']);
-      else if (daylight) requestOneOf(['surface.1', 'surface.2', 'surface.3', 'surface.4', 'surface.5']);
+      else if (daylight) requestOneOf(surfacingPool());
       else requestOneOf(['pocket.1', 'pocket.2', 'pocket.3', 'pocket.4']);
     }
     ctl.wasSustained = sustained;
@@ -1619,6 +1669,8 @@ function initGame(): void {
     heart,
     runStats,
     inventory,
+    roster: zombies.roster,
+    crew: CREW,
     hatchToll,
     audio,
     audioVerify: () => import('./audio/verify'),

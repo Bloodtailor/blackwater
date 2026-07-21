@@ -74,12 +74,14 @@ export class SampleBank {
   }
 
   /** One-shot. True = the sample played (synth should stay quiet). */
-  play(ctx: BaseAudioContext, out: AudioNode, name: string, opts: { gain?: number; rateJitter?: number } = {}): boolean {
+  play(ctx: BaseAudioContext, out: AudioNode, name: string, opts: { gain?: number; rateJitter?: number; rate?: number } = {}): boolean {
     const buf = this.buffer(ctx, name);
     if (!buf) return false;
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    if (opts.rateJitter) src.playbackRate.value = 1 + (Math.random() * 2 - 1) * opts.rateJitter;
+    // fixed per-voice rate (M14.5 crew voices) × the usual human jitter
+    const jitter = opts.rateJitter ? 1 + (Math.random() * 2 - 1) * opts.rateJitter : 1;
+    src.playbackRate.value = (opts.rate ?? 1) * jitter;
     const g = ctx.createGain();
     g.gain.value = (opts.gain ?? 1) * (this.normGain.get(name) ?? 1);
     src.connect(g);

@@ -205,7 +205,6 @@ export const TUNING = {
     emergeSec: 1.1, // rising out of the burrow crack
     // ── crowd behavior (user 2026-07-20: no clumping into one point, no
     // synchronized hit-bursts, stuck bodies must recycle) ──
-    speedVariance: 0.15, // per-zombie ±15% — the pack strings out
     separationRadiusM: 0.95, // bodies shoulder each other apart inside this
     separationPush: 2.4, // how hard they jostle
     maxConcurrentAttackers: 3, // the rest crowd and wait their turn
@@ -237,6 +236,23 @@ export const TUNING = {
     pauseSec: 3.0, // workstation-pause length (the crew remembers a task)
     pauseNearM: 3.5, // pause only within this range of an old workstation
     pauseCooldownSec: 20, // per-zombie, so nobody loops the same desk
+  },
+  roster: {
+    // ── M14.5 the Roster of 41 (DESIGN §8.6): every Drowned is a PERSON.
+    // Per-man identity data lives in zombies/roster.ts (the crew book);
+    // these are the generic knobs the book derives from. ──
+    statVariance: 0.15, // per-man speed/HP multipliers stay within ±this
+    voiceRateMin: 0.78, // deepest per-man moan pitch (playback rate)
+    voiceRateMax: 1.22, // highest per-man moan pitch
+    // watch-bill weights: BALANCE lives here, never in sometimes-having-it —
+    // a carrier always carries and always drops; scarcity = he walks less
+    weightDryCell: 0.35, // the lamps-man's share of the watch bill (others: 1)
+    weightAmmo: 0.3, // the stores-man's share
+    weightSlug: 0.12, // the pile watch's share (his slug is the rare echo)
+    pauserChanceMult: 4, // workstation-pauser quirk: pauseChance multiplier
+    runnerSpeedBonus: 1.1, // runner quirk: extra speed on top of his mult
+    lingerExtraSec: 5, // lingerer quirk: extra seconds standing at the burrow mouth
+    barrowLineAfterWatch: 3, // Lowe's "Barrow, was it" unlocks after Barrow's Nth watch
   },
   weapons: {
     // Wall arsenal (DESIGN §10.1). Mechanical identity per gun (single/auto/

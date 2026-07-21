@@ -23,8 +23,10 @@
 
 | Built thing | Status | Lore relation |
 |---|---|---|
-| The Drowned (3 recurring variants, workstation pauses) | ✅ | Wrongness — §1.1: they are the crew, visibly; never explained. Few variants is CANON (the same men recur; Lowe notices — surface.5 "Barrow"). Workstation pause = "remembering a task" directive §4 |
-| Burrow spawning / the full complement | ✅ | Wrongness — void #3's diegetic cover: the site keeps its roster; `COMPLEMENT: 41 — FULL` |
+| The Drowned — the Roster of 41 (✅ M14.5: every man an individual — name, role, bespoke rig, own moan pitch, optional habit; internal crew book seeded from T6's read) | ✅ | Wrongness — §1.1 made visceral: they are the crew, LITERALLY 41 named men, one of each ever; the player is never told and simply notices the same faces. Few-variants doctrine superseded (LORE §4 Drowned row, v3). Workstation pause = "remembering a task" directive §4; the runner and the burrow-mouth lingerer are new habits under the same directive |
+| Burrow spawning / the full complement | ✅ | Wrongness — void #3's diegetic cover: the site keeps its roster; `COMPLEMENT: 41 — FULL`. M14.5: spawning = a man coming on watch; a kill returns him to the pool once his body settles — same man, same face, next watch |
+| Personal equipment drops (Barrow's dry-cell · Bell's ammo · Marsh the pile watch's output slug) | ✅ M14.5 | Explained (the men visibly carry their issue; a lamps-man without his dry-cell would be the lie) + Pure gameplay (drop rates ARE the watch bill: carriers walk fewer watches; supplies only, progression stays placed per DESIGN §8.6) |
+| Lowe's "Barrow, was it" (surface.5) | ✅ (gated M14.5) | Wrongness — the line now points at the actual recurring lamps-man: it can only play after Barrow has walked 3 watches this run. T6 ("Barrow, lamps") and G8's MISSING lamp-man (Halversen) sit adjacent, never connected (void #9 discipline) |
 | The Angler | ✅ (rework 🔜 M15) | Wrongness — void #9 (drifting half): a lamp in no catalog on a fish nobody discusses. Battery drop = pure gameplay |
 | The Lamp Man | 🔜 M15 | Wrongness — void #9 (standing half); brushes G8's MISSING notice (E. Halversen, lamp-man, not in the crew book) and T6 ("Barrow, lamps"). No text connects them out loud |
 | The Silt Shade | ✅ | Wrongness — §4: "the silt is not always empty." That is the entire file |
