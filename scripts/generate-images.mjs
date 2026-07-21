@@ -61,7 +61,9 @@ const IMAGES = {
   g10: { ar: '3:2', p: 'Engineering blueprint of an underground naval site built down a flooded sinkhole: precise white linework on blue for the built structures (berthing, stores, reactor pit, a vertical bore), but the natural cave passages drawn hand-sketched, dotted, with question marks and grease-pencil annotations reading "COLLAPSED" and "DO NOT USE". The map is honest about what it does not know.' },
   g11: { ar: '3:2', p: 'A 1966 black-and-white group photograph: a few dozen men in diving and work gear posed on a wooden platform at the edge of dark water inside a cavern, harsh flash lighting. One face in the middle rows is circled in grease pencil. Slightly overexposed, silver-print grain.' },
   'g12-face': { ar: '1:1', p: 'The chrome-and-walnut faceplate of a 1966 jukebox: bubble arch, selection buttons, warm backlit panel, water-stained but intact.' },
-  'g12-sign': { ar: '3:1', p: 'A painted wooden rec-room sign, bold stenciled text: "REC ROOM — 1900–2100 — BE A GENTLEMAN". Chipped paint, navy stencil style.' },
+  // NOTE: the image API only allows 1:1/1:4/1:8/2:3/3:2/3:4/4:3/4:1/8:1/16:9/9:16-family
+  // ratios — 3:1 is rejected (probed 2026-07-21); 21:9 is the widest supported shape
+  'g12-sign': { ar: '21:9', p: 'A painted wooden rec-room sign, bold stenciled text: "REC ROOM — 1900–2100 — BE A GENTLEMAN". Chipped paint, navy stencil style.' },
   g13: { ar: '3:2', p: 'A photograph taken with a harsh flash inside a flooded cave chamber: empty dark water, rough rock walls, and mid-frame a faint warm glowing mass inside translucent flowstone. A processing stamp in the corner reads 1971. Unsettling emptiness, silver-print artifact.' },
 };
 

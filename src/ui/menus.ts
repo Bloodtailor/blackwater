@@ -12,9 +12,10 @@ import { TUNING, setTuningValue } from '../tuning';
 import { SETTINGS, saveSettings } from './settings';
 import { imageUrl } from '../game/media';
 import { GALLERY } from '../game/gallery';
+import { CONCEPT } from '../game/concept';
 import { TAPES } from '../audio/lines';
 
-type Screen = 'title' | 'jobsheet' | 'pause' | 'settings' | 'howto' | null;
+type Screen = 'title' | 'jobsheet' | 'pause' | 'settings' | 'howto' | 'concept' | null;
 
 export interface MenuHooks {
   /** Click-to-play side effects (pointer lock; fullscreen; audio wake). */
@@ -56,10 +57,15 @@ export class Menus {
     document.body.appendChild(this.root);
     window.addEventListener('keydown', (e) => {
       if (this.screen === 'jobsheet' && (e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter')) this.dive();
-      else if (this.screen === 'settings' || this.screen === 'howto') {
+      else if (this.screen === 'settings' || this.screen === 'howto' || this.screen === 'concept') {
         if (e.code === 'Escape') this.show(this.from === 'title' ? 'title' : 'pause');
       }
     });
+    // concept manifest loads async — refresh an open gallery when it lands
+    CONCEPT.onLoaded = () => {
+      if (this.screen === 'concept') this.render();
+    };
+    void CONCEPT.init();
   }
 
   get blocking(): boolean {
@@ -150,10 +156,56 @@ export class Menus {
         this.from = 'title';
         this.show('howto');
       });
+      btn('CONCEPT ART', () => {
+        this.from = 'title';
+        this.show('concept');
+      });
       btn('SETTINGS', () => {
         this.from = 'title';
         this.show('settings');
       });
+      return;
+    }
+
+    if (this.screen === 'concept') {
+      // The Concept Gallery (DESIGN §12.1): meta on purpose, unlocked by
+      // default (user 2026-07-21) — future encountered-subjects gate is
+      // documented, not built. Missing pieces show FILM UNDEVELOPED.
+      const h = document.createElement('div');
+      h.className = 'menu-title small';
+      h.textContent = 'CONCEPT ART';
+      wrap.appendChild(h);
+      const sub = document.createElement('div');
+      sub.className = 'menu-sub';
+      sub.textContent = 'site blackwater, as first imagined';
+      wrap.appendChild(sub);
+      const grid = document.createElement('div');
+      grid.className = 'menu-concept-grid';
+      for (const p of CONCEPT.pieces) {
+        const tile = document.createElement('div');
+        tile.className = 'menu-concept-tile';
+        const img = document.createElement('img');
+        img.src = CONCEPT.frameUrl(p);
+        img.title = p.title;
+        const cap = document.createElement('div');
+        cap.textContent = p.title.toUpperCase();
+        tile.append(img, cap);
+        tile.addEventListener('click', () => {
+          const box = document.createElement('div');
+          box.className = 'menu-lightbox';
+          const big = document.createElement('img');
+          big.src = CONCEPT.frameUrl(p);
+          const bcap = document.createElement('div');
+          bcap.className = 'menu-sub';
+          bcap.textContent = p.url ? p.title : `${p.title} — film undeveloped`;
+          box.append(big, bcap);
+          box.addEventListener('click', () => box.remove());
+          this.root.appendChild(box);
+        });
+        grid.appendChild(tile);
+      }
+      wrap.appendChild(grid);
+      btn('BACK', () => this.show(this.from === 'title' ? 'title' : 'pause'), 'primary');
       return;
     }
 
@@ -244,6 +296,10 @@ export class Menus {
         gal.appendChild(grid);
       }
       wrap.appendChild(gal);
+      btn('CONCEPT ART', () => {
+        this.from = 'pause';
+        this.show('concept');
+      });
       btn('SETTINGS', () => {
         this.from = 'pause';
         this.show('settings');

@@ -407,6 +407,43 @@ canvas {
   filter: none;
   border-color: #7ce8a9;
 }
+.menu-concept-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin: 14px 0 6px;
+  max-width: 860px;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 4px;
+}
+.menu-concept-tile {
+  width: 190px;
+  cursor: pointer;
+}
+.menu-concept-tile img {
+  width: 100%;
+  height: 118px;
+  object-fit: cover;
+  border: 1px solid #3a5a52;
+  filter: brightness(0.85);
+  display: block;
+}
+.menu-concept-tile div {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #5b7a70;
+  text-align: center;
+  margin-top: 4px;
+}
+.menu-concept-tile:hover img {
+  filter: none;
+  border-color: #7ce8a9;
+}
+.menu-concept-tile:hover div {
+  color: #a8d8c2;
+}
 .menu-lightbox {
   position: fixed;
   inset: 0;

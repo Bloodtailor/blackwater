@@ -102,7 +102,7 @@
 
 **Tapes — 6 generated (distinct voices; T6 deliberately cast neutral, a voice not in the crew book).** Each is mundane official business with exactly one wrongness; together they corroborate nothing (LORE §5). T1 count-over · T2 toys · T3 the Pile's fast · T4 synchronized pulses · T5 two true depths · T6 the roster read three weeks after the water.
 
-## 5. Images (all 21 live as procedural prints; Gemini upgrade pending billing)
+## 5. Images (ALL GENERATED 2026-07-21 — Gemini billing enabled; procedural prints remain as delete-a-file fallbacks)
 
 | ID | What | Lore duty |
 |---|---|---|
@@ -114,7 +114,7 @@
 | G11 crew photo | camp/ending | Void #3 — the photo no one counts the same twice (grandfathered) |
 | G12 jukebox faceplate + rec sign | rec room | Morale gear, 1966 |
 | G13 the 1971 photograph | intro card + drill head | Void #5 — one image, two uses, never explained |
-| C1–C12 concept paintings | 🔜 M16 menus | Meta — the Concept Gallery (LORE §7.1), outside the fiction on purpose |
+| C1–C12 concept paintings | ✅ 2026-07-21 (generated + CONCEPT ART menu section live, default unlocked) | Meta — the Concept Gallery (LORE §7.1), outside the fiction on purpose; future encountered-subjects gate documented in DESIGN §12.1 |
 
 ## 6. Music & sound
 
