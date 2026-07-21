@@ -2,7 +2,7 @@
 
 Working title: **BLACKWATER** (Black Ops 1 zombies × cave diving). Solo-only, single-run, browser game.
 
-> **DESIGN LOCKED 2026-07-18.** Systems, lore, and mechanics are final per the user ("set in stone"). Build sessions implement, tune numbers (`tuning.ts`), and fix — they do not redesign. Deviations only when implementation physically forces one; log any such deviation loudly in PLAN.md's worklog.
+> **DESIGN LOCK LIFTED 2026-07-21 (user-directed redesign round).** The 2026-07-18 lock stood through M8d. On 2026-07-21 the user reopened the design with a major feedback round: **the economy moves from points-buys to found items** (§10), **rounds become time-based shifts with a map-wide wandering population** (§9), the Angler is reworked and the Lamp Man added (§8), the Museum Annex + concept-art gallery are added (§12.1), and the voice/music doctrine changes (in-head VO, one-song/one-voice arbitration, §14). Sections below are rewritten to the new design; PLAN.md M11+ carries the build order. Outside those sections the 2026-07-18 rules still hold: implement, tune, fix — don't freelance-redesign.
 
 > **How to use this document (note to future me):** This file is the source of truth for *what the game is*. PLAN.md is the source of truth for *what to do next*. LORE.md is the source of truth for *why the world looks and sounds the way it does* — setting, player character, VO, every asset's in-world identity and appearance, tape scripts, the easter egg song, and the Gemini image manifest. Build nothing player-visible without checking LORE.md. When implementation reality diverges from this doc, update the doc in the same session — never let the code become the only record of a decision. Once `src/cave/data.ts` exists, it is the source of truth for the *layout itself*; this doc only states layout *requirements* the data must satisfy. All gameplay numbers below are v1 guesses — they live in `src/tuning.ts` once coded, and Milestone 9 (balance) owns changing them. When tuning changes a number, update it here only if the *design intent* changed, not for every nudge.
 
@@ -14,8 +14,8 @@ You are a diver at the lip of a flooded sinkhole that leads down into a drowned 
 
 ## 2. Pillars
 
-1. **Decisions must matter.** The game is a *race*, not an endless treadmill (see §4). Every point spent, every minute used, moves you toward winning or losing the race. No strategy exists that trivializes the game by repetition.
-2. **Air taxes everything; the round clock caps everything.** Below the surface you are always spending air, so chores (box hits, perk runs, battery runs) are never free — the crawler's *purpose* (a safe chore window) doesn't exist here. The round-freeze half of crawler-keeping is closed by rule instead: the Cave Stirs countdown (§9) means no round can be held open. Two mechanisms, one promise: there is no repeatable safe state.
+1. **Decisions must matter.** The game is a *race*, not an endless treadmill (see §4). Every minute used moves you toward winning or losing the race. No strategy exists that trivializes the game by repetition.
+2. **Air taxes everything; the shift clock caps everything (rewritten 2026-07-21).** Below the surface you are always spending air, so chores are never free. And the shift clock is *pure time*: shifts advance whether you fight, hide, or explore — killing buys nothing and stalling saves nothing (§9). The old anti-crawler machinery (kill-gated rounds, the Cave Stirs countdown) is deleted because it's unnecessary: there is no round to hold open. **Killing is self-defense and ledger vanity, never income** — the user found kill-farming for points a chore, so the game no longer pays for it.
 3. **Navigation is a skill, being lost is tension — not frustration.** The cave is confusing by design, but the game always gives honest tools: bubbles rise toward the surface, the depth gauge never lies, guide lines and chemlights let the player author their own wayfinding. Getting lost is the player's failure to use tools, never the game hiding the answer.
 4. **Fear through impairment, never blindness.** Silt, darkness, and tilt *degrade* information (shorter sight lines, tighter beam, wrong-feeling up). They never zero it out. There is always something to read: the line in your hand, the glow of a chemlight, rising bubbles, the gauge.
 
@@ -37,10 +37,11 @@ The original asks are all in (see traceability table §18). These are the load-b
 
 ## 4. The Race (macro structure)
 
-- Rounds scale forever, and past ~round 25 the HP curve steepens into an intentional wall. There is no winning by outlasting.
-- The intended winning arc: **power by round 4–6 → 2–3 perks by round 8–10 → Pack-a-Punch by round 12–15 → Heart run at round 15–20.** Mandatory door spend on the way down (~5500, §10.3) is part of the budget. Go too early: the Abyss kills you. Go too late: rounds crush the ascent. The player's economy/routing decisions determine where in that window they land — that's the whole game.
+- Shifts scale forever (mob cap + HP curve), and past ~shift 25 the HP curve steepens into an intentional wall. There is no winning by outlasting.
+- The intended winning arc (2026-07-21: paced by *exploration*, not income): **power by shift 4–6 → 2–3 draughts found and drunk by shift 8–10 → the Bench fed by shift 12–15 → Heart run at shift 15–20.** The way down is gated by found materials (dynamite, keys, §10.3) and one deliberate toll: the Abyss hatch costs **+5 shifts** to crank open. Go too early: the Abyss kills you. Go too late: shifts crush the ascent. The player's routing/search decisions determine where in that window they land — that's the whole game.
+- **The game is winnable without killing a single Drowned.** Progression never requires a kill; weapons exist to buy you room, not levels. (Zero-kill runs get their own ledger line — `RECOVERED: 0 / DISCREPANCY: none. First time for everything.`)
 - A winning run should take **40–70 minutes**. No saves; death ends the run (Second Wind excepted). Roguelike posture.
-- Score screen on win/loss: rounds survived, kills, points earned, time, deepest depth reached, whether Second Wind was consumed.
+- Score screen on win/loss: shifts survived, kills (vanity tally), time, deepest depth reached, whether Second Wind was consumed.
 
 ## 5. The Cave
 
@@ -135,80 +136,92 @@ All enemies swim; all path on the cave graph + local steering (§16). Spawn from
 - Death animation: go limp and *drift* — corpses hang in the water briefly. Free atmosphere.
 - Variants deliberately few; the same men recur and the player is meant to notice (LORE.md §4 directive — our small procedural model count is canon). Idle behavior near facility props: pause mid-pursuit as if remembering a task.
 
-### 8.2 The Angler (round 8+)
-- Ambusher that hangs in dark side passages showing only a **dim warm lure light** — deliberately mimics distant string lights/chemlights at a glance (subtly wrong color temperature: learnable). Within ~10 m: 8 m/s lunge. 1 per round +1 per 5 rounds, max 3 alive. Always drops a battery.
-- Teaches: never trust a light you didn't place. The counter is chemlight discipline (your greens are unambiguous).
+### 8.2 The Angler (shift 8+; REWORKED 2026-07-21 per user)
+An anglerfish — a warm lure light with a suggestion of a huge body behind it. **One alive at a time.** Always drops a battery on death.
+- **Patrols the Maze slowly** (graph wander, ~1.5 m/s) with its lure lit.
+- **When it sees the player it goes perfectly still.** A stationary distant light — indistinguishable from the Lamp Man (§8.5), which is the point.
+- **If the player comes near: the vortex.** It inhales — the player is dragged into its mouth, shaken, and *carried for a few seconds into a different room* while the screen shakes and heart rate pins at max. Then it releases and swims away. No HP damage: the attack costs air (max HR), position, and certainty about where you are. An Angler that has attacked **despawns once it swims out of sight.**
+- **Shooting it at range provokes it:** it stops patrolling and swims toward the player — slowly (it is never faster than a sprinting diver) — and attacks on arrival.
+- **The Arc Projector is its counter** (user 2026-07-21): the Angler takes bonus arc damage, and every chain bounce re-targets it — a full arc chain lands all its hits on the fish. The PaP'd version even more so.
+- Teaches: never trust a light you didn't place — and now, never trust a light that *holds still*.
 
-### 8.3 The Silt Shade (round 10+, silt-outs only)
+### 8.3 The Silt Shade (shift 10+, silt-outs only)
 - Spawns only while a silt-out is active. 5 m/s inside silt, 2 m/s in clear water. Normal grab damage. Despawns (dissolves) when the silt fully clears.
 
 ### 8.4 Abyss Guardians (Abyss residents)
-- 2 patrolling elites in the Cathedral. Slow (2.5 m/s), massive HP (roughly 20× a same-round Drowned), 70-dmg hit. Respawn next round if killed. **Aggro is sensory:** flashlight on = noticed at 18 m; sprinting = 25 m; light off + slow swim = 6 m. The Abyss's bioluminescence exists so lights-off sneaking is genuinely playable. Fighting them is a choice; sneaking past is the designed default until heavily built.
+- 2 patrolling elites in the Cathedral. Slow (2.5 m/s), massive HP (roughly 20× a same-shift Drowned), 70-dmg hit. Respawn next shift if killed. **Aggro is sensory:** flashlight on = noticed at 18 m; sprinting = 25 m; light off + slow swim = 6 m. The Abyss's bioluminescence exists so lights-off sneaking is genuinely playable. Fighting them is a choice; sneaking past is the designed default until heavily built.
 
-## 9. Rounds & pressure
+### 8.5 The Lamp Man (NEW 2026-07-21 — the light that stands)
+The Angler was originally conceived as a lamp-carrying figure; the fish shipped instead. Now both exist, and they share one lure: **the Lamp Man's lamp is the exact same color and size as the Angler's** — at a distance you cannot tell which one you are approaching.
+- **He stands on the tunnel floor, bolt upright, aligned to TRUE up** (never falseUp — in a tilted region his verticality is itself the tell, for players sharp enough to read it). He never moves. The lamp glow is visible from far off.
+- **Spawns every 7 shifts** at the center of a random *normal-width* tunnel in the Maze. Never in squeezes, never in rooms, never twice in the same place in a row.
+- **Despawn rules (exactly these, nothing else):**
+  1. Player sees him (close enough + looking toward him), then leaves the area for a short period → he is quietly gone.
+  2. **Player gets too close → JUMPSCARE:** a violent sting, the screen whips — **the player's rotation and tilt are randomized during the scare so his disappearance is never witnessed** — and when vision settles he is gone, the player is on **reserve breath at max heart rate.** No HP damage: he takes your air, your composure, and your sense of up.
+  3. 7 shifts pass → he relocates (despawn + fresh spawn elsewhere).
+- He is not killable, not shootable (shots pass through the dark where a body should be — never confirmed either way). He has no pathing, no AI: he is a placed dread object.
+- Fiction hook (LORE §4): the site had lamp-men on the roster. One of them is on a MISSING notice that no crew book supports. Nothing in the game connects these facts out loud.
 
-- Round N spawns `6 + 4N` Drowned (cap 60/round), max **9 alive** (perf + readability). Kill all → round ends → **40 s intermission on a global timer** → next round starts wherever the player is. No "take a break when ready."
-- **The Cave Stirs (anti-crawler rule, user's design):** when a round's remaining zombies drop to ≤ max(3, 15% of the round total), capped at 10, a visible countdown starts — **45 s**, "the cave stirs…" — and when it expires the next round begins regardless. Survivors carry over (they count against the 9-alive cap). A round cannot be held open; there is no keepable crawler *by rule*, not by pressure.
-- Specials per §8. Round transitions: somber horn stinger + round tally flicker (BO1 homage, original assets).
+## 9. Shifts & the population (REWRITTEN 2026-07-21 — was kill-gated rounds)
 
-## 10. Economy
+The user's verdict on rounds: killing to advance felt like a chore, and waiting for spawns to bank points wasn't fun. Rounds are gone. **Shifts** replace them.
 
-Points: **10/hit, 60/kill, 100/headshot kill, 130/melee kill.** Start with 500.
+- **The shift clock is pure time.** A shift lasts `shiftSec` (v1 guess ~90 s, `tuning.ts`) and advances no matter what the player does. Shift change = one **shift bell** (the site's watch bell, positional from the winch head + always faintly audible) + the tally flicker. Kills change nothing about the clock.
+- **Shift number scales the population, not a spawn budget:** mob cap = `capBase + capPerShift × shift` (v1: 4 + 1.5/shift, hard cap ~24 — perf note below). HP/speed curves keep their old round-curves, driven by shift number. There is no intermission, no round end, no Cave Stirs (deleted — nothing to hold open).
+- **The cave is *populated*, not summoned:** spawning is map-wide at burrows across all zones (not player-chasing). The population fills toward the cap continuously. **Pack spawns:** each spawn event places 1–5 Drowned as a loose pack, placed sequentially along the burrow's adjacent passage polylines with SDF clearance checks and minimum spacing — never inside each other, never inside rock, never outside the map (implementation must be paranoid here per the user's explicit warning).
+- **Far from the player, the Drowned wander.** They drift through rooms and tunnels on the graph — avoiding squeezes, never re-entering burrows, never wandering into dead-end spurs the player is unlikely to visit (wander graph = playable graph minus squeeze edges, burrow nodes, and leaf dead-ends). Near the player they aggro and chase exactly as before — squeezes included.
+- **Minecraft-style despawn/respawn keeps the cave full where it matters:** a Drowned that is far from the player and out of sight rolls a despawn chance every few seconds; despawned bodies return to the population budget and respawn elsewhere (again far + unseen). Nothing ever despawns near the player or in view. Net effect: wherever the player goes, the local cave is plausibly inhabited — the old failure ("swim fast and never see a zombie") is closed.
+- **Spawn fairness rules keep §13 intact:** ≥12 m from the player, out of sight when avoidable.
+- **Perf note:** the cap rises above the old 9-alive budget, so distant bodies must be cheap: no separation solve, reduced tick rate, simplified rig animation beyond ~40 m. Budget check in the milestone DoD.
+- Specials per §8. The Ascent (§11) is unchanged: its own global fast-spawn clock supersedes shifts.
 
-### 10.1 Wall buys (fixed locations in data; ammo refill = half gun cost)
-| Item | Cost | Zone |
+## 10. The site issues; it does not sell (REWRITTEN 2026-07-21 — points-economy deleted)
+
+The user's verdict after real play: killing zombies to bank points made combat a chore and idling for spawns wasn't fun. **Nothing in the cave costs points anymore.** Progression is *found*, not bought — the gate on power is depth, the gate on gear is exploration, the gate on the Abyss is time itself.
+
+**Points survive as pure vanity:** the ledger. 10/hit, 60/kill, 100/headshot, 130/melee still tick up — that is Lowe's compulsive tally (HUD top-right, reframed as the ledger count), it feeds the stats screens, and it buys nothing. Old costs quoted elsewhere in this document (zone table, traceability) are legacy flavor — nothing reads them.
+
+### 10.1 Weapon racks & supply shelves (was wall buys; fixed locations in data)
+The lockers stay exactly where they are and become what they always looked like: **stocked emergency equipment lockers.** Swim up, take the weapon (E). Free. The five wall guns (Speargun, Pneu-Driver, Flechette Scatter, Harpoon Rifle, Line Lance) keep their locations and their mechanical identities.
+- **Ammo, batteries, chemlights, reels:** the vendor shelves issue them free with a **one-issue-per-bell cooldown** per shelf (the stencil "ONE PULL PER MAN PER BELL" is now the literal rule of the whole site). The cooldown is the pacing device that used to be price.
+- Starting loadout unchanged: Wrist Dart, Dive Knife, 1 reel.
+
+### 10.2 Requisition Roulette — free, one pull per man per bell
+- The box keeps its locations (A Galleries, B Maze, C Abyss), its tease-and-move, and its pool (Twinfish, Arc Projector, Vortex Maw, Sonic Lance, Bang Stick + wall guns). The spin is **free** with a **once-per-shift-bell** cooldown. The gamble was always time and air; now that's the whole price.
+
+### 10.3 Doors — found materials, never re-close
+Doors stay territorial gates, but each kind now has its own key found in the world (empty dead ends and caches finally pay):
+| Door kind | Opens with | Where the opener is found |
 |---|---|---|
-| Speargun (8/reserve 40, strong single) | 500 | Sinkhole |
-| Pneu-Driver SMG (24/120 pneumatic darts) | 1000 | Sinkhole |
-| Flechette Scatter (shotgun) | 1250 | Galleries |
-| Harpoon Rifle (slow, piercing, heavy) | 1500 | Galleries/Maze |
-| Line Lance (fast stab, 2-target pierce, melee range) | 1750 | Maze |
-| Battery | 250 | several |
-| Chemlight 10-pack | 250 | several |
-| Guide reel | 750 | Galleries |
-
-Starting loadout: Wrist Dart (weak dart pistol), Dive Knife (melee, always available), 1 reel.
-
-### 10.2 Mystery box — 950/spin
-- Locations A (Galleries), B (Maze), C (Abyss); relocates among them on a BO1-style rare tease-then-move. Pool: all wall guns + box-only: **Twinfish** (akimbo spear pistols), **Arc Projector** (chain lightning — water conducts; room-clearer, rare), **Vortex Maw** (pulls a crowd into a point; utility), **Sonic Lance** (piercing beam), **Bang Stick** (one-hit melee replacing knife, BO1 ballistic-knife energy).
-
-### 10.3 Doors — buy open, never re-close
-Classic territory purchases, underwater: debris chokes, rusted grates, and the site's crank-wheel bulkhead hatches. Buying one (hold E) grinds it open with a brief local silt puff (cosmetic-scale risk, on theme); it stays open for the rest of the run.
-
-| Door | Cost | Kind | Role |
-|---|---|---|---|
-| Sinkhole → Galleries (main artery) | 750 | debris | progression (free alternate: squeeze crack) |
-| Galleries ring shortcut | 1000 | grate | optional shortcut |
-| Galleries → Maze (main) | 1250 | debris | progression (free alternate route: long and dark) |
-| Maze internal shortcut | 1250 | grate | optional shortcut |
-| Maze → Throat rim | 1500 | debris | progression |
-| Throat bottom → Abyss (pressure hatch) | 2000 | hatch | progression comfort — the free alternate is a nasty no-turn squeeze; pay once or squeeze every trip |
-
-Mandatory spend to reach the Abyss comfortably: ~5500. Costs are v1 guesses (`tuning.ts`).
+| **Debris chokes** (3: Sinkhole→Galleries, Galleries→Maze, Maze→Throat rim) | **Dynamite** — one charge per choke | Blasting crates cached in the cave (≥4 placed so one can be missed); stencil `BLASTING — CORMORANT` |
+| **Grates** (2 shortcuts) | **A specific brass key** per grate | Key hooks in the site's rooms (stores board, infirmary); tag reads which grate |
+| **The Abyss pressure hatch** (Throat bottom) | **Free to crank — but the site charges time: +5 shifts.** As the wheel turns, **five shift bells ring out one after another** and the shift counter rolls up five. The deepest door is paid for in the only currency the site respects. | — |
+- Free alternates per the two-route rule are untouched: every progression door still has its nasty free bypass, so a missed charge is never a softlock.
+- Opening stays hold-E + grind + silt puff; open is forever.
 
 ### 10.4 Power
-- One switch, the **Pile room** (the site's small experimental reactor), far end of the Galleries ring. On: perk stations light up and vend, cherenkov-tinted **string lights** trace the two main arteries (Sinkhole↔Galleries↔Maze hub), PaP grate in the Abyss grinds open (opens once, never re-closes — consistent with "passages never close"). Turning on power is the first real dive: the moment the game starts.
+- One switch, the **Pile room**, far end of the Galleries ring. On: dispensary racks light up, cherenkov string lights trace the arteries, the Bench warms. Turning on power is the first real dive: the moment the game starts. (Unchanged — power was never for sale.)
 
-### 10.5 Perks — pick 4 of 9, stations fixed in data, power required
-| Perk | Cost | Effect |
-|---|---|---|
-| Barnacle Hide | 2500 | HP 100 → 220 |
-| Second Wind | 1500 | On death: blackout, wake at last-used air pocket with sidearm, lose this perk. **Non-stackable, one held at a time.** Re-buyable after use. |
-| Greased Gears | 3000 | Reload ×0.5 |
-| Trigger Fish | 2000 | Fire rate +30% |
-| Deep Pockets | 4000 | 3rd weapon slot |
-| Iron Lungs | 2500 | Air 100 → 150, drain ×0.85 |
-| Cat Eyes | 2000 | +40% visibility in silt/dark, wider beam, less backscatter |
-| Fin Kick | 2000 | Swim +15%, sprint air cost ×0.8 |
-| Steady Hands | 1500 | Your movement never stirs ambient silt; tilt decays 3× faster |
+### 10.5 Draughts — pick 4 of 9, found in the racks, power required
+The dispensary racks each hold **one filled flask** of their draught. Power live → take it and drink it (E). Free. The 4-of-9 cap is untouched and is still the identity system (tank/ghost/gun builds). Effects unchanged:
+| Draught | Effect |
+|---|---|
+| Barnacle Hide | HP 100 → 220 |
+| Second Wind | On death: blackout, wake at last-used air pocket with sidearm, flask consumed. Non-stackable. The rack refills after use — swim back for another. |
+| Greased Gears | Reload ×0.5 |
+| Trigger Fish | Fire rate +30% |
+| Deep Pockets | 3rd weapon slot |
+| Iron Lungs | Air 100 → 150, drain ×0.85 |
+| Cat Eyes | +40% visibility in silt/dark, wider beam, less backscatter |
+| Fin Kick | Swim +15%, sprint air cost ×0.8 |
+| Steady Hands | Movement never stirs silt; tilt decays 3× faster |
 
-The 4-cap is the identity system: tank build, ghost build (Cat Eyes/Steady Hands/Fin Kick), gun build. Machines have BO1-style jingles (§14).
-
-### 10.6 Pack-a-Punch — 5000, the Abyss
-- ×2.5 damage, bigger mag, flavor rename, per-gun quirk, and the universal rule: **PaP projectiles emit light.** An upgraded gun is also a navigation tool — tracer-lit tunnels, and shots that give your position away. PaP ammo refill: 4500.
+### 10.6 The Bench (Pack-a-Punch) — power + a fuel slug per upgrade
+- The Bench works when the Pile is live **and you feed it a fuel slug** — stenciled `CORMORANT — OUTPUT SLUG`, found in the world (3 placed: the Pile room, a Maze cache, the drill head; the Angler also drops one rarely). One slug per upgrade — a PaP run is a routing decision, not a savings goal.
+- Upgrade effects unchanged: ×2.5 damage, bigger mag, rename, per-gun quirk, **PaP projectiles emit light.** PaP ammo: free at the lockers on the same one-per-bell cooldown.
 
 ### 10.7 Drops (from kills, ~2% + pity timer)
-Max Ammo · Double Points (60 s) · Insta-Kill (30 s) · **Clear Waters** (all silt settles instantly — re-arms mounds — + slight vis boost 30 s) · **Battery Surge** (full battery) · **Pressure Wave** (kill all alive, rare).
+Max Ammo · **Double Ledger** (60 s — vanity, and proud of it) · Insta-Kill (30 s) · **Clear Waters** · **Battery Surge** · **Pressure Wave**. Drops are combat's remaining material reward: killing pays in supplies and safety, never in progression.
 
 ## 11. The Heart & endgame
 
@@ -219,13 +232,21 @@ Max Ammo · Double Points (60 s) · Insta-Kill (30 s) · **Clear Waters** (all s
 
 ## 12. HUD / UX
 
-Minimal, diegetic-leaning: O2 bar + number (bottom-left), ammo + battery pips (bottom-right), points (top-right, +delta ticks), round tally (top-left), small depth gauge + trend arrow (bottom-center). Grab = regulator-rip flash + bubbles. Damage vignette. Hitmarkers subtle. Screenshot mode (debug) hides HUD.
+Minimal, diegetic-leaning: O2 bar + number (bottom-left), ammo + battery pips (bottom-right), **the ledger** (top-right, +delta ticks — vanity tally, 2026-07-21), shift tally (top-left), small depth gauge + trend arrow (bottom-center). Grab = regulator-rip flash + bubbles. Damage vignette. Hitmarkers subtle. Screenshot mode (debug) hides HUD.
 
 Run intro: **the job sheet** (LORE.md §2.3) as a skippable styled text card — it is how the player learns the objective (bottom of the bore, carry the Heart to daylight) plus two tutorial seeds, delivered in-world as a clinical recovery contract with one impossible detail. Posters/blueprint/photos support **inspect** (look + E → fullscreen overlay; while an inspect is open, E always closes it regardless of where you've drifted; LORE.md §7 readability rules). Tapes: **play immediately on pickup at any depth** (user revision 2026-07-20 — the safe-surfacing rule was reversed; LORE §5), subtitled, skippable, replayable from pause. Lowe speaks only after ~3 s continuously out of the water (LORE §2.1).
 
-Menus: title (Dive / How to Dive / Settings), pause (incl. recovered-tapes list), death screen with stats, win screen with stats. **Stats screens are written as Lowe's ledger** (LORE.md §2): e.g. `RECOVERED: 214 / ROSTER: 41 / DISCREPANCY: noted` — kills, tapes, toys, rounds, time framed as recovery paperwork; the win screen ends on the forty-two beat (LORE.md §2.2 final lines). Settings: mouse sensitivity, invert Y, FOV, **max-tilt slider**, brightness, master/music/SFX/VO volume, subtitles (radio logs).
+Menus: title (Dive / How to Dive / Settings), pause (incl. recovered-tapes list), death screen with stats, win screen with stats. **Stats screens are written as Lowe's ledger** (LORE.md §2): e.g. `RECOVERED: 214 / ROSTER: 41 / DISCREPANCY: noted` — kills, tapes, toys, shifts, time framed as recovery paperwork; the win screen ends on the forty-two beat (LORE.md §2.2 final lines). Settings: mouse sensitivity, invert Y, FOV, **max-tilt slider**, brightness, master/music/SFX/VO volume, subtitles (radio logs).
 
 "How to Dive" teaches in ≤10 lines: air, line, chemlights, bubbles rise, mounds detonate, lights attract.
+
+### 12.1 The Museum Annex & the Concept Gallery (NEW 2026-07-21 — celebration systems)
+
+Both exist to *celebrate the story*, have **zero gameplay impact**, and will eventually be unlockables. **v1 ships them unlocked by default** (the gate designs below are written down now so a later session flips one switch):
+
+- **The Museum Annex** — a new room connected to the **rec room** (gal-rec), dry air, a real safe zone (zombies never enter — the room is off the pathing graph entirely, like a teaser, but fully playable). It must be **by far the best-looking, best-lit room in the game**: polished poured floor, museum spot-lighting, brass rail, display pedestals under glass. It is a museum of the run's collectables: the six tapes on a shelf, the three tin divers, the nine draught flasks, every weapon on a rack, the photograph wall (every print/poster the player has inspected), figures of the Drowned / Angler / Lamp Man / Guardians on plinths with little plaques, and a roped-off replica of the Heart. Exhibits reflect what the player has actually gathered this run — walking in late-game should feel like walking through your own story. *(Future gate: opens after the player's first win. v1: open.)*
+- **The morale button** — a guarded big red button in the Annex labeled `MORALE NIGHT`. Pressing it starts the **zombie party**: the exhibit figures dance, a mirror ball drops, the lighting goes saturated, and a dedicated party track plays (its own generated song — see §14). Press again to stop, sheepishly. Pure silliness by design; the user asked for it by name.
+- **The Concept Gallery** — a `CONCEPT ART` section beside PHOTOGRAPHS in the pause/title menus: a browsable set of ~12 Gemini-generated concept paintings (the camp, the Drowned, the Angler, the Lamp Man, the Guardians, the Heart chamber, the Maze, the bore, the Dry Reach, Lowe, the REMORA case, alternate key art) in a painterly style distinct from the in-world print ephemera. Until generation runs (Gemini billing pending), each slot shows an on-theme `FILM UNDEVELOPED` frame. *(Future gate: pieces unlock as their subjects are encountered. v1: all visible.)*
 
 ## 13. Difficulty & fairness rules
 
@@ -240,10 +261,16 @@ Menus: title (Dive / How to Dive / Settings), pause (incl. recovered-tapes list)
 - **Depth ambience (user 2026-07-20):** three looping beds crossfaded on the SAME depth bands as the ambient current (§6.1) — where the current strengthens, the water *sounds* like it: pressure rising literally and mentally.
 - **Audio-emitter nodes (user 2026-07-20):** map nodes (schema §16) that loop a positional sound from inside solid rock — machinery, heavy airflow, the site settling — muffled honestly by the SDF occlusion filter. The abandoned site is audibly still doing something, out of sight. Authored in the level editor (+♪, range/falloff shells shown).
 - **Breathing loop** tied to air level (calm → ragged), heartbeat under 25 air; regulator hiss per exhale (synced to the visible bubble stream = the up-tell has a sound).
-- Zombie moans (wet, muffled), Angler lure hum (faint wrong-feeling chord), Guardian sub-bass presence, silt-out "whump" + tinnitus dip, perk jingles (short, dark-goofy originals), round stingers, PaP choir-groan, box music-box tease, faint geiger crackle near the Pile room (pure flavor — there is no radiation mechanic, and nothing may imply damage).
-- **Radio logs:** 6 waterproof tape players in data-tagged spots; scripts are final in LORE.md §5 (Site BLACKWATER crew, 1968, increasingly wrong). ElevenLabs VO. Subtitled. Skippable. Collected on pickup; play at the next safe surfacing, never at depth (LORE.md §5 playback spec). Pure flavor, zero mechanics.
-- **Player VO — Lowe:** speaks ONLY with his head above water (platform, air pockets, menus) — never below (regulator in; his underwater silence is the horror discipline). Line list + character voice in LORE.md §2 (soft-spoken recovery diver; fear registers as increased politeness). Tape reactions queue until he next surfaces.
-- **Easter egg — "Still on Shift":** three wind-up toy divers hidden in dead ends (data tag `toy`); winding all three wakes the rec-room jukebox, which plays one track game-wide through the underwater DSP, once per run. Track source: a random MP3 from `public/music/easteregg/` — try ElevenLabs Eleven Music (it does lyrics) at M8 for track one; the user can drop Suno tracks (prompt + full lyrics in LORE.md §6) into the folder anytime, zero code.
+- Zombie moans (wet, muffled), Angler lure hum (faint wrong-feeling chord), Guardian sub-bass presence, silt-out "whump" + tinnitus dip, perk jingles (short, dark-goofy originals), **the shift bell** (2026-07-21: shift changes ring the site's watch bell — replaces the round-horn as the primary transition sound; the Abyss hatch rings it five times in sequence), PaP choir-groan, box music-box tease, faint geiger crackle near the Pile room (pure flavor — there is no radiation mechanic, and nothing may imply damage).
+- **Radio logs:** 6 waterproof tape players in data-tagged spots; scripts are final in LORE.md §5 (Site BLACKWATER crew, 1968, increasingly wrong). ElevenLabs VO. Subtitled. Skippable. Play immediately on pickup at any depth (user 2026-07-20). Pure flavor, zero mechanics.
+- **Player VO — Lowe — IN HIS HEAD (REVERSED 2026-07-21; supersedes the surface-only doctrine):** Lowe's lines now play *anywhere, including mid-swim*. The fiction holds because the delivery changes: these were never spoken aloud — they are **his inner voice** (he still never opens his mouth underwater; LORE §2.1 rewrite). DSP sells it: dry, close, intimate — no room, no water filter, no positional anything; gentle low-pass warmth + light compression + a whisper-quiet doubled layer, clearly *inside* the skull while the world stays wet around it. Anti-spam rules unchanged (silence is still the default).
+- **REMORA — robotic, and also in his head:** her chain gains a synthetic treatment (telephone band-pass ~300–3400 Hz + subtle ring-mod/bitcrush + perfectly flat pacing) and the same no-room intimacy as Lowe. Design intent, per the user: **the player should genuinely wonder whether she is a real instrument or something Lowe imagines.** Nothing ever answers it (LORE void).
+- **ONE SONG, ONE VOICE (new arbitration systems, 2026-07-21 — user heard the lull and the jukebox collide):**
+  - **MusicDirector:** every music source (jukebox, lull, menu theme, Moonlight trigger, party track, win screen) requests a single music slot with priority; starting one stops the others. The **lull is demoted to true ambience: it may only start after a quiet period with NO music and NO dialog** (tapes, Lowe, REMORA) — it is what silence grows when left alone.
+  - **VoiceDirector:** one global speech slot across Lowe, REMORA, and the tapes — two lines can never overlap; a playing tape blocks VO; queued lines wait their turn (priority: tapes > warnings > events > ambient) or expire.
+- **"Moonlight at the Waterline" — the ascent song (user 2026-07-21):** during the Ascent, when the player carrying the Heart rises **shallower than 50 m** and no song is playing, Moonlight at the Waterline starts on the music bus. **Surfacing with the Heart while it plays ends the game INTO the song:** the win screen holds, every game sound (zombies, spawns, ambience) stops, and the track keeps playing to the end — bright and clear, as if in open air. The menu theme waits until the song finishes. The run's last minutes are scored, and the ending is the coda.
+- **Easter egg — "Still on Shift":** three wind-up toy divers hidden in dead ends (data tag `toy`); winding all three wakes the rec-room jukebox. **The woken jukebox ALWAYS plays "Still on Shift" first** (user 2026-07-21) — the rest of `public/music/easteregg/` shuffles behind it for E-cycling. The user can drop tracks into the folder anytime, zero code.
+- **The party track:** its own generated song for the Museum Annex morale button (§12.1) — up-tempo 1960s rock-and-roll dance number, period-correct and slightly wrong (working title "Morale Night"; lyrics spec in LORE §6.1). Plays only while the party runs, through the MusicDirector like everything else.
 - Generation: ElevenLabs TTS for VO + sound-effects endpoint for moans/stingers where it shines; WebAudio synthesis fallback for anything it can't do. All audio generated once at Milestone 8 and committed as static files — runtime never calls external APIs.
 
 ## 15. Art direction
@@ -279,6 +306,8 @@ interface CaveEdge { a: NodeId; b: NodeId; width: 'open'|'normal'|'squeeze';
   door?: { cost: number; kind: 'debris'|'grate'|'hatch' }; }
 ```
 Geometry, collision, zombie pathing (A* on the graph + local steering inside chambers), spawn logic, minimap-less navigation logic, and the map viewer all read this. **Nothing is ever hand-placed in renderer code.**
+
+*Schema growth queued by the 2026-07-21 redesign (implement with their milestones):* a `pickup` tag + `contents.pickup` (dynamite charge / grate key / fuel slug — doors gain a `needs` field naming their opener), a `museum` room flag (dry, lit, off the pathing graph but fully playable), and the Lamp Man's spawn set derives from edge data (normal-width Maze tunnels) rather than new authoring.
 
 **Map viewer (my "napkin sketch"):** `?view=map` renders the graph as labeled 3D wireframe + orthographic top and side projections, color-coded by zone/tags, and runs the layout-rule assertions from §5 (two-route rule via graph check, air-rule via BFS with swim speed, counts of squeezes/dead ends). I verify layout by *screenshotting this view*, not by reading coordinates.
 

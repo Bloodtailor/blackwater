@@ -15,6 +15,10 @@ export class SampleBank {
   /** Playback counts per name (verification + M9 logs). */
   readonly playCounts = new Map<string, number>();
   private buffers = new Map<string, AudioBuffer | 'pending' | 'failed'>();
+  /** Per-sample peak-normalization gain (generated masters ship with wildly
+   *  varying headroom — some sat so low the user couldn't hear the box/PaP/
+   *  round stingers at all). Computed once at decode. */
+  private normGain = new Map<string, number>();
 
   async init(): Promise<void> {
     try {
@@ -44,6 +48,16 @@ export class SampleBank {
       if (!res.ok) throw new Error(String(res.status));
       const buf = await ctx.decodeAudioData(await res.arrayBuffer());
       this.buffers.set(name, buf);
+      // normalize toward peak 0.9: boost quiet masters (up to ×16), never cut
+      let peak = 0;
+      for (let c = 0; c < buf.numberOfChannels; c++) {
+        const d = buf.getChannelData(c);
+        for (let i = 0; i < d.length; i += 4) {
+          const a = Math.abs(d[i]);
+          if (a > peak) peak = a;
+        }
+      }
+      this.normGain.set(name, Math.min(16, Math.max(1, 0.9 / Math.max(peak, 1e-4))));
     } catch {
       this.buffers.set(name, 'failed'); // synth covers this sound for the run
     }
@@ -67,7 +81,7 @@ export class SampleBank {
     src.buffer = buf;
     if (opts.rateJitter) src.playbackRate.value = 1 + (Math.random() * 2 - 1) * opts.rateJitter;
     const g = ctx.createGain();
-    g.gain.value = opts.gain ?? 1;
+    g.gain.value = (opts.gain ?? 1) * (this.normGain.get(name) ?? 1);
     src.connect(g);
     g.connect(out);
     src.start();
@@ -87,7 +101,7 @@ export class SampleBank {
     src.loop = true;
     const g = ctx.createGain();
     g.gain.value = 0.0001;
-    g.gain.setTargetAtTime(opts.gain ?? 1, ctx.currentTime, fade / 3);
+    g.gain.setTargetAtTime((opts.gain ?? 1) * (this.normGain.get(name) ?? 1), ctx.currentTime, fade / 3);
     src.connect(g);
     g.connect(out);
     src.start();

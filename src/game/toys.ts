@@ -196,6 +196,10 @@ export class Toys {
           const j = Math.floor(Math.random() * (i + 1));
           [this.tracks[i], this.tracks[j]] = [this.tracks[j], this.tracks[i]];
         }
+        // "Still on Shift" is ALWAYS the song the woken jukebox plays first
+        // (user 2026-07-21) — the rest of the folder stays shuffled behind it
+        const anthem = this.tracks.findIndex((t) => /still.?on.?shift/i.test(t));
+        if (anthem > 0) this.tracks.unshift(this.tracks.splice(anthem, 1)[0]);
       }
     }
     if (!this.tracks || this.tracks.length === 0) return;

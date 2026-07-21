@@ -79,6 +79,13 @@ and the exact spot lands in `docs/probes.jsonl` for a precise fix later.
   forward, no turning around).
 - `waypoints: [[x,y,z], ...]` — bend the tunnel through these points.
 - `door: { cost: 1250, kind: 'debris' | 'grate' | 'hatch' }` — a buyable door.
+  (2026-07-21: costs are being replaced by found openers — dynamite for
+  debris, keys for grates; the Abyss hatch tolls +5 shifts. DESIGN §10.3.)
+- `powerGate: true` — NOT a purchase: a sealed gate that **grinds open
+  automatically the moment the Pile (power) is switched on**. Use it for
+  passages that should open with power, like the classic PaP grate. `gateAt`
+  sets where along the passage the gate sits (0..1, default 0.5). The
+  current map has none — the editor checkbox binds one anywhere you like.
 - `slide: true` + `waterY` — a wet one-way chute; `waterY` is the absolute
   plunge line where it hits its pool.
 - `airGap: 0.5` — a breathing gap: that many meters of air hugging the

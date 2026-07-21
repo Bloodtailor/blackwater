@@ -1,6 +1,6 @@
-# BLACKWATER — Lore & World Bible (v2 — mystery-first)
+# BLACKWATER — Lore & World Bible (v3 — the wrongness spread wide)
 
-> **LOCKED 2026-07-18** per the user. The voids stay closed; the fiction is final. Build sessions implement this, they don't rewrite it.
+> **LOCK LIFTED 2026-07-21** at the user's direction, for one reason: the game leaned on a single wrongness — the count that comes out one over 41 — until it wore thin. v3's job is **expansion, not revision**: every established fact and every void stands; what changes is *distribution*. New material must draw from the under-used voids (the Heart, the client, time, the site-that-works, the lamp, the water) and the count thread gets **no new material** — the existing count artifacts are its permanent ceiling. The voids themselves stay closed forever, same as always.
 
 > **How to use this document (note to future me):** DESIGN.md says *what the game is*, PLAN.md says *what to do next*, this file says *why the world looks and sounds the way it does*. Build nothing player-visible that this file doesn't cover. **v2 note:** this file deliberately does not contain answers. §1.2 lists the voids — questions this game raises and will never resolve, *not even internally*. Do not invent answers for them in any session, any asset, any line. You cannot leak what does not exist.
 
@@ -24,6 +24,8 @@
 6. **What the site was *for*.** Who ordered a reactor and a bore in a sinkhole, toward what end — the mission paragraph of every document is redacted or missing.
 7. **Why measurements disagree down there.** Depths, counts, dates — instruments and ledgers produce two true answers. The cave is not lying; the records are not lying; they still disagree.
 8. **The empty suits.** Two condemned Mark V atmospheric suits stand post at the drill head. The 1966 equipment log lists both: *RETURNED — EMPTY.* The names on the bells are scraped off.
+9. **The lamp. (v3, 2026-07-21 — canonizes the Lamp Man.)** A warm lamp appears in the dark that no equipment catalog lists and no roster assigns. Sometimes it drifts, and there is a fish behind it. Sometimes it stands perfectly still on the tunnel floor, at true vertical, and there is — briefly — a man. The site had lamp-men (Barrow, lamps — T6; E. Halversen, lamp-man — the MISSING notice G8, a name the crew book never contained). No document connects any of this, and the game never confirms what stood there, because nothing was there when you looked again.
+10. **What the bells are counting. (v3.)** The site keeps time in bells, and the bells still ring. Every worked shift rings one. The pressure hatch to the lower survey will not open without ringing five. No mechanism is ever shown, no text explains why a door costs *time*, and the crew's own documents treat the bell schedule as ordinary — which, at BLACKWATER, is the tell.
 
 ### 1.3 Rules of the mystery (the horror engine)
 - **Mundane voice, one wrongness per artifact.** Every tape, poster, and stencil is boring official paper with exactly one detail that cannot be true. Never two — two wrongnesses is a ghost story; one is a filing error that follows you home.
@@ -32,6 +34,7 @@
 - **No one in 1968 understood either.** The crew's documents are as confused as the player. There is no hidden log where somebody figured it out.
 - **The voids stay closed forever** — post-ship content included.
 - **Unreliability lives in the fiction only.** Gameplay tells stay honest per DESIGN pillar 3: bubbles rise, the depth gauge is correct, chemlights stay where placed. The *documents* doubt the world; the *game* never gaslights the player.
+- **Spread the wrongness (v3 rule, 2026-07-21).** The count (void #3) is the spine, and a spine is not a skeleton. It carried nearly every line and artifact through v2 and the user felt the repetition. Standing order: **new artifacts and lines must draw from voids #1, #4–#10 — never #3.** The count's existing artifacts (T1, T5, the tally lines, the stencil, the win beat) are grandfathered and sufficient; if a draft mentions counting, arithmetic, or "one over," cut it and write about the warmth, the client, the bells, the lamp, or the water instead.
 
 ## 2. The player — Vernon Lowe
 
@@ -51,11 +54,12 @@ He is soft-spoken, formal, courteous. Not military — never was. Topside life d
 
 **Fear register (VO direction):** Lowe does not swear, gasp, or shake. When something reaches him, he becomes *more* polite. His worst moment in the game ends with the word "please." That is the only tell he has.
 
-### 2.1 VO rules
-- **Lowe NEVER speaks underwater.** Regulator in, mouth shut — his silence below is the horror discipline, and it makes every surface line land. Below, he is breath, heartbeat, and bubbles only.
-- **He speaks only after ~3 s continuously out of the water** (user 2026-07-20): bobbing up for a breath doesn't count — he catches his breath first, then talks. Lines trigger at: the platform, any air pocket (head above ≥3 s), and menus. Tape reactions queue until then.
-- **Anti-spam (silence is the default):** global ambient-line cooldown ≥ 120 s; each line plays at most once per run (no-repeat memory); priority queue = tape reactions > event reactions (power, close call, toys) > ambient, and ambient lines roll a ~40% chance even when off cooldown. If in doubt, he says nothing.
-- Delivery: ElevenLabs at M8, one consistent voice — soft, unhurried, courteous, aging Midwestern; close-mic; slight room echo topside / tight wet echo in pockets.
+### 2.1 VO rules (REWRITTEN 2026-07-21 — the voice moves inside his head)
+- **Lowe still never opens his mouth underwater.** That fact is untouched — regulator in, mouth shut, forever. What changed: **his lines were never spoken aloud anywhere.** They are his inner voice — the running, courteous, half-to-the-dead commentary a careful man keeps in his own skull to stay steady. This is truer to the character than the old surface-only rule (he was always described as *talking to the recovered to keep his hands steady* — that was never out loud either), and it frees the lines to land mid-swim, when the game is actually happening.
+- **Delivery is the fiction:** dry, close, intimate, no room tone, no water filter, no position in space — a voice *behind* the ears while the wet world goes on around it. Underwater, over the regulator rhythm, it should feel like overhearing a man's composure. (DSP spec in DESIGN §14.)
+- **Anti-spam (silence is still the default):** global ambient-line cooldown ≥ 120 s; each line once per run; priority = tape reactions > event reactions > ambient; ambient lines roll ~40% even when off cooldown. A composed man does not narrate constantly.
+- **One voice at a time, ever** — Lowe, REMORA, and the tapes share a single global speech slot (the VoiceDirector, DESIGN §14). Two voices overlapping would break the head this all lives in.
+- Delivery: ElevenLabs, one consistent voice — soft, unhurried, courteous, aging Midwestern; close-mic, minimal air. Existing generated lines are re-processed (not re-generated) through the in-head chain.
 
 ### 2.2 Voice lines v1 (trim/extend at M8; categories are load-bearing, exact lines aren't)
 **Surfacing (rotate):** "Air. Thank you kindly." · "Still daylight up there. It keeps surprising me. I keep letting it." · "Eleven today. The book stays honest. The book is the only one of us that is." · "That's one more trip the water let me keep." · "…You again. Barrow, was it. Third time this week. I'll keep doing this if you will."
@@ -78,6 +82,38 @@ He is soft-spoken, formal, courteous. Not military — never was. Topside life d
 **Idle (platform, rare):** "The truck is a hundred feet up. I've begun to think of it as a rumor." · "Nobody knows I'm here. The client knows I'm here. I've decided those are different things."
 **Win (Ascent complete, final lines of the game):** "Recovery complete. Forty-one." *(beat)* "…Forty-two." *(quiet, brisk)* "Out of the water, Lowe. Out of the water."
 
+#### 2.2.1 v3 expansion lines (2026-07-21 — new categories, zero count material; generate + wire at M12)
+The in-head doctrine opens the category v2 could never have: **lines that play mid-swim.** All obey §2.1 anti-spam. Sources: voids #1, #4, #6, #9, #10, and the site-that-works.
+
+**Submerged ambient (NEW — the inner voice at depth, rare, calm):**
+- `swim.1` — "Good water, this. Clear where it wants you to see. I've noticed what it wants me to see."
+- `swim.2` — "Kick, glide. Kick, glide. Thirty years and my legs still do the talking so the rest of me doesn't have to."
+- `swim.3` — "The lockers are greased. Forty years down and the lockers are greased. Somebody keeps house. I've stopped wondering on the clock."
+- `swim.4` — "Cold's honest, at least. Everything down here that's honest, I can list on one hand."
+- `swim.5` — "I've been in three hundred caves and none of them ever felt occupied. Occupied is the word I've been avoiding."
+**The bells (void #10):**
+- `bell.1` *(after a shift bell, submerged)* — "Bell. Somebody's still ringing the watch. I've decided it's a machine. I've decided that twice now."
+- `bell.2` *(after the hatch's five bells, once)* — "Five bells for one door. Steep. I've paid worse for less and the site knows it."
+**The Heart (void #1, nearing the Abyss):**
+- `heart.near.1` — "Warm through the glove. Rock shouldn't hold a temperature like a wrist does."
+- `heart.carry.1` *(during the Ascent, rare)* — "Steady hands. It's just a job. It's just a warm thing that wants carrying. Nobody carry-talks me back, please."
+**The client (void #4):**
+- `client.1` *(idle/late run)* — "The letter said *carried, not rigged.* A man who's never lifted a body knows exactly how this one wants lifting. I charged extra for not asking."
+**The lamp (void #9; after a Lamp Man despawn the player witnessed):**
+- `lamp.1` — "A lamp, standing. Lamps hang or they're held. I looked away first. That's twice in my life."
+**The museum & the party (Annex; light, still in character):**
+- `museum.1` *(first entry)* — "Somebody kept everything. Dusted, labeled, lit. I recover things for a living and even I find this thorough."
+- `party.1` *(morale button, once)* — "Well. The notice board did say morale was mandatory."
+
+**REMORA v3 additions (same rules — clerical, warmthless, one wrongness each):**
+- `rem.bell.1` — "Shift bell logged. The site's clock and mine disagree by a value that is not constant. I log both."
+- `rem.hatch.1` *(the five-bell hatch, once)* — "Hatch procedure accepted. Cost: five bells. Debiting your shift record. The site does not take money. I would have mentioned it."
+- `rem.lamp.1` *(Lamp Man glow first sighted, once)* — "A lamp ahead, stationary. Lamps are carried. Carried lamps move. I have no advice."
+- `rem.warm.1` *(Abyss, near the apse)* — "Ambient temperature rising. My charts show this water getting colder with depth. My charts are correct. So is the thermometer."
+- `rem.works.1` *(taking a locker weapon, rare)* — "Requisition logged against the site inventory. The inventory accepted it. The inventory should not be answering."
+- `rem.museum.1` *(Annex entry, once)* — "This room is dry, lit, and catalogued. It appears on no schematic I hold. Enjoy your visit."
+- `rem.silence.1` *(long quiet, very rare — the "is she real" line)* — "You have not spoken in some time. Neither have I. One of us should log that."
+
 ### 2.3 The job sheet (run intro — this is how the player learns the objective)
 Skippable styled text card at run start: a clinical contract page with Lowe's own pencil note at the bottom. Delivers the win condition, two tutorial seeds, and voids #4 and #5 in under 30 seconds:
 
@@ -97,6 +133,7 @@ The client's enclosures included one more thing than the job sheet lists: a seal
 - **Anti-spam:** same discipline as Lowe (§2.1) — every line once per run, ambient musings on the ≥120 s cooldown with the ~40% roll, priority to warnings. A gauge does not chatter.
 - **What she is for (gameplay):** honest-tells in words — depth bands (50/100/150 m), low air, reserve breath, failing lamp cell, silt-out, first contact, the Angler's lamp, the Guardian's post, the item's warmth, the Ascent clause. She states; the player decides.
 - Delivery: ElevenLabs, one consistent female voice, high stability, zero drama; subtitled as **REMORA**. Voids untouched: she names facts, never causes.
+- **v3 (2026-07-21) — the voice goes synthetic, and the question opens:** her chain gains an unmistakably *robotic* treatment (narrow telephone band, a machined flatness no human sustains) and the same inside-the-skull intimacy as Lowe's inner voice. Design intent, stated plainly so no session softens it: **the player should never be able to settle whether REMORA is a real instrument in his ear or something Lowe's thirty quiet years finally built for company.** Evidence must stay balanced — she knows things a gauge cannot know (already canon), but she also reads plain instrument truths Lowe couldn't guess; the case is physical (it has a stencil, a strap), but no one else ever confirms hearing her. No line, subtitle, or doc ever resolves it. This is the count rule applied to a person: two true answers, permanently.
 
 ## 3. The setting — a facility fused through a cave
 
@@ -117,10 +154,10 @@ The user asked: cave, or flooded nuclear facility? **Answer: both, deliberately.
 
 | Game object | In-world identity | Appearance |
 |---|---|---|
-| Wall buys | Emergency equipment lockers, stenciled with contents + price in chalk (the crew's requisition tally system). Greased, stocked, ready — the site works (§1.1) and nothing remarks on it | Open steel lockers, painted outline of the weapon, dangling chalk slate |
+| Weapon lockers (was wall buys; free issue 2026-07-21) | Emergency equipment lockers. Greased, stocked, ready — the site works (§1.1) and nothing remarks on it. **The site issues; it does not sell** — the chalk slates list stock, not price, and the standing order stenciled on every shelf is `ONE PULL PER MAN PER BELL` | Open steel lockers, painted outline of the weapon, dangling chalk slate |
 | Burrows (spawn points) | Cracks and vents the crew comes through. The site keeping its complement. No artifact discusses them | Dark fissures in rock or torn ducting, silt breathing gently out of them |
-| Mystery box | **Requisition Roulette** — the crew's supply-lottery ritual; several crates exist, one is "live" | Slatted crate on a cart, hazard stripes, warm light through slats; when it relocates, a **wind-up toy diver** sits in the empty crate (motif; no one explains who moves the crate) |
-| Perk stations | **Draught dispensary** racks — NHP-series "performance draughts," crew-slang names chalked over official plates | Brass-and-glass canister vendors; per-perk color cap + stencil icon (Gemini labels G9); short jingles at M8 |
+| Mystery box | **Requisition Roulette** — the crew's supply-lottery ritual; several crates exist, one is "live". 2026-07-21: the pull is free, and the G7 poster's rule is now literal game law — one pull per man per bell | Slatted crate on a cart, hazard stripes, warm light through slats; when it relocates, a **wind-up toy diver** sits in the empty crate (motif; no one explains who moves the crate) |
+| Perk stations | **Draught dispensary** racks — NHP-series "performance draughts," crew-slang names chalked over official plates. Each rack holds **one filled flask**, free for the taking once the Pile lights the racks (2026-07-21: found, not bought) | Brass-and-glass canister racks with one glowing flask; per-perk color cap + stencil icon (Gemini labels G9); short jingles |
 | Pack-a-Punch | **The Bench** — forward machine-shop rig that bathes a weapon in the Pile's output | Lathe-altar with cabling back toward the Pile, cherenkov glow, tag stamped "PROPERTY CORMORANT" |
 | Power switch | The Pile's control board — one theatrical breaker | Concrete pit, control rods, gauges pinned past red, blue shimmer when live |
 | Doors — debris | Roof-fall the crew never cleared | Rock choke with a winch point |
@@ -137,12 +174,19 @@ The user asked: cave, or flooded nuclear facility? **Answer: both, deliberately.
 | Tapes | Waterproof log recorders, crew personal effects | Olive-drab reel-to-reel bricks, red REC dot |
 | The Heart | THERMAL-1. Warm. That is the entire file. | A slow warm pulse inside translucent flowstone, organic-ambiguous; never fully lit, never explained |
 | The Drowned | The crew. No further identity is offered. Kill hundreds; the complement stays full (§1.1) | 1968 denim/canvas work gear, tool belts, drift-walk; faces ruined by water, not gore. **Directives:** (1) they sometimes pause at their old workstations mid-pursuit, as if remembering a task (cheap idle behavior near facility props; deeply wrong); (2) variants are deliberately FEW — the same men recur, and Lowe notices ("You again. Barrow, was it") — our limited procedural model count is canon, not a limitation |
-| The Angler | Carries a site-pattern lamp that appears in no equipment catalog. The roster's lamp-men were all accounted for. It is not addressed further. | A warm handheld lamp, wrong color temperature, body a suggestion behind it |
+| The Angler | The drifting half of void #9: a site-pattern lamp that appears in no equipment catalog, and the fish that carries it. It is not addressed further. (2026-07-21 rework: it patrols, freezes when it sees you, and *relocates* you — DESIGN §8.2) | A warm lure lamp, wrong color temperature, an enormous suggestion of a body behind it; when still, indistinguishable from the Lamp Man's lamp at range |
 | The Silt Shade | The silt is not always empty. | Silhouette-only in murk, denser than the cloud around it |
 | Abyss Guardians | Two Mark V atmospheric suits standing post at the drill head. Equipment log, 1966: *CONDEMNED — RETURNED EMPTY.* The names on the bells are scraped off. (Void #8; never resolved) | Big brass hard-hat silhouettes, hose stubs, scraped stencil scars on the bells; slow, inevitable |
 | Posters | Program safety/propaganda print | See Gemini manifest §7 |
 | Jukebox | Rec-room morale unit, 1966 | Chrome-and-walnut box, bubble arch, dead until the toys wake it |
 | Toy divers ×3 | Wind-up tin divers. The requisition slip says the *site* ordered them; no one on the crew had children; the signature is a crewman's who didn't remember signing (T2). Nothing else is known. | Painted tin (red/blue/yellow), crank key, tiny helmet; faint music-box shimmer audible ≤8 m so a searching player finds them without pixel-hunting |
+| Dynamite charges (v3 — door openers) | Site blasting stock, crated and dry-waxed, stencil `BLASTING — CORMORANT`. The crew cleared their own roof-falls with it; the crates were never re-inventoried because the inventory never asked | Waxed red sticks bundled in a slatted crate, coiled fuse, chalk tick-marks; carried on the belt as a visible pickup |
+| Brass grate keys (v3 — door openers) | Stores keys off the site key-board, each tagged for its grate in the quartermaster's hand | Heavy brass key on a fiber tag, hanging on a labeled hook; the hook board has more hooks than keys |
+| Fuel slugs (v3 — the Bench's fee) | `CORMORANT — OUTPUT SLUG` — the Pile's product, whatever it is. The Bench consumes one per weapon bathed. T3's engineer would have had opinions | Dull metal cylinder, warm cherenkov seam, waxed-paper wrap half-peeled; heavier-looking than its size |
+| The shift bell (v3 — void #10) | The site's watch bell at the winch head, still keeping the watch schedule. One ring per shift. The pressure hatch demands five | Heard more than seen: a single unhurried brass toll, honest positional audio from the winch head, faintly audible everywhere |
+| The Lamp Man (v3 — void #9) | See §1.2 #9. A lamp where no lamp is assigned; a stance no drowned man holds. The MISSING notice (G8) is the only paper that brushes against him, and it names a man the crew book never contained | Bolt upright on the tunnel floor, aligned to TRUE up, motionless; the lamp is *pixel-identical in color and size to the Angler's lure* — distance makes them the same object. Never clearly seen: by the time you are close enough, you are too close |
+| The Museum Annex (v3 — celebration room, off the rec room) | A dry chamber the schematic doesn't show, kept like a regimental museum: every recovered thing dusted, labeled, and lit. **No document acknowledges the room exists.** The one wrongness is the room itself — its plaques are in a neat, patient hand nobody ever identifies | The best-lit, best-kept space in the game: poured floor, brass rails, glass cases, museum spots. Exhibits mirror the player's own run (tapes, toys, flasks, weapons, photographs, figures of the things below) |
+| The morale button (v3 — in the Annex) | A guarded red button on a stand, engraved plate: `MORALE NIGHT — AUTHORIZED PERSONNEL` | Big, red, guarded by a flip-cover; pressing it drops a mirror ball, wakes the exhibit figures into a dance, and plays the party record (§6.1). Pressing it again stops everything mid-song, which is somehow worse |
 
 ## 5. Tapes — full scripts (6; VO at M8; subtitled; 20–40 s each)
 
@@ -226,6 +270,46 @@ Two hundred... three hundred... down the line
 Albrecht, forward watch. Ames, galley. Barrow, lamps. Bell, stores. Calloway—
 ```
 
+**Jukebox rule (2026-07-21):** the woken jukebox **always plays "Still on Shift" first** — the anthem is the egg's payoff, every run. The rest of the folder shuffles behind it for E-cycling.
+
+### 6.1 "Morale Night" — the party record (v3, for the Annex morale button)
+
+Its own song, played only while the zombie party runs. Style: **up-tempo 1963 rock-and-roll dance number** — honking sax, handclaps, twangy guitar, an MC-ish male crooner working a crowd. It is a genuinely fun period dance track with the site's usual single wrongness: the lyrics assume the dance never has permission to end.
+
+**Suno/Eleven Music style prompt:** `Upbeat early-1960s rock and roll dance party track, honking saxophone, handclaps, twangy surf guitar, energetic male crooner MC vocal, live-dancehall energy, short and punchy, ~2 minutes. Bright and fun throughout; the final refrain repeats like a record that refuses to end, then cuts clean.`
+
+**Lyrics (paste-ready):**
+```
+[Verse 1]
+Grab your partner off the wall, the bell says nineteen-hundred
+The foreman waxed the rec-room floor, the lights are on — don't wonder
+Shake it like the drill head, spin her like a spool
+Morale is mandatory, man — you know the standing rule
+
+[Chorus]
+It's morale night! (morale night!)
+Everybody's here tonight!
+It's morale night! (morale night!)
+Nobody goes home tonight —
+Ain't that right, boys? — That's right!
+
+[Verse 2]
+The juke's been fed, the cards are dealt, the coffee's short as ever
+Dance in your boots, dance in your suit, tin helmet — hey, whatever
+The doc says keep your pulse up, the chief says keep in time
+Everybody keeps in time down here... everybody keeps in time
+
+[Chorus ×2, second time half-step up, crowd louder]
+It's morale night! (morale night!)
+Everybody's here tonight!
+It's morale night! (morale night!)
+Nobody goes home tonight —
+Nobody goes home —
+Nobody goes home —
+Nobody goes—
+```
+File: `public/music/morale-night.mp3`. Rides the MusicDirector like every other track; stops the instant the button is pressed again.
+
 ## 7. Gemini image manifest (generate at M8; textured quads in-world; procedural canvas-text fallbacks so nothing blocks on quality)
 
 Global style suffix for every prompt: *"1960s US Navy print ephemera, offset-print grain, aged and water-stained, muted period palette, worn edges, no modern typography, no watermarks."*
@@ -247,6 +331,29 @@ Global style suffix for every prompt: *"1960s US Navy print ephemera, offset-pri
 | G11 | Crew photo: a large group of men in dive/work gear on the platform, 1966 — prompt says "a few dozen," never an exact count. One face circled in grease pencil. **No note says why, and no one ever counts this photograph the same twice — Lowe included (T1 reaction). The generator's inability to render an exact count is the point.** | camp + ending | 3:2 |
 | G12 | Jukebox faceplate + "REC ROOM — 1900–2100 — BE A GENTLEMAN" sign | rec room | 1:1, 3:1 |
 | G13 | **The 1971 photograph**: interior of the Heart chamber, harsh flash, empty water, the Heart mid-frame, processing stamp in the corner. Used twice: as the enclosure thumbnail on the job-sheet intro card, and found again as a *physical print pinned to the scaffold at the drill head* — the original of a photo the client somehow holds a copy of. No note on the back. (Void #5; one image, two uses, never explained) | intro card + Abyss prop | 3:2 |
+
+### 7.1 Concept-art manifest (v3 — the Concept Gallery, DESIGN §12.1; generate when Gemini image billing lands)
+
+A different register from the in-world ephemera: these are **concept paintings of the game itself** — moody, painterly, gallery-plate style. They live in the menus (CONCEPT ART section beside PHOTOGRAPHS), never in the world, so they carry no diegetic burden and may depict anything freely. Until generated, each slot shows a procedural `FILM UNDEVELOPED` frame.
+
+Global style suffix: *"digital concept art painting, cinematic, murky underwater palette with one warm accent, loose confident brushwork, film-still composition, no text, no watermark."*
+
+| ID | Piece | Subject |
+|---|---|---|
+| C1 | The Camp | Lowe's 2008 camp at the sinkhole lip at dusk — truck winch, tarp, the black pool waiting |
+| C2 | First Descent | A lone diver silhouette dropping through the daylight shaft into darkness |
+| C3 | The Galleries | Bunk alcoves and notice boards fused into flowstone, one string light burning |
+| C4 | The Drowned | Three crewmen in 1968 work gear drift-walking a flooded corridor, faces soft with water |
+| C5 | The Maze | Look-alike junctions receding, one chalk arrow, one white guide line vanishing |
+| C6 | The Angler | The lure lamp in murk, the body only a pressure behind it |
+| C7 | The Lamp Man | A distant upright figure mid-tunnel, lamp at his chest, floor-standing, wrong |
+| C8 | The Bore | The Throat from above: scaffold rings descending past all light |
+| C9 | The Guardians | Two Mark V suits at the drill head, hoses severed, posts kept |
+| C10 | The Heart | The apse: warm pulse inside translucent flowstone, water gone amber around it |
+| C11 | The Ascent | The diver rising with the glow clutched to his chest, the dark boiling behind him |
+| C12 | The Annex | The museum room: glass cases, brass rails, a red button on a stand, every light on |
+
+Script: `scripts/generate-concept.mjs` (same pattern as generate-images.mjs; writes `public/images/concept/` + manifest section). **Blocked on the same Gemini billing as §7 — probe before every attempt.**
 
 ## 8. Naming & stencil glossary
 **BLACKWATER** (site) · **CORMORANT** (the dig; mission paragraph redacted everywhere it appears) · **THERMAL-1 / "the Heart"** (the crew's chalk, not an official name) · **the Pile** (reactor) · **the Bench** (PaP) · **Draughts** (perks) · **Requisition Roulette** (box) · **the 41** (the crew, per the roster) · **the count** (never say "the 42nd" in any player-facing text — the game only ever shows arithmetic that comes out wrong) · **`COMPLEMENT: 41 — FULL`** (stencil at the winch head; never updated, never needed to be) · bells, not hours ("third bell") · Lowe's rig is 2008-mundane: no callsigns, no acronyms — a careful tradesman in a government ghost story.
