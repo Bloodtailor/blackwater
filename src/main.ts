@@ -308,11 +308,50 @@ function initGame(): void {
     hud.damageFlash();
     player.vel.addScaledVector(fromDir, 3.5);
   };
-  const specials = new SpecialManager(scene, silt, {
-    toast: (m) => hud.toast(m),
-    award: (n) => points.award(n),
-    dropBattery: (pos) => drops.spawn('batterySurge', pos),
-  });
+  // M15: the Lamp Man's whip + the vortex shake share one control block
+  const scare = { t: 0, tiltSafe: false };
+  const clampRoll = (deg: number): number => Math.max(-SETTINGS.maxTiltDeg, Math.min(SETTINGS.maxTiltDeg, deg));
+  const doLampScare = (): void => {
+    audio.lampScare();
+    vitals.panic(true); // reserve breath at max heart rate
+    hud.damageFlash();
+    // the whip: rotation + tilt randomized DURING the vanish, so his
+    // disappearance is never witnessed (DESIGN §8.5 rule 2)
+    player.look(Math.random() * 360, (Math.random() * 2 - 1) * 55);
+    if (!scare.tiltSafe) player.setRollDeg(clampRoll((Math.random() * 2 - 1) * 180));
+    scare.t = TUNING.specials.lampman.scareShakeSec;
+  };
+  const specials = new SpecialManager(
+    scene,
+    silt,
+    {
+      toast: (m) => hud.toast(m),
+      award: (n) => points.award(n),
+      dropBattery: (pos) => drops.spawn('batterySurge', pos),
+      dropSlug: (pos) => drops.spawn('fuelSlug', pos),
+      onVortex: (phase, point) => {
+        if (phase === 'grab') {
+          audio.vortexStart();
+          vitals.panic(false); // max HR — the price is air, never HP
+        } else if (phase === 'carry' && point) {
+          camera.position.copy(point);
+          player.vel.set(0, 0, 0);
+          if (!scare.tiltSafe) player.setRollDeg(clampRoll(player.measuredRollDeg + (Math.random() * 2 - 1) * 3));
+        } else if (phase === 'release') {
+          audio.vortexEnd();
+        }
+      },
+      onLampSeen: () => {
+        voice.request('lamp.1');
+        remora.request('rem.lamp.1');
+      },
+      onLampScare: () => doLampScare(),
+    },
+    (e) => {
+      const d = doorByEdge.get(e);
+      return d ? d.open : true;
+    },
+  );
   const run = { timeSec: 0, draughts: 0, ascentSpawnT: 0 };
   const heart = new HeartRun(scene, interact, camera, {
     toast: (m) => hud.toast(m),
@@ -538,7 +577,9 @@ function initGame(): void {
         // (insta-kill does not touch the specials — they are not roster)
         const sp = specials.raycastShot(camera.position, shotDir, def.rangeM);
         if (sp && (res.hits.length === 0 || sp.dist < res.hits[0].dist)) {
-          specials.applyDamage(sp.special, def.damage);
+          // M15 (DESIGN §8.2): the Arc Projector is the Angler's counter
+          const anglerArc = def.chainCount > 0 && sp.special.kind === 'angler';
+          specials.applyDamage(sp.special, def.damage * (anglerArc ? TUNING.specials.angler.arcBonusMult : 1));
           points.award(E.hit);
           hud.hitmark(false);
           tracers.spawn(muzzle, sp.point, def.tracer, def.tracerLifeSec);
@@ -548,17 +589,33 @@ function initGame(): void {
         const endDist = Math.hypot(res.end[0] - camera.position.x, res.end[1] - camera.position.y, res.end[2] - camera.position.z);
         checkMounds(camera.position.x, camera.position.y, camera.position.z, shotDir.x, shotDir.y, shotDir.z, endDist);
         for (const h of res.hits) hitZombie(h.zombie, def.damage * (h.head ? def.headshotMult : 1), h.head, false);
-        // Arc Projector: the water conducts — the first body struck chains
+        // Arc Projector: the water conducts — the first body struck chains.
+        // M15 (DESIGN §8.2): if the Angler is in reach of the chain, EVERY
+        // bounce re-targets it — a full arc lands all its hits on the fish.
         if (def.chainCount > 0 && res.hits.length > 0) {
           const from = res.hits[0].zombie;
-          const links = zombies.chainFrom(from, def.chainRadiusM, def.chainCount);
+          const angler = specials.specials.find((x) => x.kind === 'angler' && x.state !== 'dead');
           let prev = from.pos;
-          links.forEach((z, i) => {
-            hitZombie(z, def.damage * def.chainFalloff ** (i + 1), false, false);
-            tracers.spawn([prev.x, prev.y, prev.z], [z.pos.x, z.pos.y, z.pos.z], def.tracer, 0.3);
-            if (def.papped) impactGlow.spawn([z.pos.x, z.pos.y, z.pos.z]);
-            prev = z.pos;
-          });
+          if (angler && angler.pos.distanceTo(from.pos) <= def.chainRadiusM) {
+            const mult = TUNING.specials.angler.arcBonusMult;
+            for (let i = 0; i < def.chainCount; i++) {
+              specials.applyDamage(angler, def.damage * def.chainFalloff ** (i + 1) * mult);
+              points.award(E.hit);
+              tracers.spawn([prev.x, prev.y, prev.z], [angler.pos.x, angler.pos.y, angler.pos.z], def.tracer, 0.3);
+              if (def.papped) impactGlow.spawn([angler.pos.x, angler.pos.y, angler.pos.z]);
+              prev = angler.pos;
+              if (angler.state === 'dead') break;
+            }
+            hud.hitmark(false);
+          } else {
+            const links = zombies.chainFrom(from, def.chainRadiusM, def.chainCount);
+            links.forEach((z, i) => {
+              hitZombie(z, def.damage * def.chainFalloff ** (i + 1), false, false);
+              tracers.spawn([prev.x, prev.y, prev.z], [z.pos.x, z.pos.y, z.pos.z], def.tracer, 0.3);
+              if (def.papped) impactGlow.spawn([z.pos.x, z.pos.y, z.pos.z]);
+              prev = z.pos;
+            });
+          }
         }
         // Vortex Maw: the impact point drags the room into itself
         if (def.vortexRadiusM > 0) {
@@ -978,6 +1035,21 @@ function initGame(): void {
   const m7Sec = debug.section('Specials & Ascent');
   debug.button(m7Sec, 'Spawn Angler at selected node', () => specials.spawnAngler(select.value));
   debug.button(m7Sec, 'Kill all specials', () => specials.killAllSpecials());
+  // M15: the deep ones
+  for (const st of ['patrol', 'frozen', 'approach', 'leaving'] as const) {
+    debug.button(m7Sec, `Angler: force ${st}`, () => specials.forceAnglerState(st));
+  }
+  debug.button(m7Sec, 'Lamp Man: spawn/relocate', () => {
+    const lm = specials.spawnLampMan();
+    flashStatus(lm ? `the lamp stands in ${lm.edgeId}` : 'no candidate tunnel');
+  });
+  debug.button(m7Sec, 'Lamp Man: despawn', () => specials.despawnLampMan());
+  debug.button(m7Sec, 'Lamp Man: where?', () => {
+    const lm = specials.lampMan;
+    flashStatus(lm ? `standing in ${lm.edgeId} @ ${lm.pos.x.toFixed(0)},${lm.pos.y.toFixed(0)},${lm.pos.z.toFixed(0)} seen=${lm.lampSeen ?? false}` : 'nobody is standing anywhere');
+  });
+  debug.button(m7Sec, 'Jumpscare preview', () => doLampScare());
+  debug.toggle(m7Sec, 'Scare tilt-safe (no roll)', () => scare.tiltSafe, (v) => (scare.tiltSafe = v));
   debug.button(m7Sec, 'Grab the Heart (start Ascent)', () => heart.grab());
   debug.button(m7Sec, 'Show win screen (preview)', () => {
     hud.setLedger(runStats());
@@ -1401,12 +1473,18 @@ function initGame(): void {
       }
       if (acts.melee) doMelee();
     }
+    // M15: the decaying roll-whip after a Lamp Man scare
+    if (scare.t > 0) {
+      scare.t -= dt;
+      if (!scare.tiltSafe) player.setRollDeg(clampRoll(player.measuredRollDeg + (Math.random() * 2 - 1) * 240 * dt));
+    }
     specials.update(dt, {
       playerPos: p,
       playerDead: combatFrozen,
       time,
       lampOn: vitals.flashlightOn,
       sprinting: player.sprinting,
+      lookDir,
       onHit: takeSpecialHit,
     });
     heart.update(dt, time);

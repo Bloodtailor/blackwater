@@ -62,6 +62,10 @@ export class AudioDirector {
   private wonWas = false;
   private anglerLoops = new Map<object, TrackedLoop>();
   private guardianLoops = new Map<object, TrackedLoop>();
+  /** The Lamp Man's lamp hums EXACTLY like the Angler's lure — the shared
+   *  lie is the design (DESIGN §8.5). */
+  private lampLoops = new Map<object, TrackedLoop>();
+  private vortexStop: sfx.StopFn | null = null;
   private pilePos: [number, number, number] | null = null;
 
   constructor(pilePos: [number, number, number] | null) {
@@ -152,6 +156,16 @@ export class AudioDirector {
       () => {
         const h = e.positional(A.guardianRefDistM);
         return { handle: h, stop: sfx.guardianPresence(e.ctx, h.input) };
+      },
+    );
+    // the Lamp Man's lamp: the SAME hum as the Angler's lure, deliberately —
+    // at range the ear cannot tell which light it is approaching
+    this.syncLoops(
+      s.specials.filter((x) => x.kind === 'lampman' && x.state !== 'dead'),
+      this.lampLoops,
+      () => {
+        const h = e.positional(A.anglerRefDistM);
+        return { handle: h, stop: sfx.anglerHum(e.ctx, h.input) };
       },
     );
 
@@ -269,6 +283,25 @@ export class AudioDirector {
   powerOn(): void {
     if (this.bus) sfx.powerOnThunk(this.engine!.ctx, this.bus);
     this.note('powerOnThunk');
+  }
+  /** M15: the Lamp Man's sting — on the MASTER bus (it is not in the water,
+   *  it is in your head, and it must not be muffled). */
+  lampScare(): void {
+    if (this.engine && this.engine.running) sfx.lampScare(this.engine.ctx, this.engine.master);
+    this.note('lampScare');
+  }
+  /** M15: the vortex — inhale whoosh + drag loop at the player's own ears. */
+  vortexStart(): void {
+    if (!this.bus) return;
+    sfx.vortexGrab(this.engine!.ctx, this.bus);
+    this.vortexStop?.();
+    this.vortexStop = sfx.vortexDrag(this.engine!.ctx, this.bus);
+    this.note('vortexStart');
+  }
+  vortexEnd(): void {
+    this.vortexStop?.();
+    this.vortexStop = null;
+    this.note('vortexEnd');
   }
 
   // playMusic was retired at M12: every song now goes through the ONE music

@@ -148,6 +148,16 @@
       "url": "/audio/sfx/angler-hum.mp3",
       "loop": true
     },
+    "lamp-scare": {
+      "url": "/audio/sfx/lamp-scare.mp3"
+    },
+    "vortex-grab": {
+      "url": "/audio/sfx/vortex-grab.mp3"
+    },
+    "vortex-drag": {
+      "url": "/audio/sfx/vortex-drag.mp3",
+      "loop": true
+    },
     "guardian-presence": {
       "url": "/audio/sfx/guardian-presence.mp3",
       "loop": true

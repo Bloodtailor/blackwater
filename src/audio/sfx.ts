@@ -264,6 +264,88 @@ export function anglerHum(ctx: BaseAudioContext, out: AudioNode): StopFn {
   };
 }
 
+/** The Lamp Man's jumpscare (M15, DESIGN §8.5): a violent sting — noise
+ *  slam, a shriek that bends wrong, and a sub drop into the reserve alarm. */
+export function lampScare(ctx: BaseAudioContext, out: AudioNode): void {
+  if (SAMPLES.play(ctx, out, 'lamp-scare', { gain: 1.2 })) return;
+  const t = ctx.currentTime;
+  noiseBurst(ctx, out, { filter: 'highpass', hz: 900, attack: 0.005, release: 0.5, gain: 0.9 });
+  noiseBurst(ctx, out, { filter: 'lowpass', hz: 300, attack: 0.005, release: 0.9, gain: 0.9 });
+  // the shriek: fast upward bend that lands flat (wrongness in the interval)
+  tone(ctx, out, { hz: 620, hzEnd: 1370, attack: 0.005, release: 0.55, gain: 0.5 });
+  tone(ctx, out, { hz: 660, hzEnd: 1310, attack: 0.005, release: 0.55, gain: 0.4 });
+  // the floor falls out
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(120, t);
+  sub.frequency.exponentialRampToValueAtTime(28, t + 1.1);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.8, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+  sub.connect(g);
+  g.connect(out);
+  sub.start(t);
+  sub.stop(t + 1.3);
+  sub.onended = () => g.disconnect();
+}
+
+/** The vortex inhale (M15, DESIGN §8.2): the water pulls INWARD. One-shot
+ *  whoosh at the grab; the drag itself is vortexDrag's loop. */
+export function vortexGrab(ctx: BaseAudioContext, out: AudioNode): void {
+  if (SAMPLES.play(ctx, out, 'vortex-grab', { gain: 1.1 })) return;
+  noiseBurst(ctx, out, { filter: 'lowpass', hz: 500, attack: 0.5, hold: 0.3, release: 0.4, gain: 0.9 });
+  tone(ctx, out, { hz: 50, hzEnd: 130, attack: 0.5, release: 0.7, gain: 0.5 });
+}
+
+/** The carry: turbulent rumble + rising water-rush, until released. */
+export function vortexDrag(ctx: BaseAudioContext, out: AudioNode): StopFn {
+  const sampled = SAMPLES.loop(ctx, out, 'vortex-drag', { gain: 1.0, fadeSec: 0.3 });
+  if (sampled) return sampled;
+  const g = ctx.createGain();
+  g.gain.value = 0;
+  g.gain.setTargetAtTime(0.7, ctx.currentTime, 0.25);
+  g.connect(out);
+  // turbulence: looped noise through a wobbling low bandpass
+  const dur = 2;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  const f = ctx.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.value = 160;
+  f.Q.value = 1.2;
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 2.3;
+  const lfoG = ctx.createGain();
+  lfoG.gain.value = 70;
+  lfo.connect(lfoG);
+  lfoG.connect(f.frequency);
+  const sub = ctx.createOscillator();
+  sub.type = 'triangle';
+  sub.frequency.value = 38;
+  const subG = ctx.createGain();
+  subG.gain.value = 0.5;
+  sub.connect(subG);
+  subG.connect(g);
+  src.connect(f);
+  f.connect(g);
+  src.start();
+  lfo.start();
+  sub.start();
+  return () => {
+    g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.15);
+    setTimeout(() => {
+      src.stop();
+      lfo.stop();
+      sub.stop();
+      g.disconnect();
+    }, 800);
+  };
+}
+
 /** Guardian presence: sub-bass breathing loop + slow metallic groan. */
 export function guardianPresence(ctx: BaseAudioContext, out: AudioNode): StopFn {
   const sampled = SAMPLES.loop(ctx, out, 'guardian-presence', { gain: TUNING.audio.guardianGain * 1.5, fadeSec: 2.5 });

@@ -59,6 +59,10 @@ const SFX = {
   'moan-3': { p: 'Waterlogged rasping groan underwater: guttural dead voice with bubbling breath, slow, menacing, close. Single groan, no music.', sec: 3.0 },
   grab: { p: 'Heavy waterlogged hands seizing a diver: dull body impact, rubber and canvas scraping, burst of air ripped from a regulator, struggle, close, underwater. No music.', sec: 1.5 },
   'angler-hum': { p: 'Faint wrong electric lamp hum underwater: a quiet detuned two-note drone that never resolves, slightly warbling, hypnotic and uneasy, seamless loop. No melody, no rhythm.', sec: 8, loop: true },
+  // ── M15: the deep ones (DESIGN §8.2/§8.5) ──
+  'lamp-scare': { p: 'A violent horror jumpscare sting underwater: an instant slamming noise burst, a shrieking dissonant upward string stab that bends wrong, and the bottom falling out into a deep sub drop, then sudden ringing silence. 1.5 seconds, terrifying, close.', sec: 2.0 },
+  'vortex-grab': { p: 'An enormous underwater inhale seizing a diver: a huge sucking whoosh of water rushing inward toward a great mouth, rising pressure surge, dense bubbles ripped past the ears, violent and sudden. Single event, no music.', sec: 1.5 },
+  'vortex-drag': { p: 'Being dragged through water at speed inside turbulence: roaring water rush past the head, churning suction rumble, deep unsteady pressure throb, chaotic bubbles, relentless, seamless loop. No music.', sec: 8, loop: true },
   'guardian-presence': { p: 'Immense slow presence underwater: sub-bass pressure breathing of a giant brass diving suit, slow metallic groans and distant hull creaks, ominous, seamless loop. No music.', sec: 10, loop: true },
   // ── the cave ──
   'silt-whump': { p: 'Underwater silt explosion: one deep muffled whump, dense sediment billowing outward, fine particles hissing as they settle, then a faint high tinnitus ring fading. No music.', sec: 4.0 },

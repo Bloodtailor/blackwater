@@ -422,19 +422,39 @@ export const TUNING = {
     weights: { maxAmmo: 22, doublePoints: 22, instaKill: 22, clearWaters: 14, batterySurge: 14, pressureWave: 6 },
   },
   specials: {
-    // The Angler (DESIGN §8.2): a lure that reads as somebody's chemlight.
+    // The Angler (DESIGN §8.2, M15 rework): patrol → freeze-on-sight →
+    // vortex inhale. It never does HP damage — it costs air, position, and
+    // certainty. ONE alive at a time; always drops a battery.
     angler: {
-      fromRound: 8, // Anglers may spawn from this round
-      spawnChanceAtRoundStart: 0.5, // if none alive, dark zones only
+      fromRound: 8, // Anglers may spawn from this shift
+      spawnChanceAtRoundStart: 0.5, // if none alive; it patrols the MAZE
       minSpawnDistM: 25, // min spawn distance from the player (m)
       hp: 600,
-      cruiseSpeed: 1.1, // idle drift around the lure spot
-      lungeSpeed: 7.5, // lunge speed once you take the bait (m/s)
-      lungeTriggerM: 4.5, // takes you when you commit to the light
-      lungeWindupSec: 0.35, // pause between noticing you and lunging (s)
-      damage: 45,
+      patrolSpeed: 1.5, // slow maze patrol, lure lit (m/s)
+      seeM: 26, // LOS inside this = it notices you and goes PERFECTLY STILL
+      unseeSec: 4, // frozen + unseen this long = it resumes the patrol
+      vortexTriggerM: 5, // approach the stationary light this close = the inhale
+      inhaleSec: 0.7, // you are dragged into the mouth over this
+      carrySpeed: 6.5, // carried through real tunnels at this speed (m/s)
+      carryMaxSec: 5, // released no later than this into the carry
+      carryMinHops: 2, // destination at least this many rooms away
+      approachSpeed: 3.4, // provoked (shot at range): deliberate closing speed — never outswims a sprint
+      leaveSpeed: 2.6, // swimming away after an attack
+      despawnOutOfSightM: 24, // leaving + unseen beyond this = despawns
+      arcBonusMult: 2.5, // the Arc Projector is its counter (DESIGN §8.2)
+      slugDropChance: 0.25, // rare output-slug echo on kill (deferred from M13a)
       killPoints: 200,
-      lureBobAmp: 0.35, // lure bob amplitude (m) - the tell is subtle
+      lureBobAmp: 0.35, // patrol-only bob — frozen it is DEAD still (the Lamp Man lie)
+    },
+    // The Lamp Man (DESIGN §8.5): a placed dread object — no AI, no pathing.
+    lampman: {
+      everyShifts: 7, // spawns/relocates on shifts divisible by this
+      seenM: 24, // within this + LOS + looking toward him = SEEN
+      seenFacingDeg: 28, // "looking toward him" half-angle (deg)
+      leaveM: 34, // after being seen: farther than this...
+      leaveSec: 5, // ...for this long = he is quietly gone
+      scareM: 3.2, // too close = the jumpscare (reserve breath, max HR)
+      scareShakeSec: 0.7, // decaying roll-whip after the randomization
     },
     // The Silt Shade (DESIGN §8.2): lives exactly as long as the silt-out.
     shade: {

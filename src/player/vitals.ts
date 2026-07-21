@@ -104,6 +104,21 @@ export class Vitals {
     this.spike = Math.min(this.spike + TUNING.hr.lungeSpike, TUNING.hr.spikeCap);
   }
 
+  /** M15 (DESIGN §8.2/§8.5): the deep ones take your composure, never your
+   *  HP — heart rate pins at max; `toReserve` (the Lamp Man) additionally
+   *  takes ALL your air and lights the flashing last breath. */
+  panic(toReserve: boolean): void {
+    if (this.god || this.dead) return;
+    this.hr = TUNING.hr.max;
+    this.spike = TUNING.hr.spikeCap;
+    if (toReserve && !this.infiniteAir) {
+      this.air = 0;
+      this.reserveArmed = false;
+      this.inReserve = true; // without this the drain branch reads DROWNING
+      this.reserve = 1;
+    }
+  }
+
   /** A Drowned grab: 35 HP, the regulator rip (−8 air), HR spike (§6.2). */
   grabbed(): void {
     if (this.god || this.dead) return;
