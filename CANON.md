@@ -47,6 +47,7 @@
 | Dynamite charges, brass grate keys | ✅ M13a | Explained — site blasting stock and the stores key-board (§4 v3 rows) |
 | The power switch / the Pile | ✅ | Explained — the site's experimental reactor; cherenkov string lights are site utility lighting |
 | The Heart | ✅ | Void #1 — "Warm. That is the entire file." |
+| The Undertow (✅ M15.5: during the Ascent the cave INHALES every ~60–90 s — a computed flow field pulls the carrier back toward the apse along real passages; the whole water column turns with it; string lights flare, a cherenkov lift fills the cave, the great pump winds up) | ✅ | Wrongness — §1.1 site-works + LORE §4 v3 row: the machine sound comes from everywhere, including the rock. undertow.1 (Lowe) + rem.undertow.1 (REMORA — "standard cooling flow… since 1968") fire once, on the first surge; nothing ever explains the machine |
 | Chalk columns (silt traps) | ✅ | Explained — flagged flowstone; 1968 `DO NOT TOUCH — SILT` tags: the crew teaches the player |
 | Air bells & pockets, tilted water | ✅ | Explained — natural trapped air + site airlocks; physically coherent per DESIGN §5 |
 | Guide line (Lowe's white) vs hemp lines (condemned brown) | ✅ | Explained — the contrast is a silent tutorial; job sheet: "Site lines are condemned — lay your own" |
@@ -100,7 +101,8 @@
 | rem.stirs.1 | Cave Stirs | ⚠ same M14 orphan as Lowe's stirs.1 — re-trigger as an Ascent/population warning |
 | rem.abyss.1 | entering the Abyss | Her charts end; the water doesn't |
 | rem.amb.1–6 | ambient musings | Voids #4/#7 + the "someone reads these logs" thread; amb.4 is count-flavored (grandfathered) |
-| rem.bell.1, rem.hatch.1, rem.lamp.1, rem.warm.1, rem.works.1, rem.museum.1, rem.silence.1 | ✅ M12 generated + wired (bell/warm/works/silence + stirs→Ascent live; hatch live at the M13a toll, lamp→M15, museum→M16 dormant) | Voids #10/#9/#1/#7 + the is-she-real thread (rem.silence.1) |
+| rem.bell.1, rem.hatch.1, rem.lamp.1, rem.warm.1, rem.works.1, rem.museum.1, rem.silence.1 | ✅ M12 generated + wired (bell/warm/works/silence + stirs→Ascent live; hatch live at the M13a toll, lamp LIVE at M15 first sighting, museum→M16 dormant) | Voids #10/#9/#1/#7 + the is-she-real thread (rem.silence.1) |
+| undertow.1 (Lowe) + rem.undertow.1 | ✅ M15.5 generated + wired — first surge only | Site-works void: pumps in the rock / "standard cooling flow… since 1968" — impossible knowledge at clerical temperature; no count material (spread rule honored) |
 
 **Tapes — 6 generated (distinct voices; T6 deliberately cast neutral, a voice not in the crew book).** Each is mundane official business with exactly one wrongness; together they corroborate nothing (LORE §5). T1 count-over · T2 toys · T3 the Pile's fast · T4 synchronized pulses · T5 two true depths · T6 the roster read three weeks after the water.
 

@@ -43,6 +43,7 @@
     "heart.carry.1": "/audio/vo/heart.carry.1.mp3",
     "client.1": "/audio/vo/client.1.mp3",
     "lamp.1": "/audio/vo/lamp.1.mp3",
+    "undertow.1": "/audio/vo/undertow.1.mp3",
     "museum.1": "/audio/vo/museum.1.mp3",
     "party.1": "/audio/vo/party.1.mp3",
     "rem.hello.1": "/audio/vo/rem.hello.1.mp3",
@@ -70,6 +71,7 @@
     "rem.bell.1": "/audio/vo/rem.bell.1.mp3",
     "rem.hatch.1": "/audio/vo/rem.hatch.1.mp3",
     "rem.lamp.1": "/audio/vo/rem.lamp.1.mp3",
+    "rem.undertow.1": "/audio/vo/rem.undertow.1.mp3",
     "rem.warm.1": "/audio/vo/rem.warm.1.mp3",
     "rem.works.1": "/audio/vo/rem.works.1.mp3",
     "rem.museum.1": "/audio/vo/rem.museum.1.mp3",
@@ -157,6 +159,9 @@
     "vortex-drag": {
       "url": "/audio/sfx/vortex-drag.mp3",
       "loop": true
+    },
+    "undertow-surge": {
+      "url": "/audio/sfx/undertow-surge.mp3"
     },
     "guardian-presence": {
       "url": "/audio/sfx/guardian-presence.mp3",

@@ -237,7 +237,7 @@ Max Ammo · **Double Ledger** (60 s — vanity, and proud of it) · Insta-Kill (
 - Reach the surface platform → **WIN.** No hard timer: air pockets still work, the swarm just never stops. Air and routing are the real timer. A pre-laid guide line up the Throat is the intended "I planned for this" payoff.
 - Death during the Ascent = death (Second Wind still works; the Heart drops where you died, must be re-grabbed).
 
-### 11.1 The Undertow (NEW 2026-07-21, user idea — the cave inhales; builds at M15.5)
+### 11.1 The Undertow (NEW 2026-07-21, user idea — the cave inhales; built at M15.5)
 The moment the Heart is lifted, a second mechanic arms alongside the Ascent: **every so often the ambient current is OVERRIDDEN by a far stronger one that pulls the player back toward the apse the Heart came from — wherever they are, the cave is sucking them back down.**
 - **The route home is computed, not faked:** a one-time Dijkstra flow field from the Heart's chamber over the passage graph (door state respected) gives every point in the cave a next-hop direction toward the apse; during a surge the override current flows ALONG the passages down that field — honest physical water that pulls you through real tunnels, never at rock.
 - **Cadence & feel (all knobs in `tuning.ts`):** a surge every ~60–90 s, ~8 s long, ramping in and out; strength far above ambient current (a real fight, not an instant loss), damped in squeezes per the existing pin-guard so it can never wedge you. Fighting it costs heart rate — the true price is air.

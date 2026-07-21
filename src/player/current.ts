@@ -28,6 +28,17 @@ export function currentDepthFactor(y: number): number {
   return f1 + (D.deepFactor - D.midFactor) * smooth01((depth - (D.midToDeepM - half)) / D.blendM);
 }
 
+/** M15.5 the Undertow (DESIGN §11.1): an override blended OVER the ambient
+ *  current. The fn fills `out` with the override velocity and returns its
+ *  blend weight 0..1 (0 = pure ambient). Living here means EVERY consumer —
+ *  player, motes, silt, corpses — rides the surge: the honest tell. */
+export type CurrentOverride = (x: number, y: number, z: number, out: Vec3Like) => number;
+let override: CurrentOverride | null = null;
+export function setCurrentOverride(fn: CurrentOverride | null): void {
+  override = fn;
+}
+const oTmp: Vec3Like = { x: 0, y: 0, z: 0 };
+
 /** Current velocity at a point — direction AND strength wander with position
  *  and time; transitions smooth but quick. No strength floor: real lulls. */
 export function sampleCurrent(x: number, y: number, z: number, time: number, out: Vec3Like): void {
@@ -43,4 +54,12 @@ export function sampleCurrent(x: number, y: number, z: number, time: number, out
   out.x = Math.cos(a) * Math.cos(b) * mag;
   out.y = Math.sin(b) * mag;
   out.z = Math.sin(a) * Math.cos(b) * mag;
+  if (override) {
+    const w = override(x, y, z, oTmp);
+    if (w > 0) {
+      out.x = out.x * (1 - w) + oTmp.x * w;
+      out.y = out.y * (1 - w) + oTmp.y * w;
+      out.z = out.z * (1 - w) + oTmp.z * w;
+    }
+  }
 }

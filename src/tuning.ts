@@ -493,6 +493,19 @@ export const TUNING = {
     heartLightIntensity: 9, // the carried glow - you can see, and be seen
     heartLightRadiusM: 13, // carried-glow radius (m)
   },
+  undertow: {
+    // M15.5 (DESIGN §11.1): the cave INHALES the thief back toward the apse.
+    firstDelaySec: 25, // first surge lands a beat after the grab
+    periodMinSec: 60, // seconds between surges (random in [min, max])
+    periodMaxSec: 90,
+    surgeSec: 8, // how long each inhale lasts
+    rampSec: 1.8, // envelope ramp in/out (smooth, not a slam)
+    strength: 3.4, // pull speed at full envelope (m/s — a real fight vs swim 4.0)
+    fightHrPerSec: 16, // bpm/s of strain while thrusting against the pull
+    surgeAmbientLift: 2.2, // the cave lights up: ambient intensity multiplier at peak
+    surgeTint: 0x59c8e8, // global cherenkov lift color
+    stringFlareMult: 2.6, // string-light bulb size/glow flare at peak
+  },
   interact: {
     reachM: 2.7, // how close E can act from
     coneDeg: 42, // how far off view center a target can sit

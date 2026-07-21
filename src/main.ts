@@ -9,7 +9,8 @@ import { buildCaveMesh } from './cave/mesh';
 import { buildDoors, openAllDoors, openDoor } from './cave/doors';
 import { buildMounds, columnDistSq, placeMounds, syncMounds } from './cave/mounds';
 import { PlayerController } from './player/controller';
-import { sampleCurrent } from './player/current';
+import { sampleCurrent, setCurrentOverride } from './player/current';
+import { pullAt, Undertow } from './player/undertow';
 import { lightFactor, Vitals } from './player/vitals';
 import { Bubbles } from './player/bubbles';
 import { TiltSystem, buildTiltRegions } from './player/tilt';
@@ -353,6 +354,22 @@ function initGame(): void {
     },
   );
   const run = { timeSec: 0, draughts: 0, ascentSpawnT: 0 };
+  // ── M15.5 the Undertow (DESIGN §11.1): armed the moment the Heart lifts;
+  // the override lives in the shared current sampler, so the player, motes,
+  // silt, and corpses all visibly inhale together — the honest tell ──
+  const undertow = new Undertow();
+  const undertowPull = new THREE.Vector3();
+  let undertowEnv = 0;
+  setCurrentOverride((x, y, z, out) => {
+    if (undertowEnv <= 0 || !undertow.field) return 0;
+    const dir = pullAt(undertow.field, x, y, z);
+    if (!dir) return 0;
+    const s = TUNING.undertow.strength;
+    out.x = dir[0] * s;
+    out.y = dir[1] * s;
+    out.z = dir[2] * s;
+    return undertowEnv;
+  });
   const heart = new HeartRun(scene, interact, camera, {
     toast: (m) => hud.toast(m),
     onFirstGrab: () => {
@@ -361,6 +378,13 @@ function initGame(): void {
       hud.setAscent(true);
       hud.toast('ASCEND.');
       flashStatus('THE ASCENT — get to the surface');
+      // the cave notices the theft: the flow field home is computed ONCE,
+      // against the doors as they stand right now
+      const home = NODES.find((n) => n.tags.includes('heart'));
+      if (home) undertow.arm(home.id, (e) => {
+        const d = doorByEdge.get(e);
+        return d ? d.open : true;
+      });
     },
   });
   const runStats = () => ({
@@ -1050,6 +1074,45 @@ function initGame(): void {
   });
   debug.button(m7Sec, 'Jumpscare preview', () => doLampScare());
   debug.toggle(m7Sec, 'Scare tilt-safe (no roll)', () => scare.tiltSafe, (v) => (scare.tiltSafe = v));
+  // M15.5: the Undertow
+  let flowArrows: THREE.Group | null = null;
+  debug.button(m7Sec, 'Undertow: arm now (no Heart needed)', () => {
+    const home = NODES.find((n) => n.tags.includes('heart'));
+    if (home) {
+      undertow.arm(home.id, (e) => {
+        const d = doorByEdge.get(e);
+        return d ? d.open : true;
+      });
+      flashStatus(`undertow armed — field covers ${undertow.field?.next.size ?? 0} nodes`);
+    }
+  });
+  debug.toggle(m7Sec, 'Undertow clock without Ascent', () => undertow.debugActive, (v) => (undertow.debugActive = v));
+  debug.button(m7Sec, 'Undertow: force surge', () => {
+    undertow.forceSurge();
+    flashStatus('the cave inhales');
+  });
+  debug.button(m7Sec, 'Undertow: state', () =>
+    flashStatus(
+      !undertow.armed
+        ? 'undertow not armed'
+        : undertow.surging
+          ? `SURGING t=${undertow.surgeT.toFixed(1)}s env=${undertowEnv.toFixed(2)}`
+          : `armed — next surge in ${undertow.waitT.toFixed(0)}s`,
+    ),
+  );
+  debug.toggle(m7Sec, 'Flow-field arrows', () => flowArrows?.visible ?? false, (v) => {
+    if (v && !flowArrows && undertow.field) {
+      flowArrows = new THREE.Group();
+      for (const n of NODES) {
+        if (n.teaser || n.kind === 'audio') continue;
+        const dir = pullAt(undertow.field, n.pos[0], n.pos[1], n.pos[2]);
+        if (!dir) continue;
+        flowArrows.add(new THREE.ArrowHelper(new THREE.Vector3(dir[0], dir[1], dir[2]), new THREE.Vector3(n.pos[0], n.pos[1], n.pos[2]), 2.2, 0x59c8e8, 0.7, 0.4));
+      }
+      scene.add(flowArrows);
+    }
+    if (flowArrows) flowArrows.visible = v;
+  });
   debug.button(m7Sec, 'Grab the Heart (start Ascent)', () => heart.grab());
   debug.button(m7Sec, 'Show win screen (preview)', () => {
     hud.setLedger(runStats());
@@ -1488,6 +1551,27 @@ function initGame(): void {
       onHit: takeSpecialHit,
     });
     heart.update(dt, time);
+    // ── M15.5 the Undertow: the cave inhales (position-only — the pull
+    // rides the shared current sampler; bubbles and the gauge stay honest) ──
+    const ut = undertow.update(dt, heart.ascentActive && !combatFrozen);
+    undertowEnv = ut.envelope;
+    atmo.surge = ut.envelope;
+    shops.setSurge(ut.envelope);
+    if (ut.started) {
+      audio.undertowSurge();
+      if (ut.first) {
+        voice.request('undertow.1');
+        remora.request('rem.undertow.1');
+      }
+    }
+    if (ut.envelope > 0.3 && undertow.field && !vitals.dead) {
+      const dir = pullAt(undertow.field, p.x, p.y, p.z);
+      if (dir) {
+        undertowPull.set(dir[0], dir[1], dir[2]);
+        // fighting the inhale costs heart rate — the true price is air
+        if (player.vel.dot(undertowPull) < -0.5) vitals.strain(dt, TUNING.undertow.fightHrPerSec);
+      }
+    }
     if (vitals.dead && !revive.active) hud.setLedger(runStats());
     // viewmodel: current gun in hand, bob/kick/reload, knife-ready crosshair
     viewModel.setWeapon(weapons.current.def.id, weapons.current.def.papped);
@@ -1749,6 +1833,7 @@ function initGame(): void {
     inventory,
     roster: zombies.roster,
     crew: CREW,
+    undertow,
     hatchToll,
     audio,
     audioVerify: () => import('./audio/verify'),

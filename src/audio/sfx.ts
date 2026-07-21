@@ -346,6 +346,44 @@ export function vortexDrag(ctx: BaseAudioContext, out: AudioNode): StopFn {
   };
 }
 
+/** The Undertow surge (M15.5, DESIGN §11.1): an enormous distant machine
+ *  spinning up — the amb-machinery pump is the same machine's voice, and for
+ *  eight seconds the whole soundscape reads as one vast intake. */
+export function undertowSurge(ctx: BaseAudioContext, out: AudioNode): void {
+  if (SAMPLES.play(ctx, out, 'undertow-surge', { gain: 1.2 })) return;
+  const t = ctx.currentTime;
+  const U = TUNING.undertow;
+  const dur = U.surgeSec + 1.5;
+  // the intake: broadband water-rush swelling in and out
+  noiseBurst(ctx, out, { filter: 'lowpass', hz: 420, attack: U.rampSec, hold: dur - U.rampSec * 2, release: U.rampSec, gain: 0.55 });
+  // the machine: a sub drone glissing up as it spins to speed
+  const sub = ctx.createOscillator();
+  sub.type = 'triangle';
+  sub.frequency.setValueAtTime(24, t);
+  sub.frequency.exponentialRampToValueAtTime(52, t + dur * 0.6);
+  sub.frequency.setValueAtTime(52, t + dur * 0.6);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.5, t + U.rampSec);
+  g.gain.setValueAtTime(0.5, t + dur - U.rampSec);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  // the stroke: a slow amplitude pump quickening as it winds up
+  const lfo = ctx.createOscillator();
+  lfo.frequency.setValueAtTime(0.9, t);
+  lfo.frequency.linearRampToValueAtTime(1.8, t + dur);
+  const lfoG = ctx.createGain();
+  lfoG.gain.value = 0.22;
+  lfo.connect(lfoG);
+  lfoG.connect(g.gain);
+  sub.connect(g);
+  g.connect(out);
+  sub.start(t);
+  lfo.start(t);
+  sub.stop(t + dur + 0.1);
+  lfo.stop(t + dur + 0.1);
+  sub.onended = () => g.disconnect();
+}
+
 /** Guardian presence: sub-bass breathing loop + slow metallic groan. */
 export function guardianPresence(ctx: BaseAudioContext, out: AudioNode): StopFn {
   const sampled = SAMPLES.loop(ctx, out, 'guardian-presence', { gain: TUNING.audio.guardianGain * 1.5, fadeSec: 2.5 });

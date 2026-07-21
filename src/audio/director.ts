@@ -290,6 +290,12 @@ export class AudioDirector {
     if (this.engine && this.engine.running) sfx.lampScare(this.engine.ctx, this.engine.master);
     this.note('lampScare');
   }
+  /** M15.5: the cave inhales — the surge cue on the world bus (it IS the
+   *  world; the water filter and silt muffle apply honestly). */
+  undertowSurge(): void {
+    if (this.bus) sfx.undertowSurge(this.engine!.ctx, this.bus);
+    this.note('undertowSurge');
+  }
   /** M15: the vortex — inhale whoosh + drag loop at the player's own ears. */
   vortexStart(): void {
     if (!this.bus) return;

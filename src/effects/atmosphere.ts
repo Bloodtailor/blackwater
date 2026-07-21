@@ -45,6 +45,10 @@ export class Atmosphere {
   private beamThrow = 65;
   /** Cat Eyes: wider beam, less backscatter pinch (main sets from perks). */
   beamMult = 1;
+  /** M15.5 the Undertow: 0..1 — the whole cave lights up for the surge
+   *  (string-light flare is shops'; this is the global cherenkov lift). */
+  surge = 0;
+  private surgeTint = new THREE.Color(TUNING.undertow.surgeTint);
   private motes: THREE.Points;
   private motePos: Float32Array;
   private moteVel: Float32Array;
@@ -183,6 +187,13 @@ export class Atmosphere {
       const t = THREE.MathUtils.clamp((depth - A.depthDarkStart) / (A.depthDarkEnd - A.depthDarkStart), 0, 1);
       this.ambient.color.copy(this.ambientColor);
       this.ambient.intensity = 0.55 * THREE.MathUtils.lerp(1, A.depthDarkFloor, t);
+      // M15.5: the surge lights the cave — a cherenkov-tinted global lift
+      if (this.surge > 0) {
+        const U = TUNING.undertow;
+        this.ambient.color.lerp(this.surgeTint, this.surge * 0.55);
+        this.ambient.intensity *= 1 + this.surge * (U.surgeAmbientLift - 1);
+        this.fog.color.lerp(this.surgeTint, this.surge * 0.18);
+      }
     }
 
     // headlamp cone: narrow + short during a silt-out (backscatter);

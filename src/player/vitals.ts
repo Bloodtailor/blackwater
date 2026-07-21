@@ -104,6 +104,12 @@ export class Vitals {
     this.spike = Math.min(this.spike + TUNING.hr.lungeSpike, TUNING.hr.spikeCap);
   }
 
+  /** M15.5 (DESIGN §11.1): sustained physical strain — fighting the
+   *  undertow climbs the heart rate; the true price is air. */
+  strain(dt: number, bpmPerSec: number): void {
+    this.spike = Math.min(this.spike + bpmPerSec * dt, TUNING.hr.spikeCap);
+  }
+
   /** M15 (DESIGN §8.2/§8.5): the deep ones take your composure, never your
    *  HP — heart rate pins at max; `toReserve` (the Lamp Man) additionally
    *  takes ALL your air and lights the flashing last breath. */

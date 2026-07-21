@@ -63,6 +63,8 @@ const SFX = {
   'lamp-scare': { p: 'A violent horror jumpscare sting underwater: an instant slamming noise burst, a shrieking dissonant upward string stab that bends wrong, and the bottom falling out into a deep sub drop, then sudden ringing silence. 1.5 seconds, terrifying, close.', sec: 2.0 },
   'vortex-grab': { p: 'An enormous underwater inhale seizing a diver: a huge sucking whoosh of water rushing inward toward a great mouth, rising pressure surge, dense bubbles ripped past the ears, violent and sudden. Single event, no music.', sec: 1.5 },
   'vortex-drag': { p: 'Being dragged through water at speed inside turbulence: roaring water rush past the head, churning suction rumble, deep unsteady pressure throb, chaotic bubbles, relentless, seamless loop. No music.', sec: 8, loop: true },
+  // ── M15.5: the Undertow (DESIGN §11.1) ──
+  'undertow-surge': { p: 'An enormous distant industrial pump spinning up underwater and inhaling an entire flooded cave: a vast deep machine winding to speed, slow rhythmic strokes quickening, immense water intake rush swelling from everywhere at once, heard through hundreds of meters of rock and water, heavily muffled low frequencies, overwhelming and slow, about nine seconds, then winding down. No music.', sec: 10 },
   'guardian-presence': { p: 'Immense slow presence underwater: sub-bass pressure breathing of a giant brass diving suit, slow metallic groans and distant hull creaks, ominous, seamless loop. No music.', sec: 10, loop: true },
   // ── the cave ──
   'silt-whump': { p: 'Underwater silt explosion: one deep muffled whump, dense sediment billowing outward, fine particles hissing as they settle, then a faint high tinnitus ring fading. No music.', sec: 4.0 },

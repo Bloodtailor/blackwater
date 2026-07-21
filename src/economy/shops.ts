@@ -100,6 +100,7 @@ export class Shops {
   powered = false;
   private grinds: { door: Door; t: number; mats: THREE.Material[] }[] = [];
   private lights = new THREE.Group();
+  private stringMat: THREE.PointsMaterial | null = null;
   private poweredMats: THREE.MeshStandardMaterial[] = [];
   private puffPoints: THREE.Points;
   private puffVels: Float32Array;
@@ -506,6 +507,7 @@ export class Shops {
     });
     const pointsObj = new THREE.Points(geo, mat);
     pointsObj.frustumCulled = false;
+    this.stringMat = mat; // M15.5: the undertow flares the string lights
     this.lights.add(pointsObj);
     const cableGeo = new THREE.BufferGeometry().setFromPoints(cablePts);
     const cable = new THREE.LineSegments(cableGeo, new THREE.LineBasicMaterial({ color: 0x1e4a52, transparent: true, opacity: 0.5 }));
@@ -513,6 +515,14 @@ export class Shops {
     this.lights.add(cable);
     this.lights.visible = false;
     this.ctx.scene.add(this.lights);
+  }
+
+  /** M15.5 the Undertow: the string lights FLARE for the surge (0..1). */
+  setSurge(f: number): void {
+    if (!this.stringMat) return;
+    const mult = 1 + f * (TUNING.undertow.stringFlareMult - 1);
+    this.stringMat.size = 0.5 * mult;
+    this.stringMat.opacity = Math.min(1, 0.95 * mult);
   }
 
   update(dt: number): void {
