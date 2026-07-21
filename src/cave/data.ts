@@ -125,6 +125,11 @@ export interface CaveNode {
     poster?: 'G3' | 'G4' | 'G5' | 'G6' | 'G7' | 'G8' | 'G10' | 'G11' | 'G12' | 'G13';
     toyColor?: 'red' | 'blue' | 'yellow';
     cache?: 'battery' | 'chemlights';
+    /** M13 found-item economy (DESIGN §10.3/§10.6): a world pickup rests
+     *  here. Dynamite blasts debris chokes, a key cuts its tagged grate
+     *  (`keyFor` = door id `a→b`, `label` = the fiber tag), a fuel slug
+     *  feeds the Bench one upgrade. */
+    pickup?: { kind: 'dynamite' | 'key' | 'slug'; keyFor?: string; label?: string };
   };
 }
 

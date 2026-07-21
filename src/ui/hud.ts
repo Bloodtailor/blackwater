@@ -19,6 +19,7 @@ export class Hud {
   private lightState: HTMLElement;
   private depthEl: HTMLElement;
   private pointsEl: HTMLElement;
+  private beltEl!: HTMLElement;
   private kitEl!: HTMLElement;
   private toastEl!: HTMLElement;
   private toastTimer: number | null = null;
@@ -70,9 +71,13 @@ export class Hud {
     this.pips = Array.from(bat.querySelectorAll('.pip'));
     this.lightState = bat.querySelector('.state') as HTMLElement;
     this.depthEl = make('hud-depth');
+    // M13: points are vanity — the display is Lowe's ledger tally, and it
+    // buys nothing (DESIGN §10)
     const pts = make('hud-points');
-    pts.textContent = String(TUNING.economy.startPoints);
+    pts.textContent = `LEDGER ${TUNING.economy.startPoints}`;
     this.pointsEl = pts;
+    this.beltEl = make('hud-belt');
+    this.beltEl.classList.add('hidden');
     this.ammoEl = make('hud-ammo');
     this.ammoEl.textContent = '—/—';
     this.roundEl = make('hud-round');
@@ -139,8 +144,9 @@ export class Hud {
   private inspectEl!: HTMLElement;
   inspectOpen = false;
 
-  /** Lowe's ledger block (DESIGN §12) — shared by the win and death screens. */
-  setLedger(stats: { recovered: number; rounds: number; timeSec: number; draughts: number; spent: number }): void {
+  /** Lowe's ledger block (DESIGN §12) — shared by the win and death screens.
+   *  (M13: SPENT is gone — nothing is for sale. The tally IS the ledger.) */
+  setLedger(stats: { recovered: number; rounds: number; timeSec: number; draughts: number }): void {
     const row = (label: string, val: string): string => `${(label + ' ').padEnd(15, '.')} ${val}`;
     const mm = Math.floor(stats.timeSec / 60);
     const ss = Math.floor(stats.timeSec % 60).toString().padStart(2, '0');
@@ -148,11 +154,10 @@ export class Hud {
     const text = [
       row('RECOVERED', String(stats.recovered)),
       row('ROSTER', '41'),
-      row('DISCREPANCY', (disc >= 0 ? '+' : '') + disc),
+      stats.recovered === 0 ? row('DISCREPANCY', 'none. first time for everything') : row('DISCREPANCY', (disc >= 0 ? '+' : '') + disc),
       row('SHIFTS', String(stats.rounds)),
       row('TIME UNDER', `${mm}:${ss}`),
       row('DRAUGHTS', String(stats.draughts)),
-      row('SPENT', String(stats.spent)),
     ].join('\n');
     for (const el of [this.deathEl, this.winEl]) {
       const pre = el.querySelector('.ledger') as HTMLElement;
@@ -228,7 +233,17 @@ export class Hud {
   }
 
   setPoints(p: number): void {
-    this.pointsEl.textContent = String(p);
+    this.pointsEl.textContent = `LEDGER ${p}`;
+  }
+
+  /** M13 belt readout: what the found-item economy carries. Hidden when empty. */
+  setBelt(dynamite: number, keys: string[], slugs: number): void {
+    const parts: string[] = [];
+    if (dynamite > 0) parts.push(`DYN ×${dynamite}`);
+    for (const k of keys) parts.push(`KEY: ${k}`);
+    if (slugs > 0) parts.push(`SLUG ×${slugs}`);
+    this.beltEl.classList.toggle('hidden', parts.length === 0);
+    this.beltEl.textContent = parts.join(' · ');
   }
 
   /** Points delta tick (+60 floating by the balance, DESIGN §12). */

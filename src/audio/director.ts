@@ -53,6 +53,12 @@ export class AudioDirector {
   private geigerT = 0.3;
   private drownT = 0;
   private lastRound = 0;
+
+  /** M13 hatch toll: main jumps the round counter itself and rings the five
+   *  bells — sync the tracker so the horn stinger doesn't pile on top. */
+  syncRound(n: number): void {
+    this.lastRound = n;
+  }
   private stirsWas = false;
   private deadWas = false;
   private wonWas = false;

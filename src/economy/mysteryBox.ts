@@ -11,7 +11,7 @@ import { sdf } from '../cave/sdf';
 import { TUNING } from '../tuning';
 import { softDotTexture } from '../effects/atmosphere';
 import { BOX_GUNS, WALL_GUNS, weaponDef, type GunId, type Weapons } from '../player/weapons';
-import type { Points } from './points';
+import { BellIssue } from './inventory';
 import type { InteractSystem } from './interact';
 
 type BoxState = 'idle' | 'spinning' | 'offering';
@@ -55,10 +55,14 @@ export class MysteryBox {
   /** Forced relocation on the next resolve (debug). */
   forceMoveNext = false;
 
+  /** M13: the pull is free — G7's poster is the literal law. One pull per
+   *  bell, site-wide (the crate is one ritual, wherever it sits). */
+  readonly pullBell = new BellIssue();
+
   constructor(
     scene: THREE.Scene,
     private interact: InteractSystem,
-    private points: Points,
+    private bell: () => number,
     private weapons: Weapons,
     private toast: (m: string) => void,
   ) {
@@ -163,13 +167,12 @@ export class MysteryBox {
     if (c !== this.liveCrate) {
       return c.toy.visible ? { text: 'THE CRATE IS COLD', holdSec: 0, enabled: false, sub: 'a toy diver sits where the stock was' } : null;
     }
-    const cost = TUNING.economy.boxCost;
     if (this.state === 'spinning') return { text: 'REQUISITION PENDING…', holdSec: 0, enabled: false };
     if (this.state === 'offering' && this.offered) {
       return { text: `TAKE ${weaponDef(this.offered).name}`, holdSec: 0, enabled: true, sub: `${Math.ceil(TUNING.box.takeSec - this.t)}s before it sinks back` };
     }
-    const afford = this.points.canAfford(cost);
-    return { text: `REQUISITION ROULETTE · ${cost}`, holdSec: 0, enabled: afford, sub: afford ? 'one pull per man per bell' : `NEED ${cost}` };
+    const can = this.pullBell.canIssue(this.bell());
+    return { text: 'REQUISITION ROULETTE', holdSec: 0, enabled: can, sub: can ? 'ONE PULL PER MAN PER BELL' : 'PULLED THIS BELL — WAIT FOR THE NEXT' };
   }
 
   private executeAt(c: Crate): void {
@@ -181,7 +184,7 @@ export class MysteryBox {
       this.finishSpin();
       return;
     }
-    if (this.state !== 'idle' || !this.points.spend(TUNING.economy.boxCost)) return;
+    if (this.state !== 'idle' || !this.pullBell.issue(this.bell())) return;
     this.state = 'spinning';
     this.t = 0;
     this.cycleT = 0;
@@ -213,11 +216,12 @@ export class MysteryBox {
     c.lid.position.y = 0.98;
   }
 
-  /** The tease: the pull is a toy diver; the fee comes back; the crate goes
-   *  cold and another wakes. */
+  /** The tease: the pull is a toy diver; the crate goes cold and another
+   *  wakes. (M13: the pull was free — the tease refunds your BELL, so the
+   *  ritual owes you one.) */
   private moveOut(): void {
     const c = this.liveCrate;
-    this.points.award(TUNING.economy.boxCost); // the site refunds the ritual
+    this.pullBell.reset(); // the site owes this bell a real pull
     this.toast('A WIND-UP TOY DIVER — THE CRATE GOES COLD');
     c.toy.visible = true;
     this.finishSpin();

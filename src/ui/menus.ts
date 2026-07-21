@@ -38,7 +38,7 @@ const HOWTO = [
   'Pale chalk COLUMNS detonate on touch or gunfire: instant silt-out.',
   'Swim slow near silty floors. Speed stirs the water blind.',
   'LIGHT is information — yours, and everything else’s. F toggles it.',
-  'Points buy doors, guns, draughts. Everything worth buying is deeper.',
+  'Nothing is for sale — the site issues FREE, one pull per man per bell. Dynamite, keys, and fuel slugs are FOUND below; they open the way down.',
   'Bring the warm thing back to daylight. Once lifted: ASCEND.',
 ];
 

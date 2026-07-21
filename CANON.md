@@ -34,15 +34,15 @@
 
 | Built thing | Status | Lore relation |
 |---|---|---|
-| Weapon lockers (5 wall guns) | ✅ (free issue 🔜 M13) | Unexplained-by-design — greased and stocked after 40 years (§1.1). Their *rules* (issue cooldowns) are pure gameplay wearing the `ONE PULL PER MAN PER BELL` stencil |
-| Supply shelves (batteries/chemlights/reels) | ✅ (free issue 🔜 M13) | Same as lockers — the site works; nothing remarks on it |
-| Requisition Roulette (3 crates, tease-and-move, toy in the cold crate) | ✅ (free pull 🔜 M13) | Explained (the ritual) + Wrongness (no one explains who moves the crate). G7 poster carries the rule |
+| Weapon lockers (5 wall guns) | ✅ (free issue ✅ M13a) | Unexplained-by-design — greased and stocked after 40 years (§1.1). Their *rules* (issue cooldowns) are pure gameplay wearing the `ONE PULL PER MAN PER BELL` stencil |
+| Supply shelves (batteries/chemlights/reels) | ✅ (free issue ✅ M13a) | Same as lockers — the site works; nothing remarks on it |
+| Requisition Roulette (3 crates, tease-and-move, toy in the cold crate) | ✅ (free pull ✅ M13a) | Explained (the ritual) + Wrongness (no one explains who moves the crate). G7 poster carries the rule |
 | Box guns (Twinfish/Arc/Vortex/Sonic/Bang Stick) | ✅ | Pure gameplay — period-plausible tools; lore covers their looks only |
-| Perk stations ×9 (draught racks) | ✅ (flask pickups 🔜 M13) | Explained — NHP-series draughts, crew-slang names. That drinks grant abilities: unexplained-by-design (potable after 40 years — §1.1 covers the absurdity by refusing to notice it) |
-| Pack-a-Punch (the Bench) | ✅ (slug fee 🔜 M13) | Explained — forward machine shop bathing weapons in the Pile's output; `PROPERTY CORMORANT` tag. Why that works: void #6-adjacent, never addressed |
-| Fuel slugs | 🔜 M13 | Wrongness — `CORMORANT — OUTPUT SLUG`: the Pile's *product*, echoing T3 (a pile that eats less and gives the same) |
-| Doors: debris/grates/hatch | ✅ (dynamite/keys/5-bell toll 🔜 M13) | Explained — roof-falls, security grates, navy hatches. The hatch's 5-shift toll: void #10 (a door that charges time; treated as ordinary) |
-| Dynamite charges, brass grate keys | 🔜 M13 | Explained — site blasting stock and the stores key-board (§4 v3 rows) |
+| Perk stations ×9 (draught racks) | ✅ (flask pickups ✅ M13a) | Explained — NHP-series draughts, crew-slang names. That drinks grant abilities: unexplained-by-design (potable after 40 years — §1.1 covers the absurdity by refusing to notice it) |
+| Pack-a-Punch (the Bench) | ✅ (slug fee ✅ M13a) | Explained — forward machine shop bathing weapons in the Pile's output; `PROPERTY CORMORANT` tag. Why that works: void #6-adjacent, never addressed |
+| Fuel slugs | ✅ M13a | Wrongness — `CORMORANT — OUTPUT SLUG`: the Pile's *product*, echoing T3 (a pile that eats less and gives the same) |
+| Doors: debris/grates/hatch | ✅ (dynamite/keys/5-bell toll ✅ M13a) | Explained — roof-falls, security grates, navy hatches. The hatch's 5-shift toll: void #10 (a door that charges time; treated as ordinary) |
+| Dynamite charges, brass grate keys | ✅ M13a | Explained — site blasting stock and the stores key-board (§4 v3 rows) |
 | The power switch / the Pile | ✅ | Explained — the site's experimental reactor; cherenkov string lights are site utility lighting |
 | The Heart | ✅ | Void #1 — "Warm. That is the entire file." |
 | Chalk columns (silt traps) | ✅ | Explained — flagged flowstone; 1968 `DO NOT TOUCH — SILT` tags: the crew teaches the player |
@@ -53,7 +53,7 @@
 | Toy divers ×3 + jukebox | ✅ | Wrongness — T2's toys nobody ordered; the jukebox is morale gear, dead until they wake it |
 | The morale button + zombie party | 🔜 M16 | Meta with a fig leaf — `MORALE NIGHT — AUTHORIZED PERSONNEL`. Celebration, by user request; the fiction only shrugs |
 | Drops (Max Ammo etc.) | ✅ | Pure gameplay — no diegetic identity claimed; murk keeps them abstract |
-| Points/ledger | ✅ (vanity 🔜 M13) | Explained — Lowe's compulsive tally (§2); after M13 it is ONLY that |
+| Points/ledger | ✅ (vanity ✅ M13a) | Explained — Lowe's compulsive tally (§2); after M13 it is ONLY that |
 | Wind-up toy in the cold box crate | ✅ | Wrongness — the toy motif recurring where no toy should be |
 | G13 print at the drill head | ✅ | Void #5 — the 1971 photograph, physically pinned where its subject sits |
 | The job sheet (run intro) | ✅ | Explained + voids #4/#5 — the clinical contract with Lowe's pencil note |
@@ -61,7 +61,7 @@
 
 ## 4. Voice lines (every line, its trigger, its lore duty)
 
-**Lowe — 32 generated lines (voice: Bill), all in `src/audio/lines.json`, subtitled, once per run, anti-spam LORE §2.1.** In-head delivery lands at M12.
+**Lowe — 45 generated lines (voice: Bill), all in `src/audio/lines.json`, subtitled, once per run, anti-spam LORE §2.1.** In-head delivery ✅ M12 (his lines are thoughts; they play mid-swim).
 
 | ids | Trigger | Lore duty |
 |---|---|---|
@@ -78,9 +78,9 @@
 | secondwind.1 | Second Wind wake | Pure gameplay beat in character voice |
 | idle.1–2 | platform idle | Void #4 (the client knows) + isolation |
 | win.1 | the win screen | The forty-two beat — the game's final arithmetic error |
-| swim.1–5, bell.1–2, heart.near/carry, client.1, lamp.1, museum.1, party.1 | ✅ M12 generated + wired (swim/bell.1/heart/client/stirs-repoint live; bell.2→M13 hatch, lamp.1→M15, museum/party→M16 dormant) | Voids #1/#4/#9/#10 + the site-works — the spread-the-wrongness batch (LORE §2.2.1) |
+| swim.1–5, bell.1–2, heart.near/carry, client.1, lamp.1, museum.1, party.1 | ✅ M12 generated + wired (swim/bell.1/heart/client/stirs-repoint live; bell.2 live at the M13a hatch, lamp.1→M15, museum/party→M16 dormant) | Voids #1/#4/#9/#10 + the site-works — the spread-the-wrongness batch (LORE §2.2.1) |
 
-**REMORA — 22 generated lines (voice: Sarah), underwater-only, subtitled REMORA.** Robotic in-head treatment lands at M12.
+**REMORA — 29 generated lines (voice: Sarah), underwater-only, subtitled REMORA.** Robotic in-head treatment ✅ M12.
 
 | ids | Trigger | Lore duty |
 |---|---|---|
@@ -98,7 +98,7 @@
 | rem.stirs.1 | Cave Stirs | ⚠ same M14 orphan as Lowe's stirs.1 — re-trigger as an Ascent/population warning |
 | rem.abyss.1 | entering the Abyss | Her charts end; the water doesn't |
 | rem.amb.1–6 | ambient musings | Voids #4/#7 + the "someone reads these logs" thread; amb.4 is count-flavored (grandfathered) |
-| rem.bell.1, rem.hatch.1, rem.lamp.1, rem.warm.1, rem.works.1, rem.museum.1, rem.silence.1 | ✅ M12 generated + wired (bell/warm/works/silence + stirs→Ascent live; hatch→M13, lamp→M15, museum→M16 dormant) | Voids #10/#9/#1/#7 + the is-she-real thread (rem.silence.1) |
+| rem.bell.1, rem.hatch.1, rem.lamp.1, rem.warm.1, rem.works.1, rem.museum.1, rem.silence.1 | ✅ M12 generated + wired (bell/warm/works/silence + stirs→Ascent live; hatch live at the M13a toll, lamp→M15, museum→M16 dormant) | Voids #10/#9/#1/#7 + the is-she-real thread (rem.silence.1) |
 
 **Tapes — 6 generated (distinct voices; T6 deliberately cast neutral, a voice not in the crew book).** Each is mundane official business with exactly one wrongness; together they corroborate nothing (LORE §5). T1 count-over · T2 toys · T3 the Pile's fast · T4 synchronized pulses · T5 two true depths · T6 the roster read three weeks after the water.
 

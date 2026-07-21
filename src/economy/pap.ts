@@ -10,7 +10,7 @@ import { NODES } from '../cave/data';
 import { sdf } from '../cave/sdf';
 import { TUNING } from '../tuning';
 import type { Weapons, WeaponSlot } from '../player/weapons';
-import type { Points } from './points';
+import type { Inventory } from './inventory';
 import type { InteractSystem } from './interact';
 
 export class PapBench {
@@ -23,7 +23,7 @@ export class PapBench {
   constructor(
     scene: THREE.Scene,
     interact: InteractSystem,
-    private points: Points,
+    private inventory: Inventory,
     private weapons: Weapons,
     private powered: () => boolean,
     private toast: (m: string) => void,
@@ -66,24 +66,25 @@ export class PapBench {
       pos: [g.position.x, g.position.y + 0.9, g.position.z],
       prompt: () => {
         if (this.state === 'working') return { text: 'THE BENCH IS WORKING…', holdSec: 0, enabled: false };
-        if (!this.powered()) return { text: `THE BENCH · ${TUNING.economy.papCost}`, holdSec: 0, enabled: false, sub: 'COLD — THE PILE IS DOWN' };
+        if (!this.powered()) return { text: 'THE BENCH', holdSec: 0, enabled: false, sub: 'COLD — THE PILE IS DOWN' };
         const s = this.weapons.current;
         if (s.def.papped) return { text: s.def.name, holdSec: 0, enabled: false, sub: 'ALREADY WORKED' };
-        const afford = this.points.canAfford(TUNING.economy.papCost);
+        // M13 (DESIGN §10.6): the fee is a fuel slug, found in the world
+        const has = this.inventory.slugs > 0;
         return {
-          text: `WORK THE ${s.def.name} · ${TUNING.economy.papCost}`,
+          text: `WORK THE ${s.def.name} · 1 FUEL SLUG`,
           holdSec: 0,
-          enabled: afford,
-          sub: afford ? 'PROPERTY CORMORANT' : `NEED ${TUNING.economy.papCost}`,
+          enabled: has,
+          sub: has ? 'PROPERTY CORMORANT' : 'NO SLUG ON THE BELT — THE PILE MAKES THEM',
         };
       },
       execute: () => {
         if (this.state !== 'idle' || !this.powered() || this.weapons.current.def.papped) return;
-        if (!this.points.spend(TUNING.economy.papCost)) return;
+        if (!this.inventory.useSlug()) return;
         this.benched = this.weapons.current;
         this.state = 'working';
         this.t = 0;
-        this.toast('THE BENCH TAKES IT');
+        this.toast('THE BENCH TAKES THE SLUG — AND THE GUN');
       },
     });
   }

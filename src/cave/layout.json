@@ -163,7 +163,12 @@
       ],
       "radius": 1.2,
       "zone": "sinkhole",
-      "tags": []
+      "tags": [],
+      "contents": {
+        "pickup": {
+          "kind": "dynamite"
+        }
+      }
     },
     {
       "id": "gal-entry",
@@ -327,7 +332,12 @@
       ],
       "radius": 2.53,
       "zone": "galleries",
-      "tags": []
+      "tags": [],
+      "contents": {
+        "pickup": {
+          "kind": "dynamite"
+        }
+      }
     },
     {
       "id": "gal-berthing",
@@ -379,7 +389,12 @@
       "contents": {
         "landmarkName": "Rec Room",
         "tape": "T2",
-        "poster": "G12"
+        "poster": "G12",
+        "pickup": {
+          "kind": "key",
+          "keyFor": "gal-entry→gal-pile",
+          "label": "PILE GRATE"
+        }
       }
     },
     {
@@ -429,7 +444,10 @@
       "contents": {
         "landmarkName": "The Pile",
         "tape": "T3",
-        "poster": "G5"
+        "poster": "G5",
+        "pickup": {
+          "kind": "slug"
+        }
       }
     },
     {
@@ -524,7 +542,10 @@
         "cache"
       ],
       "contents": {
-        "cache": "battery"
+        "cache": "battery",
+        "pickup": {
+          "kind": "dynamite"
+        }
       }
     },
     {
@@ -760,7 +781,12 @@
         "perk": "ironLungs",
         "vendor": "chemlights",
         "tape": "T4",
-        "poster": "G6"
+        "poster": "G6",
+        "pickup": {
+          "kind": "key",
+          "keyFor": "mz-gate→mz-stores",
+          "label": "STORES GRATE"
+        }
       }
     },
     {
@@ -932,7 +958,10 @@
         "cache"
       ],
       "contents": {
-        "cache": "battery"
+        "cache": "battery",
+        "pickup": {
+          "kind": "dynamite"
+        }
       }
     },
     {
@@ -990,7 +1019,10 @@
         "chalkMound"
       ],
       "contents": {
-        "cache": "chemlights"
+        "cache": "chemlights",
+        "pickup": {
+          "kind": "slug"
+        }
       }
     },
     {
@@ -1239,7 +1271,10 @@
       ],
       "contents": {
         "tape": "T6",
-        "poster": "G13"
+        "poster": "G13",
+        "pickup": {
+          "kind": "slug"
+        }
       }
     },
     {

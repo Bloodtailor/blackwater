@@ -34,6 +34,8 @@ import { Shops } from './economy/shops';
 import { MysteryBox } from './economy/mysteryBox';
 import { PapBench } from './economy/pap';
 import { Drops, type DropId } from './economy/drops';
+import { Inventory } from './economy/inventory';
+import { buildPickups } from './economy/pickups';
 import { AudioDirector } from './audio/director';
 import { SAMPLES } from './audio/samples';
 import { loadManifest, VoicePlayer, VoiceQueue, type VoManifest } from './audio/voice';
@@ -207,9 +209,25 @@ function initGame(): void {
   weapons.bindMouse(renderer.domElement, () => !vitals.dead && player.mode !== 'noclip');
   const E = TUNING.economy;
 
-  // ── the economy (M6a): perks, interact prompts, shops, power ──
+  // ── the economy (M6a; M13 free-issue rework — the site issues, it does
+  // not sell; the belt carries what opens the way down) ──
   const perks = new Perks();
   const interact = new InteractSystem();
+  const inventory = new Inventory();
+  inventory.onChange = () => hud.setBelt(inventory.dynamite, [...inventory.keys.values()], inventory.slugs);
+  // the Abyss hatch's toll (DESIGN §10.3): free to crank — the site charges
+  // TIME. Five bells ring out, the shift counter rolls up five, and the
+  // director's horn is synced away so the bells own the moment.
+  const hatchToll = (): void => {
+    const n = rounds.round + 5;
+    audio.syncRound(n);
+    rounds.startRound(n);
+    const e = audio.engine;
+    if (e && e.running) void import('./audio/sfx').then((s) => s.bellSequence(e.ctx, e.master));
+    voice.request('bell.2');
+    remora.request('rem.hatch.1');
+    hud.toast('THE SITE CHARGES TIME — FIVE BELLS');
+  };
   const applyPerkEffects = (): void => {
     const m = perks.mods;
     vitals.mods = m;
@@ -223,10 +241,12 @@ function initGame(): void {
     scene,
     interact,
     doors,
-    points,
+    inventory,
+    bell: () => rounds.round,
     perks,
     weapons,
     toast: (msg) => hud.toast(msg),
+    onHatchToll: hatchToll,
     onPerkBought: (id) => {
       applyPerkEffects();
       run.draughts++;
@@ -254,9 +274,11 @@ function initGame(): void {
     },
   });
 
-  // ── M6b: the Requisition Roulette, the Bench, drops ──
-  const box = new MysteryBox(scene, interact, points, weapons, (m) => hud.toast(m));
-  const pap = new PapBench(scene, interact, points, weapons, () => shops.powered, (m) => hud.toast(m));
+  // ── M6b: the Requisition Roulette, the Bench, drops (M13: free pull per
+  // bell; the Bench eats a found fuel slug per upgrade) ──
+  const box = new MysteryBox(scene, interact, () => rounds.round, weapons, (m) => hud.toast(m));
+  const pap = new PapBench(scene, interact, inventory, weapons, () => shops.powered, (m) => hud.toast(m));
+  buildPickups(scene, interact, inventory, (m) => hud.toast(m));
   const impactGlow = new ImpactGlow(scene);
   const drops = new Drops({
     scene,
@@ -305,7 +327,6 @@ function initGame(): void {
     rounds: rounds.round,
     timeSec: run.timeSec,
     draughts: run.draughts,
-    spent: points.totalSpent,
   });
   // G13: the photograph, pinned at the drill head (LORE §7 — the print IS
   // the fallback art; the date is the wrongness)
@@ -835,7 +856,20 @@ function initGame(): void {
 
   const econSec = debug.section('Economy');
   debug.toggle(econSec, 'Power on', () => shops.powered, (v) => shops.setPowered(v));
-  debug.button(econSec, 'Give 20000 points', () => points.award(20000));
+  debug.button(econSec, 'Give 20000 ledger', () => points.award(20000));
+  // M13 found-item economy
+  debug.button(econSec, 'Give dynamite', () => inventory.addDynamite());
+  debug.button(econSec, 'Give both grate keys', () => {
+    inventory.addKey('gal-entry→gal-pile', 'PILE GRATE');
+    inventory.addKey('mz-gate→mz-stores', 'STORES GRATE');
+  });
+  debug.button(econSec, 'Give fuel slug', () => inventory.addSlug());
+  debug.button(econSec, 'Reset bell issues', () => {
+    for (const b of shops.issues) b.reset();
+    box.pullBell.reset();
+    flashStatus('all stations may issue again');
+  });
+  debug.button(econSec, 'Hatch toll (5 bells, +5 shifts)', () => hatchToll());
   const perkSelect = document.createElement('select');
   perkSelect.style.width = '100%';
   for (const id of ALL_PERKS) {
@@ -1585,6 +1619,8 @@ function initGame(): void {
     specials,
     heart,
     runStats,
+    inventory,
+    hatchToll,
     audio,
     audioVerify: () => import('./audio/verify'),
     voice,
