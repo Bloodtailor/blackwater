@@ -12,8 +12,8 @@ import * as THREE from 'three';
 import { TUNING } from '../tuning';
 import { getNode } from '../cave/data';
 import { sdf } from '../cave/sdf';
-import { SETTINGS } from '../ui/settings';
 import type { AudioEngine, PositionalHandle } from '../audio/engine';
+import { MUSIC } from '../audio/music';
 import { toyShimmer, toyWind, type StopFn } from '../audio/sfx';
 import type { InteractSystem } from '../economy/interact';
 import { GALLERY } from './gallery';
@@ -33,7 +33,6 @@ export class Toys {
   private shimmers: { handle: PositionalHandle; stop: StopFn }[] = [];
   private shimmerStarted = false;
   private jukeboxGlow: THREE.MeshStandardMaterial | null = null;
-  private trackEl: HTMLAudioElement | null = null;
   private toyPos: THREE.Vector3[] = [];
   /** Per-toy wind closures (interact executes + the debug wind-all button). */
   private winders: (() => void)[] = [];
@@ -136,7 +135,7 @@ export class Toys {
       pos: [jg.position.x, jg.position.y, jg.position.z],
       prompt: () =>
         this.jukeboxOn
-          ? { text: this.trackEl ? 'JUKEBOX — NEXT TRACK' : 'JUKEBOX — PLAY', holdSec: 0, enabled: true }
+          ? { text: MUSIC.current?.id === 'jukebox' ? 'JUKEBOX — NEXT TRACK' : 'JUKEBOX — PLAY', holdSec: 0, enabled: true }
           : { text: `DEAD — ${3 - this.wound} tin diver${3 - this.wound === 1 ? '' : 's'} still sleep${3 - this.wound === 1 ? 's' : ''}`, holdSec: 0, enabled: false },
       execute: () => {
         if (this.jukeboxOn) void this.playNextTrack(true);
@@ -207,24 +206,15 @@ export class Toys {
     const pick = this.tracks[this.trackIdx];
     this.lastTrack = pick;
     if (fromInteract) this.onTrack?.(pick.replace(/\.[a-z0-9]+$/i, ''));
-    const ctx = e.ctx as AudioContext;
-    // offline verification contexts can't host media elements — the pick
-    // still registers (lastTrack) so the harness can assert the choice
-    if (typeof ctx.createMediaElementSource !== 'function') return;
-    this.stopMusic();
-    const el = new Audio(`/music/easteregg/${encodeURIComponent(pick)}`);
-    const src = ctx.createMediaElementSource(el);
-    const g = ctx.createGain();
-    g.gain.value = TUNING.voice.jukeboxGain * SETTINGS.volumeMusic;
-    src.connect(g);
-    g.connect(e.music);
-    this.trackEl = el;
-    void el.play().catch(() => {});
+    // M12: the jukebox plays through the ONE music slot — starting a track
+    // stops whatever else is on (the lull, even Moonlight if the player
+    // insists). The factory (main) owns the element/engine plumbing and
+    // returns false in offline harness contexts — lastTrack still registers.
+    MUSIC.play('jukebox', `/music/easteregg/${encodeURIComponent(pick)}`, TUNING.voice.jukeboxGain, { name: pick.replace(/\.[a-z0-9]+$/i, '') });
   }
 
   /** Debug/win-screen: stop the song. */
   stopMusic(): void {
-    this.trackEl?.pause();
-    this.trackEl = null;
+    MUSIC.stop('jukebox');
   }
 }

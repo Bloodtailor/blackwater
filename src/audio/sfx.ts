@@ -323,6 +323,22 @@ export function roundStinger(ctx: BaseAudioContext, out: AudioNode): void {
   }
 }
 
+/** The shift bell (M12, DESIGN §14): one unhurried toll of the site's watch
+ *  bell. M14 makes it THE shift-change sound; the Abyss hatch rings five. */
+export function shiftBell(ctx: BaseAudioContext, out: AudioNode): void {
+  const v = TUNING.audio.bellGain;
+  if (SAMPLES.play(ctx, out, 'shift-bell', { gain: v })) return;
+  // struck-bell synth: two inharmonic partials + a strike transient
+  tone(ctx, out, { type: 'sine', hz: 220, attack: 0.004, hold: 0.4, release: 2.6, gain: 0.34 * v });
+  tone(ctx, out, { type: 'sine', hz: 553, attack: 0.004, hold: 0.2, release: 1.8, gain: 0.16 * v, detune: 8 });
+  noiseBurst(ctx, out, { filter: 'bandpass', hz: 2400, attack: 0.002, hold: 0.02, release: 0.12, gain: 0.12 * v });
+}
+
+/** Five bells, one after another — the Abyss hatch's toll (M13 consumes). */
+export function bellSequence(ctx: BaseAudioContext, out: AudioNode, count = 5, spacingSec = 1.6): void {
+  for (let i = 0; i < count; i++) setTimeout(() => shiftBell(ctx, out), i * spacingSec * 1000);
+}
+
 /** The Cave Stirs: a rising unresolved swell. */
 export function stirsStinger(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;

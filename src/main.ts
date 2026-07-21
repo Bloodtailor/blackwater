@@ -37,6 +37,8 @@ import { Drops, type DropId } from './economy/drops';
 import { AudioDirector } from './audio/director';
 import { SAMPLES } from './audio/samples';
 import { loadManifest, VoicePlayer, VoiceQueue, type VoManifest } from './audio/voice';
+import { MUSIC } from './audio/music';
+import { arbitrate } from './audio/speech';
 import { REMORA_LINES, TAPES } from './audio/lines';
 import { TapeDeck, TapeProps } from './game/tapes';
 import { Toys } from './game/toys';
@@ -347,8 +349,38 @@ function initGame(): void {
   // helmet speaker (master — the water never touches it). Same anti-spam
   // queue rules as Lowe: silence is still the default.
   const remora = new VoiceQueue(REMORA_LINES);
-  const remoraPlayer = new VoicePlayer(() => audio.engine, () => voManifest, 'master');
+  const remoraPlayer = new VoicePlayer(() => audio.engine, () => voManifest, 'remora');
   remoraPlayer.onEnded = () => remora.setSpeakSeconds(0);
+
+  // ── M12: ONE SONG — the real track factory behind the MusicDirector.
+  // Every song (jukebox/lull/Moonlight) builds here: element → gain →
+  // engine.music. Null in offline harness contexts (no media elements). ──
+  MUSIC.wire((url, gain, loop, onEnded) => {
+    const e = audio.engine;
+    if (!e || !e.running) return null;
+    const ctx = e.ctx as AudioContext;
+    if (typeof ctx.createMediaElementSource !== 'function') return null;
+    const el = new Audio(url);
+    el.loop = loop;
+    const src = ctx.createMediaElementSource(el);
+    const g = ctx.createGain();
+    g.gain.value = gain * SETTINGS.volumeMusic;
+    src.connect(g);
+    g.connect(e.music);
+    el.addEventListener('ended', onEnded);
+    void el.play().catch(() => {});
+    return {
+      stop: () => {
+        el.pause();
+        try {
+          src.disconnect();
+        } catch {
+          // context already gone
+        }
+      },
+    };
+  });
+  MUSIC.lullCooldown = 150; // opening grace: no lull in the first minutes
   const deck = new TapeDeck();
   const tapeProps = new TapeProps(scene, interact, deck, () => audio.engine, () => voManifest, (m) => hud.toast(m));
   deck.onFinished = (tape) => {
@@ -590,12 +622,15 @@ function initGame(): void {
     eSwallow: false,
     // H freed the mouse for the debug panel — suppress the pause-on-unlock
     dbgMouseFree: false,
-    // seconds since any dialog (tape / Lowe / REMORA) last held the screen —
-    // drives the sinister lull track (user 2026-07-20)
-    noDialogT: 0,
-    lullCooldown: 150, // initial grace: no lull in the first minutes
     // REMORA pacing (event lines re-request harmlessly — the queue dedupes)
     remAmbT: 0,
+    // M12 v3 triggers (LORE §2.2.1): submerged-musing offer clock, the bell
+    // round tracker, ascent clock, gun-count for rem.works, Moonlight latch
+    swimAmbT: 0,
+    v3BellRound: 0,
+    ascentT: 0,
+    gunsOwned: 1,
+    moonlightStarted: false,
   };
   const heartNode = NODES.find((n) => n.tags.includes('heart'));
   // H toggles the DEBUG layer only — the game HUD stays up (user 2026-07-20:
@@ -915,6 +950,24 @@ function initGame(): void {
     const e = audio.ensure();
     void import('./audio/sfx').then((s) => (which === 'round' ? s.roundStinger(e.ctx, e.master) : s.stirsStinger(e.ctx, e.master)));
   };
+  // ── M12: one voice, one song ──
+  debug.button(audSec, 'Shift bell ×1', () => {
+    const e = audio.ensure();
+    void import('./audio/sfx').then((s) => s.shiftBell(e.ctx, e.master));
+  });
+  debug.button(audSec, 'Shift bells ×5 (the hatch)', () => {
+    const e = audio.ensure();
+    void import('./audio/sfx').then((s) => s.bellSequence(e.ctx, e.master));
+  });
+  debug.button(audSec, 'Moonlight now', () => MUSIC.play('moonlight', '/music/easteregg/moonlight-at-the-waterline.mp3', TUNING.audio.moonlightGain, { name: 'Moonlight at the Waterline' }));
+  debug.button(audSec, 'Stop music', () => MUSIC.stop());
+  debug.button(audSec, 'Offer a swim musing', () => voice.request(['swim.1', 'swim.2', 'swim.3', 'swim.4', 'swim.5'].filter((id) => !voice.played.has(id))[0] ?? 'swim.1'));
+  debug.button(audSec, 'Speech/music state', () =>
+    flashStatus(
+      `speaking: ${deck.playing ? 'TAPE' : voice.current ? 'LOWE ' + voice.current.id : remora.current ? 'REMORA ' + remora.current.id : '—'} | ` +
+        `song: ${MUSIC.current ? MUSIC.current.id + ' (' + MUSIC.current.name + ')' : '—'} | quiet ${MUSIC.quietT.toFixed(0)}s | lull cd ${MUSIC.lullCooldown.toFixed(0)}s`,
+    ),
+  );
 
   buildTuningUI(debug.section('Tuning'));
 
@@ -1249,7 +1302,11 @@ function initGame(): void {
           hud.setAscent(false);
           hud.setLedger(runStats());
           hud.showWin();
-          voice.request('win.1'); // the forty-two beat, spoken
+          voice.request('win.1'); // the forty-two beat, in his head over the coda
+          // M12: the ending holds INSIDE the song — the world's buses fade
+          // out, the music bus and the head voices stay. If Moonlight (or
+          // anything) is playing, it plays out clear to the end.
+          audio.engine?.muteWorld();
         }
       }
       const acts = weapons.update(dt, { reloadMult: perks.mods.reloadMult, fireDelayMult: perks.mods.fireDelayMult });
@@ -1321,8 +1378,10 @@ function initGame(): void {
       if (ctl.voRound > 0 && sustained) requestOneOf(['round.1', 'round.2']);
       ctl.voRound = rounds.round;
     }
-    if (rounds.caveStirsActive && !ctl.voStirs && sustained) voice.request('stirs.1');
-    ctl.voStirs = rounds.caveStirsActive;
+    // M12 re-point (the Cave Stirs dies at M14): Lowe's stragglers line now
+    // fires on real crowd pressure, in-head, wherever he is
+    if (zombies.aliveCount >= 7 && !ctl.voStirs) voice.request('stirs.1');
+    ctl.voStirs = zombies.aliveCount >= 7;
     if (!ctl.tally100 && zombies.recovered >= 100) {
       ctl.tally100 = true;
       voice.request('tally.100');
@@ -1336,13 +1395,12 @@ function initGame(): void {
       ctl.idleT += dt;
       if (ctl.idleT > TUNING.voice.idleAfterSec) {
         ctl.idleT = 0;
-        requestOneOf(['idle.1', 'idle.2']);
+        // late in the run the client musing joins the platform rotation (v3)
+        requestOneOf(rounds.round >= 8 ? ['idle.1', 'idle.2', 'client.1'] : ['idle.1', 'idle.2']);
       }
     } else ctl.idleT = 0;
     // tapes: play the moment they're picked up, wherever you are
     deck.update(dt);
-    const startedLine = voice.update(dt, sustained, deck.playing !== null);
-    if (startedLine) voicePlayer.play(startedLine);
 
     // ── the REMORA unit (user 2026-07-20, LORE §2.4): dialog BELOW the
     // surface, the exact complement of Lowe. Event triggers re-request
@@ -1364,7 +1422,6 @@ function initGame(): void {
       if (heartNode && !heart.held && !heart.won && Math.hypot(heartNode.pos[0] - p.x, heartNode.pos[1] - p.y, heartNode.pos[2] - p.z) < 12) remora.request('rem.heart.1');
       if (heart.ascentActive) remora.request('rem.ascent.1');
       if (shops.powered) remora.request('rem.power.1');
-      if (rounds.caveStirsActive) remora.request('rem.stirs.1');
       if (zone === 'abyss') remora.request('rem.abyss.1');
       // ambient musings: offer one every ~90 s under; the queue's cooldown
       // and 40% roll still decide whether she actually says it
@@ -1375,7 +1432,51 @@ function initGame(): void {
         if (fresh.length > 0) remora.request(fresh[Math.floor(Math.random() * fresh.length)].id);
       }
     }
-    const remStarted = remora.update(dt, submergedNow, deck.playing !== null);
+
+    // ── M12 v3 triggers (LORE §2.2.1): the wrongness spread wide ──
+    if (submergedNow) {
+      // the inner voice at depth: a musing OFFERED periodically; the roll +
+      // 120 s cooldown still decide (silence stays the default)
+      ctl.swimAmbT += dt;
+      if (ctl.swimAmbT > TUNING.voice.swimAmbientOfferSec) {
+        ctl.swimAmbT = 0;
+        const fresh = ['swim.1', 'swim.2', 'swim.3', 'swim.4', 'swim.5'].filter((id) => !voice.played.has(id));
+        if (fresh.length > 0) voice.request(fresh[Math.floor(Math.random() * fresh.length)]);
+      }
+      if (MUSIC.quietT > TUNING.voice.silenceLineSec) remora.request('rem.silence.1');
+      if (heartNode && !heart.held && Math.hypot(heartNode.pos[0] - p.x, heartNode.pos[1] - p.y, heartNode.pos[2] - p.z) < TUNING.voice.heartNearM) voice.request('heart.near.1');
+      if (zone === 'abyss' && heartNode && !heart.won && Math.hypot(heartNode.pos[0] - p.x, heartNode.pos[1] - p.y, heartNode.pos[2] - p.z) < 22) remora.request('rem.warm.1');
+    }
+    if (rounds.round !== ctl.v3BellRound) {
+      // the shift bell heard from below (bell.2/rem.hatch.1 wait for M13's hatch)
+      if (ctl.v3BellRound > 0 && submergedNow) {
+        voice.request('bell.1');
+        remora.request('rem.bell.1');
+      }
+      ctl.v3BellRound = rounds.round;
+    }
+    if (heart.ascentActive && !heart.won) {
+      ctl.ascentT += dt;
+      if (ctl.ascentT > TUNING.voice.heartCarryDelaySec) voice.request('heart.carry.1');
+      // rem.stirs re-pointed (M12): "re-tasking its complement" IS the Ascent
+      if (ctl.ascentT > 15) remora.request('rem.stirs.1');
+    }
+    if (weapons.slots.length > ctl.gunsOwned) {
+      if (submergedNow) remora.request('rem.works.1'); // the inventory answered
+      ctl.gunsOwned = weapons.slots.length;
+    }
+
+    // ── M12 ONE VOICE: the shared speech slot — a tape blocks both, an
+    // active speaker keeps it, else the better head-of-queue goes first ──
+    const loweCanSpeak = !vitals.dead && player.mode !== 'noclip'; // the inner voice needs only a living head
+    const slot = arbitrate(
+      deck.playing !== null,
+      { speaking: voice.current !== null, next: voice.peek() },
+      { speaking: remora.current !== null, next: remora.peek() },
+    );
+    const startedLine = voice.update(dt, loweCanSpeak, slot.loweBlocked);
+    if (startedLine) voicePlayer.play(startedLine);
+    const remStarted = remora.update(dt, submergedNow, slot.remoraBlocked);
     if (remStarted) remoraPlayer.play(remStarted);
 
     toys.update();
@@ -1389,15 +1490,19 @@ function initGame(): void {
     else if (remora.current) hud.subtitle('REMORA', remora.current.text);
     else hud.subtitle(null);
 
-    // ── the lull (user 2026-07-20): a long stretch with no dialog earns a
-    // one-minute calmer-but-sinister piece on the music bus ──
+    // ── M12 ONE SONG: the music slot ticks its quiet clock; the lull only
+    // grows out of TRUE silence (no music AND no dialog — the user heard it
+    // collide with the jukebox; never again) ──
     const dialogActive = deck.playing !== null || voice.current !== null || remora.current !== null;
-    ctl.noDialogT = dialogActive ? 0 : ctl.noDialogT + dt;
-    ctl.lullCooldown -= dt;
-    if (ctl.noDialogT > TUNING.audio.lullAfterSec && ctl.lullCooldown <= 0 && !vitals.dead && !heart.won) {
-      ctl.lullCooldown = TUNING.audio.lullCooldownSec;
-      ctl.noDialogT = 0;
-      audio.playMusic('/music/lull.mp3', TUNING.audio.lullGain);
+    MUSIC.update(dt, dialogActive);
+    if (!vitals.dead && !heart.won) MUSIC.tryLull('/music/lull.mp3', TUNING.audio.lullGain, TUNING.audio.lullAfterSec, TUNING.audio.lullCooldownSec);
+
+    // ── "Moonlight at the Waterline" — the ascent finale (user 2026-07-21):
+    // carrying the Heart shallower than 50 m with no song playing starts it;
+    // winning while it plays holds the ending inside the song ──
+    if (heart.ascentActive && !heart.won && depth < TUNING.voice.moonlightDepthM && !MUSIC.playing && !ctl.moonlightStarted && !vitals.dead) {
+      ctl.moonlightStarted = true;
+      MUSIC.play('moonlight', '/music/easteregg/moonlight-at-the-waterline.mp3', TUNING.audio.moonlightGain, { name: 'Moonlight at the Waterline' });
     }
 
     // ── audio (M8a): state edges + the per-tick snapshot ──
@@ -1484,6 +1589,7 @@ function initGame(): void {
     audioVerify: () => import('./audio/verify'),
     voice,
     remora,
+    music: MUSIC,
     deck,
     toys,
     menus,

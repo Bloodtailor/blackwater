@@ -160,6 +160,71 @@
       "cat": "event",
       "text": "Recovery complete. Forty-one. …Forty-two. Out of the water, Lowe. Out of the water.",
       "forced": true
+    },
+    {
+      "id": "swim.1",
+      "cat": "ambient",
+      "text": "Good water, this. Clear where it wants you to see. I’ve noticed what it wants me to see."
+    },
+    {
+      "id": "swim.2",
+      "cat": "ambient",
+      "text": "Kick, glide. Kick, glide. Thirty years and my legs still do the talking so the rest of me doesn’t have to."
+    },
+    {
+      "id": "swim.3",
+      "cat": "ambient",
+      "text": "The lockers are greased. Forty years down and the lockers are greased. Somebody keeps house. I’ve stopped wondering on the clock."
+    },
+    {
+      "id": "swim.4",
+      "cat": "ambient",
+      "text": "Cold’s honest, at least. Everything down here that’s honest, I can list on one hand."
+    },
+    {
+      "id": "swim.5",
+      "cat": "ambient",
+      "text": "I’ve been in three hundred caves and none of them ever felt occupied. Occupied is the word I’ve been avoiding."
+    },
+    {
+      "id": "bell.1",
+      "cat": "event",
+      "text": "Bell. Somebody’s still ringing the watch. I’ve decided it’s a machine. I’ve decided that twice now."
+    },
+    {
+      "id": "bell.2",
+      "cat": "event",
+      "text": "Five bells for one door. Steep. I’ve paid worse for less and the site knows it."
+    },
+    {
+      "id": "heart.near.1",
+      "cat": "event",
+      "text": "Warm through the glove. Rock shouldn’t hold a temperature like a wrist does."
+    },
+    {
+      "id": "heart.carry.1",
+      "cat": "event",
+      "text": "Steady hands. It’s just a job. It’s just a warm thing that wants carrying. Nobody carry-talks me back, please."
+    },
+    {
+      "id": "client.1",
+      "cat": "ambient",
+      "text": "The letter said carried, not rigged. A man who’s never lifted a body knows exactly how this one wants lifting. I charged extra for not asking."
+    },
+    {
+      "id": "lamp.1",
+      "cat": "event",
+      "text": "A lamp, standing. Lamps hang or they’re held. I looked away first. That’s twice in my life."
+    },
+    {
+      "id": "museum.1",
+      "cat": "event",
+      "text": "Somebody kept everything. Dusted, labeled, lit. I recover things for a living and even I find this thorough."
+    },
+    {
+      "id": "party.1",
+      "cat": "event",
+      "text": "Well. The notice board did say morale was mandatory."
     }
   ],
   "tapes": [
@@ -323,6 +388,41 @@
       "id": "rem.amb.6",
       "cat": "ambient",
       "text": "Holding station. The site is also holding station. One of you should blink."
+    },
+    {
+      "id": "rem.bell.1",
+      "cat": "event",
+      "text": "Shift bell logged. The site’s clock and mine disagree by a value that is not constant. I log both."
+    },
+    {
+      "id": "rem.hatch.1",
+      "cat": "event",
+      "text": "Hatch procedure accepted. Cost: five bells. Debiting your shift record. The site does not take money. I would have mentioned it."
+    },
+    {
+      "id": "rem.lamp.1",
+      "cat": "event",
+      "text": "A lamp ahead, stationary. Lamps are carried. Carried lamps move. I have no advice."
+    },
+    {
+      "id": "rem.warm.1",
+      "cat": "event",
+      "text": "Ambient temperature rising. My charts show this water getting colder with depth. My charts are correct. So is the thermometer."
+    },
+    {
+      "id": "rem.works.1",
+      "cat": "ambient",
+      "text": "Requisition logged against the site inventory. The inventory accepted it. The inventory should not be answering."
+    },
+    {
+      "id": "rem.museum.1",
+      "cat": "event",
+      "text": "This room is dry, lit, and catalogued. It appears on no schematic I hold. Enjoy your visit."
+    },
+    {
+      "id": "rem.silence.1",
+      "cat": "ambient",
+      "text": "You have not spoken in some time. Neither have I. One of us should log that."
     }
   ]
 }

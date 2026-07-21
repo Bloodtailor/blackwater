@@ -41,6 +41,16 @@ export class AudioEngine {
    *  should shine. This bus never ducks: open air = full and bright,
    *  submerged = muffled (low-pass) but at full level. */
   readonly music: GainNode;
+  /** Lowe's inner voice (M12, LORE §2.1 v3): dry, close, INSIDE the skull —
+   *  never water-filtered, never positional, never ducked. Gentle low-pass
+   *  warmth + light compression + a whisper-quiet doubled layer ~28 ms
+   *  behind (the "thought" texture). */
+  readonly loweHead: GainNode;
+  /** The REMORA unit (M12, LORE §2.4 v3): unmistakably synthetic — telephone
+   *  band-pass + a slow ring-mod tremolo + hard compression (machined
+   *  flatness), with the same in-head intimacy as Lowe. Whether she is real
+   *  is a question the DSP deliberately refuses to answer. */
+  readonly remoraHead: GainNode;
   private musicFilter: BiquadFilterNode;
   /** Post-filter analyser for verification (RMS of what's actually audible). */
   readonly analyser: AnalyserNode;
@@ -108,6 +118,69 @@ export class AudioEngine {
     this.musicFilter.Q.value = 0.4;
     this.music.connect(this.musicFilter);
     this.musicFilter.connect(this.master);
+
+    // ── Lowe's in-head chain (M12): warmth low-pass → light compression →
+    // master, plus a 28 ms whisper double for the inner-voice texture ──
+    this.loweHead = this.ctx.createGain();
+    const headLp = this.ctx.createBiquadFilter();
+    headLp.type = 'lowpass';
+    headLp.frequency.value = A.headVoiceLowpassHz;
+    headLp.Q.value = 0.5;
+    const headComp = this.ctx.createDynamicsCompressor();
+    headComp.threshold.value = -28;
+    headComp.ratio.value = 6;
+    headComp.attack.value = 0.004;
+    headComp.release.value = 0.18;
+    this.loweHead.connect(headLp);
+    headLp.connect(headComp);
+    headComp.connect(this.master);
+    const double = this.ctx.createDelay(0.1);
+    double.delayTime.value = 0.028;
+    const doubleGain = this.ctx.createGain();
+    doubleGain.gain.value = A.headDoubleGain;
+    const doubleLp = this.ctx.createBiquadFilter();
+    doubleLp.type = 'lowpass';
+    doubleLp.frequency.value = 2400;
+    this.loweHead.connect(double);
+    double.connect(doubleLp);
+    doubleLp.connect(doubleGain);
+    doubleGain.connect(headComp);
+
+    // ── REMORA's chain (M12): telephone band (hp+lp) → slow ring-mod
+    // tremolo → hard compression → master. The tremolo oscillator runs for
+    // the life of the context (cheap, silent while no voice feeds it). ──
+    this.remoraHead = this.ctx.createGain();
+    const remHp = this.ctx.createBiquadFilter();
+    remHp.type = 'highpass';
+    remHp.frequency.value = A.remoraBandLowHz;
+    remHp.Q.value = 0.7;
+    const remLp = this.ctx.createBiquadFilter();
+    remLp.type = 'lowpass';
+    remLp.frequency.value = A.remoraBandHighHz;
+    remLp.Q.value = 0.7;
+    const ring = this.ctx.createGain();
+    ring.gain.value = 1 - A.remoraRingDepth; // baseline; the osc adds the wobble
+    const ringOsc = this.ctx.createOscillator();
+    ringOsc.type = 'sine';
+    ringOsc.frequency.value = A.remoraRingHz;
+    const ringDepth = this.ctx.createGain();
+    ringDepth.gain.value = A.remoraRingDepth;
+    ringOsc.connect(ringDepth);
+    ringDepth.connect(ring.gain);
+    ringOsc.start();
+    const remComp = this.ctx.createDynamicsCompressor();
+    remComp.threshold.value = -30;
+    remComp.ratio.value = 9;
+    remComp.attack.value = 0.003;
+    remComp.release.value = 0.12;
+    const remMakeup = this.ctx.createGain();
+    remMakeup.gain.value = 1.25; // the band-pass eats level; put it back
+    this.remoraHead.connect(remHp);
+    remHp.connect(remLp);
+    remLp.connect(ring);
+    ring.connect(remComp);
+    remComp.connect(remMakeup);
+    remMakeup.connect(this.master);
   }
 
   /** Call from a real user gesture (the play click). */
@@ -139,6 +212,15 @@ export class AudioEngine {
     this.sfGain.gain.setTargetAtTime(above ? 1 : 0.02, t, 0.06);
     // music never ducks — the surface just takes the pillow off the speaker
     this.musicFilter.frequency.setTargetAtTime(above ? 20000 : TUNING.audio.musicLowpassHz, t, 0.1);
+  }
+
+  /** The win holds inside the song (M12, DESIGN §14): fade the world's
+   *  buses to silence — zombies, ambience, breath all ride them — while the
+   *  music bus and the in-head voice chains stay live on master. */
+  muteWorld(): void {
+    const t = this.ctx.currentTime;
+    this.uwGain.gain.setTargetAtTime(0.0001, t, 0.5);
+    this.sfGain.gain.setTargetAtTime(0.0001, t, 0.5);
   }
 
   /** Silt-out muffle 0..1 → the world goes cottony. */

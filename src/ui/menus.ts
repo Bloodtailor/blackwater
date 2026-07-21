@@ -13,6 +13,7 @@ import { SETTINGS, saveSettings } from './settings';
 import { imageUrl } from '../game/media';
 import { GALLERY } from '../game/gallery';
 import { CONCEPT } from '../game/concept';
+import { MUSIC } from '../audio/music';
 import { TAPES } from '../audio/lines';
 
 type Screen = 'title' | 'jobsheet' | 'pause' | 'settings' | 'howto' | 'concept' | null;
@@ -66,6 +67,10 @@ export class Menus {
       if (this.screen === 'concept') this.render();
     };
     void CONCEPT.init();
+    // a game song ending while a menu is up hands the slot to the theme
+    MUSIC.onStopped = () => {
+      if (this.blocking) this.syncMusic();
+    };
   }
 
   get blocking(): boolean {
@@ -81,10 +86,17 @@ export class Menus {
 
   // ── menu music (user 2026-07-20): the menus carry their own theme —
   // a plain looped element, outside the game's buses (the run is frozen).
-  // Missing file = silence; autoplay-block = first click/key retries. ──
+  // Missing file = silence; autoplay-block = first click/key retries.
+  // M12 ONE-SONG rule: the theme YIELDS to any game song still playing
+  // (a paused jukebox evening, Moonlight under the win screen) and starts
+  // only when that song ends — MUSIC.onStopped re-syncs us. ──
   private musicEl: HTMLAudioElement | null = null;
   private syncMusic(): void {
     if (this.screen === null) {
+      this.musicEl?.pause();
+      return;
+    }
+    if (MUSIC.playing) {
       this.musicEl?.pause();
       return;
     }

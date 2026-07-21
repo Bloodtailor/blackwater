@@ -81,6 +81,9 @@ const SFX = {
   'ambient-deep': { p: 'Terrifying crushing abyssal ambience: a violent current roaring and shearing through a narrow rock channel, immense water pressure grinding and straining, deep tectonic groans and metallic strain like a hull about to fail, sub-bass throbbing like a slow pulse, hostile oppressive dread, seamless loop. No music.', sec: 14, loop: true },
   // ── audio-emitter node palette (behind-the-walls life; user 2026-07-20) ──
   'amb-machinery': { p: 'One enormous slow industrial pump running far away, heard through hundreds of meters of rock and water: a deep soft rhythmic WHOOM ... WHOOM at about one stroke per second, very low frequency, heavily muffled, no high frequencies at all, like the heartbeat of a distant machine, hypnotic and steady, seamless loop. No clanking, no knocking, no music.', sec: 10, loop: true },
+  // the shift bell (DESIGN §14, 2026-07-21): the site's watch bell — one toll
+  // per shift change; the Abyss hatch rings five in sequence (M13/M14 consume)
+  'shift-bell': { p: 'A single unhurried strike of a large brass ship\'s watch bell heard underwater: one deep resonant toll, slightly muffled and wet, long warm decay through dark water, solemn and enormous. One strike only, no music.', sec: 4 },
   'amb-airflow': { p: 'Heavy air flowing through unseen cave passages: deep powerful rushing airflow, resonant like wind through a huge duct, rising and falling slowly, distant, seamless loop. No music.', sec: 10, loop: true },
   'amb-groan': { p: 'An abandoned flooded structure settling: slow metal groans, deep sporadic creaks of stressed steel and rock, long silences between, ominous, heard through water, seamless loop. No music.', sec: 12, loop: true },
   'amb-drips': { p: 'Water dripping in a vast dark cavern: sparse echoing drips into a pool, hollow cave reverb, lonely and quiet, seamless loop. No music.', sec: 10, loop: true },

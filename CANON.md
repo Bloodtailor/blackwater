@@ -57,7 +57,7 @@
 | Wind-up toy in the cold box crate | ✅ | Wrongness — the toy motif recurring where no toy should be |
 | G13 print at the drill head | ✅ | Void #5 — the 1971 photograph, physically pinned where its subject sits |
 | The job sheet (run intro) | ✅ | Explained + voids #4/#5 — the clinical contract with Lowe's pencil note |
-| REMORA (the unit itself) | ✅ (robotic in-head 🔜 M12) | Wrongness — no plate, no serial, knows too much; v3: whether she is real is permanently two true answers |
+| REMORA (the unit itself) | ✅ (robotic in-head landed M12: telephone band + ring-mod, never water-filtered) | Wrongness — no plate, no serial, knows too much; v3: whether she is real is permanently two true answers |
 
 ## 4. Voice lines (every line, its trigger, its lore duty)
 
@@ -78,7 +78,7 @@
 | secondwind.1 | Second Wind wake | Pure gameplay beat in character voice |
 | idle.1–2 | platform idle | Void #4 (the client knows) + isolation |
 | win.1 | the win screen | The forty-two beat — the game's final arithmetic error |
-| swim.1–5, bell.1–2, heart.near/carry, client.1, lamp.1, museum.1, party.1 | 🔜 M12 (v3 expansion) | Voids #1/#4/#9/#10 + the site-works — the spread-the-wrongness batch (LORE §2.2.1) |
+| swim.1–5, bell.1–2, heart.near/carry, client.1, lamp.1, museum.1, party.1 | ✅ M12 generated + wired (swim/bell.1/heart/client/stirs-repoint live; bell.2→M13 hatch, lamp.1→M15, museum/party→M16 dormant) | Voids #1/#4/#9/#10 + the site-works — the spread-the-wrongness batch (LORE §2.2.1) |
 
 **REMORA — 22 generated lines (voice: Sarah), underwater-only, subtitled REMORA.** Robotic in-head treatment lands at M12.
 
@@ -98,7 +98,7 @@
 | rem.stirs.1 | Cave Stirs | ⚠ same M14 orphan as Lowe's stirs.1 — re-trigger as an Ascent/population warning |
 | rem.abyss.1 | entering the Abyss | Her charts end; the water doesn't |
 | rem.amb.1–6 | ambient musings | Voids #4/#7 + the "someone reads these logs" thread; amb.4 is count-flavored (grandfathered) |
-| rem.bell.1, rem.hatch.1, rem.lamp.1, rem.warm.1, rem.works.1, rem.museum.1, rem.silence.1 | 🔜 M12 (v3) | Voids #10/#9/#1/#7 + the is-she-real thread (rem.silence.1) |
+| rem.bell.1, rem.hatch.1, rem.lamp.1, rem.warm.1, rem.works.1, rem.museum.1, rem.silence.1 | ✅ M12 generated + wired (bell/warm/works/silence + stirs→Ascent live; hatch→M13, lamp→M15, museum→M16 dormant) | Voids #10/#9/#1/#7 + the is-she-real thread (rem.silence.1) |
 
 **Tapes — 6 generated (distinct voices; T6 deliberately cast neutral, a voice not in the crew book).** Each is mundane official business with exactly one wrongness; together they corroborate nothing (LORE §5). T1 count-over · T2 toys · T3 the Pile's fast · T4 synchronized pulses · T5 two true depths · T6 the roster read three weeks after the water.
 
@@ -121,14 +121,14 @@
 | Built thing | Status | Lore relation |
 |---|---|---|
 | "Still on Shift" (jukebox anthem) | ✅ | The crew's own song — knows the count is wrong, doesn't know why either. ALWAYS first on jukebox wake (2026-07-21) |
-| "Moonlight at the Waterline" / "The Cormorant Twist" / "Forty-One, Forty-Two" (jukebox) | ✅ | Period rec-room stock, one quiet wrongness each; Moonlight becomes the Ascent's finale song at M12 |
+| "Moonlight at the Waterline" / "The Cormorant Twist" / "Forty-One, Forty-Two" (jukebox) | ✅ | Period rec-room stock, one quiet wrongness each; ✅ M12: Moonlight auto-scores the Ascent above 50 m and the win holds inside the song |
 | Menu theme, the lull | ✅ | Mood only; the lull is demoted to silence-grown ambience at M12 |
 | "Morale Night" (party record) | 🔜 M16 | The Annex party track (LORE §6.1) — fun with one wrongness: the dance has no permission to end |
 | Depth-ambience beds ×3 | ✅ | The water itself, pressure made audible; honest (rides the real depth bands) |
 | The 40+ SFX bank | ✅ | Craft layer — wetness generated into the source; moans are honest per DESIGN §13 (no fake far moans) |
-| Round stinger → the shift bell | ✅ → 🔜 M14 | Void #10 — the watch bell replaces the horn; the hatch rings five |
+| Round stinger → the shift bell | bell generated + debug-triggerable ✅ M12; becomes THE shift sound at M14, the hatch rings five at M13 | Void #10 — the watch bell replaces the horn |
 | Geiger crackle at the Pile | ✅ | Flavor ONLY — explicitly no radiation mechanic, nothing implies damage |
-| Lowe/REMORA/tape processing chains | 🔜 M12 | In-head + robotic doctrines (LORE §2.1/§2.4) |
+| Lowe/REMORA voice chains + one-voice/one-song arbiters | ✅ M12 | In-head + robotic doctrines (LORE §2.1/§2.4); DESIGN §14 arbitration — never two voices, never two songs, the lull grows only from true quiet |
 
 ## 7. Standing rules this doc enforces
 

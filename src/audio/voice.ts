@@ -1,21 +1,26 @@
-// Lowe's voice (M8b). Two layers:
+// Lowe's voice (M8b; in-head doctrine M12, LORE §2.1 v3). Two layers:
 //
 //   VoiceQueue  — pure logic, unit-tested: LORE §2.1 anti-spam. Silence is
 //                 the default: every line plays at most once per run, ambient
 //                 lines obey a global ≥120 s cooldown AND a ~40% roll at
 //                 request time (a failed roll discards the line — Lowe just
 //                 doesn't say it this run), priority tapeReact > event >
-//                 ambient, and NOTHING plays below the surface. Regulator in.
+//                 ambient. The GATE is the caller's: Lowe's inner voice plays
+//                 anywhere he's alive (M12 — the lines were never spoken
+//                 aloud); REMORA still speaks only underwater.
 //
 //   VoicePlayer — DOM/WebAudio side: plays `public/audio/vo/<id>.mp3` when
 //                 the generated manifest lists it, else a radio-squelch +
 //                 subtitle-timer fallback (the mandated no-blocking path —
 //                 the fiction reads even before ElevenLabs assets exist).
+//                 M12: routes through the engine's in-head chains — Lowe's
+//                 warmth/double, REMORA's telephone-band robot. Never the
+//                 water buses.
 
 import { TUNING } from '../tuning';
 import { SETTINGS } from '../ui/settings';
 import type { AudioEngine } from './engine';
-import { estimateSpeechSec, LOWE_LINES, type VoLine } from './lines';
+import { estimateSpeechSec, LOWE_LINES, type VoCategory, type VoLine } from './lines';
 import { radioSquelch } from './sfx';
 
 const CAT_PRIORITY = { tapeReact: 0, event: 1, ambient: 2 } as const;
@@ -48,20 +53,27 @@ export class VoiceQueue {
     return 'queued';
   }
 
+  /** Category of the next line waiting (speech-slot arbitration, M12). */
+  peek(): VoCategory | null {
+    return this.queue[0]?.cat ?? null;
+  }
+
   /**
    * Advance. Returns a line the caller must START PLAYING now, or null.
-   * `surfaced` = head above water (the only place Lowe speaks);
-   * `blocked` = something louder is running (a tape).
+   * `canSpeak` = this speaker's own gate (M12: Lowe = alive, anywhere —
+   * the inner voice; REMORA = submerged — the earpiece goes quiet in air);
+   * `blocked` = the shared speech slot is held by someone else (a tape, the
+   * other voice — DESIGN §14 one-voice rule).
    */
-  update(dt: number, surfaced: boolean, blocked = false): VoLine | null {
+  update(dt: number, canSpeak: boolean, blocked = false): VoLine | null {
     this.ambientCooldown = Math.max(0, this.ambientCooldown - dt);
     if (this.current) {
       this.speakT -= dt;
-      // submerging mid-line: he stops talking (regulator back in); the line
-      // counts as said — Lowe does not repeat himself
-      if (this.speakT <= 0 || !surfaced) this.current = null;
+      // gate closing mid-line cuts the line (REMORA muting at the surface,
+      // death); the line counts as said — nobody down here repeats himself
+      if (this.speakT <= 0 || !canSpeak) this.current = null;
     }
-    if (!surfaced || blocked || this.current || this.queue.length === 0) return null;
+    if (!canSpeak || blocked || this.current || this.queue.length === 0) return null;
     const line = this.queue.shift()!;
     this.played.add(line.id);
     this.current = line;
@@ -101,13 +113,14 @@ export class VoicePlayer {
   constructor(
     private getEngine: () => AudioEngine | null,
     private manifest: () => VoManifest | null,
-    /** 'surface' = Lowe (speaks only above water, through the air bus);
-     *  'master' = REMORA (in-helmet speaker — the water never touches it). */
-    private bus: 'surface' | 'master' = 'surface',
+    /** M12 in-head chains: 'head' = Lowe's inner voice (warmth + whisper
+     *  double); 'remora' = the robotic telephone band. Neither is ever
+     *  water-filtered — both live inside the skull. */
+    private bus: 'head' | 'remora' = 'head',
   ) {}
 
   private out(e: AudioEngine): AudioNode {
-    return this.bus === 'master' ? e.master : e.surface;
+    return this.bus === 'remora' ? e.remoraHead : e.loweHead;
   }
 
   /** Start a line. Returns real duration when known (else null → caller keeps

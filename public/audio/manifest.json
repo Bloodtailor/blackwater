@@ -32,6 +32,19 @@
     "idle.1": "/audio/vo/idle.1.mp3",
     "idle.2": "/audio/vo/idle.2.mp3",
     "win.1": "/audio/vo/win.1.mp3",
+    "swim.1": "/audio/vo/swim.1.mp3",
+    "swim.2": "/audio/vo/swim.2.mp3",
+    "swim.3": "/audio/vo/swim.3.mp3",
+    "swim.4": "/audio/vo/swim.4.mp3",
+    "swim.5": "/audio/vo/swim.5.mp3",
+    "bell.1": "/audio/vo/bell.1.mp3",
+    "bell.2": "/audio/vo/bell.2.mp3",
+    "heart.near.1": "/audio/vo/heart.near.1.mp3",
+    "heart.carry.1": "/audio/vo/heart.carry.1.mp3",
+    "client.1": "/audio/vo/client.1.mp3",
+    "lamp.1": "/audio/vo/lamp.1.mp3",
+    "museum.1": "/audio/vo/museum.1.mp3",
+    "party.1": "/audio/vo/party.1.mp3",
     "rem.hello.1": "/audio/vo/rem.hello.1.mp3",
     "rem.depth.50": "/audio/vo/rem.depth.50.mp3",
     "rem.depth.100": "/audio/vo/rem.depth.100.mp3",
@@ -53,7 +66,14 @@
     "rem.amb.3": "/audio/vo/rem.amb.3.mp3",
     "rem.amb.4": "/audio/vo/rem.amb.4.mp3",
     "rem.amb.5": "/audio/vo/rem.amb.5.mp3",
-    "rem.amb.6": "/audio/vo/rem.amb.6.mp3"
+    "rem.amb.6": "/audio/vo/rem.amb.6.mp3",
+    "rem.bell.1": "/audio/vo/rem.bell.1.mp3",
+    "rem.hatch.1": "/audio/vo/rem.hatch.1.mp3",
+    "rem.lamp.1": "/audio/vo/rem.lamp.1.mp3",
+    "rem.warm.1": "/audio/vo/rem.warm.1.mp3",
+    "rem.works.1": "/audio/vo/rem.works.1.mp3",
+    "rem.museum.1": "/audio/vo/rem.museum.1.mp3",
+    "rem.silence.1": "/audio/vo/rem.silence.1.mp3"
   },
   "tapes": {
     "t1": "/audio/tapes/t1.mp3",
@@ -181,6 +201,9 @@
     "amb-machinery": {
       "url": "/audio/sfx/amb-machinery.mp3",
       "loop": true
+    },
+    "shift-bell": {
+      "url": "/audio/sfx/shift-bell.mp3"
     },
     "amb-airflow": {
       "url": "/audio/sfx/amb-airflow.mp3",

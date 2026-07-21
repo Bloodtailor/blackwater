@@ -484,6 +484,12 @@ export const TUNING = {
     voGain: 0.9, // fallback-squelch level rides volumeVo too
     jukeboxGain: 0.22, // the song is far away, everywhere (LORE §6)
     shimmerRefDistM: 2.2, // toy music-box shimmer ≈ audible ≤8 m
+    // ── M12 in-head doctrine (LORE §2.1 v3): lines play anywhere ──
+    swimAmbientOfferSec: 100, // a submerged Lowe musing is OFFERED this often (roll + cooldown still decide)
+    silenceLineSec: 300, // total quiet (no dialog, no music) before rem.silence.1 may roll
+    heartNearM: 15, // Lowe feels the warmth inside this range (heart.near.1)
+    heartCarryDelaySec: 30, // seconds into the Ascent before heart.carry.1 may play
+    moonlightDepthM: 50, // carrying the Heart shallower than this + no song → Moonlight starts
   },
   audio: {
     // ── the M8a synth soundscape; volumes are 0..1 pre-master gains ──
@@ -506,9 +512,18 @@ export const TUNING = {
     ambienceGain: 0.35, // depth-bed loops (shallow/mid/deep crossfade) level
     emitterGain: 0.8, // audio-node loops (machinery/airflow behind walls) pre-positional level
     musicLowpassHz: 1100, // music bus underwater tone (never ducks; open air = full bright)
-    lullAfterSec: 240, // this long with no dialog (tape/Lowe/REMORA) → the lull track may play
+    lullAfterSec: 240, // this long with NO dialog AND NO music → the lull track may play (M12: true silence, not just no dialog)
     lullCooldownSec: 600, // minimum gap between lull plays
     lullGain: 0.5, // lull track level on the music bus
+    // ── M12 voice chains (in-head Lowe, robotic REMORA) ──
+    headVoiceLowpassHz: 4800, // Lowe's inner-voice warmth (dry, close, no room)
+    headDoubleGain: 0.16, // the whisper-quiet 28 ms double under his lines
+    remoraBandLowHz: 320, // REMORA telephone band floor
+    remoraBandHighHz: 3300, // REMORA telephone band ceiling
+    remoraRingHz: 52, // ring-mod tremolo rate — the "machine" in her voice
+    remoraRingDepth: 0.3, // tremolo depth 0..1 (higher = more robotic)
+    bellGain: 0.8, // the shift bell (one toll per shift; five at the hatch)
+    moonlightGain: 0.45, // Moonlight at the Waterline on the ascent (louder than jukebox-far — this one is FOR you)
   },
   guideLine: {
     reelLengthM: 200, // meters of line on a fresh reel
