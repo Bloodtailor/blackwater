@@ -23,7 +23,8 @@
       "contents": {
         "tape": "T1",
         "poster": "G11"
-      }
+      },
+      "dry": true
     },
     {
       "id": "sink-blueprint",
@@ -40,7 +41,8 @@
       ],
       "contents": {
         "poster": "G10"
-      }
+      },
+      "dry": true
     },
     {
       "id": "sink-pool",

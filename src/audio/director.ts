@@ -281,24 +281,32 @@ export class AudioDirector {
     if (this.bus) sfx.doorGrind(this.engine!.ctx, this.bus);
     this.note('doorGrind');
   }
+  /** The jingle family (perk/box/PaP/buy/drop) rides the MUSIC bus, not the
+   *  world bus: the 850 Hz underwater low-pass gutted these bright motifs to
+   *  near-silence (measured RMS 0.003 at master — the user's "box makes no
+   *  sound", 2026-07-21). Music-family tone rules apply instead: constant
+   *  level, water only takes the sparkle off (1100 Hz), never ducked. */
+  private get jingleBus(): AudioNode | null {
+    return this.engine && this.engine.running ? this.engine.music : null;
+  }
   perkBought(): void {
-    if (this.bus) sfx.perkJingle(this.engine!.ctx, this.bus);
+    if (this.jingleBus) sfx.perkJingle(this.engine!.ctx, this.jingleBus);
     this.note('perkJingle');
   }
   boxSpin(): void {
-    if (this.bus) sfx.boxTease(this.engine!.ctx, this.bus);
+    if (this.jingleBus) sfx.boxTease(this.engine!.ctx, this.jingleBus);
     this.note('boxTease');
   }
   papWork(): void {
-    if (this.bus) sfx.papMotif(this.engine!.ctx, this.bus);
+    if (this.jingleBus) sfx.papMotif(this.engine!.ctx, this.jingleBus);
     this.note('papMotif');
   }
   drop(good = true): void {
-    if (this.bus) sfx.dropChime(this.engine!.ctx, this.bus, good);
+    if (this.jingleBus) sfx.dropChime(this.engine!.ctx, this.jingleBus, good);
     this.note('dropChime');
   }
   buy(ok: boolean): void {
-    if (this.bus) sfx.buyClick(this.engine!.ctx, this.bus, ok);
+    if (this.jingleBus) sfx.buyClick(this.engine!.ctx, this.jingleBus, ok);
     this.note('buyClick');
   }
   powerOn(): void {

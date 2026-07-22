@@ -75,6 +75,12 @@ export class SampleBank {
     }
   }
 
+  /** Is this sample decoded and playable right now? (Ambience uses this to
+   *  swap its bridging synth out the moment the real bed arrives.) */
+  ready(name: string): boolean {
+    return this.buffers.get(name) instanceof AudioBuffer;
+  }
+
   private buffer(ctx: BaseAudioContext, name: string): AudioBuffer | null {
     if (!this.manifest?.[name]) return null;
     const b = this.buffers.get(name);

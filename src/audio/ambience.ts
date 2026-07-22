@@ -71,6 +71,10 @@ interface Emitter {
 export class Ambience {
   private bedGains: GainNode[] = [];
   private bedStops: StopFn[] = [];
+  /** True while a bed is on its bridging synth (samples decode ~2 s after
+   *  ensure(); latching the synth FOREVER was the bug that kept the
+   *  generated beds silent for entire runs — user 2026-07-21). */
+  private bedSynth: boolean[] = [];
   private started = false;
   private emitters: Emitter[] = [];
   /** Current bed weights (instrumentation/verification). */
@@ -83,8 +87,11 @@ export class Ambience {
       g.gain.value = 0.0001;
       g.connect(e.underwater);
       this.bedGains.push(g);
-      const stop = SAMPLES.loop(e.ctx, g, name, { gain: 1, fadeSec: 0.5 }) ?? synthBed(e.ctx, g, tier);
-      this.bedStops.push(stop);
+      // the synth only BRIDGES until the generated bed decodes — update()
+      // swaps it out the moment SAMPLES.ready flips
+      const sampled = SAMPLES.loop(e.ctx, g, name, { gain: 1, fadeSec: 0.5 });
+      this.bedStops.push(sampled ?? synthBed(e.ctx, g, tier));
+      this.bedSynth.push(sampled === null);
     });
     this.emitters = audioNodes().map((node) => ({ node, handle: null, stop: null }));
   }
@@ -106,6 +113,12 @@ export class Ambience {
     [shallow, mid, deep].forEach((w, i) => {
       this.weights[i] = w;
       this.bedGains[i]?.gain.setTargetAtTime(Math.max(0.0001, w * base * tierGain[i]), e.ctx.currentTime, 0.8);
+      // the generated bed decoded since we started? swap the bridge out
+      if (this.bedSynth[i] && SAMPLES.ready(BED_NAMES[i])) {
+        this.bedStops[i]();
+        this.bedStops[i] = SAMPLES.loop(e.ctx, this.bedGains[i], BED_NAMES[i], { gain: 1, fadeSec: 0.5 })!;
+        this.bedSynth[i] = false;
+      }
     });
 
     // emitters: attach within earshot, follow position, detach far away.
@@ -130,11 +143,18 @@ export class Ambience {
         vz = pz + (z - pz) * k;
       }
       if (!em.handle && d < a.radiusM * 1.5) {
+        // SAMPLE ONLY (user 2026-07-21: the synth-bed stand-in at the pile
+        // machinery sounded wrong — deleted). Not decoded yet = stay silent;
+        // we simply retry next tick until the real sound exists.
         const h = e.positional(a.radiusM / (a.falloff ?? 3));
         h.setPosition(vx, vy, vz);
-        // sample by name; unknown/missing name → the machinery-ish synth bed
-        em.stop = SAMPLES.loop(e.ctx, h.input, a.sample, { gain: A.emitterGain, fadeSec: 1.5 }) ?? synthBed(e.ctx, h.input, 1);
-        em.handle = h;
+        const stop = SAMPLES.loop(e.ctx, h.input, a.sample, { gain: A.emitterGain, fadeSec: 1.5 });
+        if (stop) {
+          em.stop = stop;
+          em.handle = h;
+        } else {
+          h.dispose();
+        }
       } else if (em.handle && d > a.radiusM * 2) {
         em.stop?.();
         const h = em.handle;
