@@ -118,6 +118,7 @@ export class Ambience {
         this.bedStops[i]();
         this.bedStops[i] = SAMPLES.loop(e.ctx, this.bedGains[i], BED_NAMES[i], { gain: 1, fadeSec: 0.5 })!;
         this.bedSynth[i] = false;
+        console.info(`[BLACKWATER audio] depth bed ${BED_NAMES[i]} → generated sample (synth bridge released)`);
       }
     });
 
@@ -152,6 +153,7 @@ export class Ambience {
         if (stop) {
           em.stop = stop;
           em.handle = h;
+          console.info(`[BLACKWATER audio] emitter ${em.node.id} → sample ${a.sample}`);
         } else {
           h.dispose();
         }

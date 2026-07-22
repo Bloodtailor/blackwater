@@ -289,16 +289,30 @@ export class AudioDirector {
   private get jingleBus(): AudioNode | null {
     return this.engine && this.engine.running ? this.engine.music : null;
   }
+  /** Console-truth for the browser-dependent silence hunt (2026-07-21):
+   *  every jingle logs whether the generated sample or the synth carried it. */
+  private jingleLog(label: string, sample: string): void {
+    console.info(`[BLACKWATER audio] ${label} → ${SAMPLES.ready(sample) ? `sample ${sample}` : 'SYNTH fallback'}`);
+  }
   perkBought(): void {
-    if (this.jingleBus) sfx.perkJingle(this.engine!.ctx, this.jingleBus);
+    if (this.jingleBus) {
+      this.jingleLog('perk jingle', 'perk-jingle');
+      sfx.perkJingle(this.engine!.ctx, this.jingleBus);
+    }
     this.note('perkJingle');
   }
   boxSpin(): void {
-    if (this.jingleBus) sfx.boxTease(this.engine!.ctx, this.jingleBus);
+    if (this.jingleBus) {
+      this.jingleLog('box tease', 'box-tease');
+      sfx.boxTease(this.engine!.ctx, this.jingleBus);
+    }
     this.note('boxTease');
   }
   papWork(): void {
-    if (this.jingleBus) sfx.papMotif(this.engine!.ctx, this.jingleBus);
+    if (this.jingleBus) {
+      this.jingleLog('PaP motif', 'pap-motif');
+      sfx.papMotif(this.engine!.ctx, this.jingleBus);
+    }
     this.note('papMotif');
   }
   drop(good = true): void {

@@ -48,12 +48,37 @@ export class SampleBank {
   warm(ctx: BaseAudioContext): void {
     void (async () => {
       await (this.initPromise ?? this.init());
-      if (!this.manifest) return;
-      for (const name of Object.keys(this.manifest)) void this.load(ctx, name);
+      if (!this.manifest) {
+        console.warn('[BLACKWATER audio] no sample manifest — EVERYTHING on synth fallbacks');
+        return;
+      }
+      const names = Object.keys(this.manifest);
+      await Promise.all(names.map((name) => this.load(ctx, name)));
+      // the decode report: per-browser truth in one console line (2026-07-21:
+      // Chrome/Edge behaved differently on the same build — stop guessing)
+      const failed = names.filter((n) => this.buffers.get(n) === 'failed');
+      const decoded = names.filter((n) => this.buffers.get(n) instanceof AudioBuffer);
+      console.info(
+        `[BLACKWATER audio] samples decoded ${decoded.length}/${names.length}` +
+          (failed.length ? ` — FAILED (synth fallback): ${failed.join(', ')}` : ''),
+      );
     })();
   }
 
-  private async load(ctx: BaseAudioContext, name: string): Promise<void> {
+  private loads = new Map<string, Promise<void>>();
+
+  private load(ctx: BaseAudioContext, name: string): Promise<void> {
+    // share the in-flight promise: two warm() callers used to race, and the
+    // second's decode report counted 0/52 (early-return on 'pending')
+    let p = this.loads.get(name);
+    if (!p) {
+      p = this.loadInner(ctx, name);
+      this.loads.set(name, p);
+    }
+    return p;
+  }
+
+  private async loadInner(ctx: BaseAudioContext, name: string): Promise<void> {
     if (this.buffers.has(name)) return;
     this.buffers.set(name, 'pending');
     try {

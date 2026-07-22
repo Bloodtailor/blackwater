@@ -175,7 +175,7 @@ function initGame(): void {
   // build beacon: which code is this tab actually running? (user 2026-07-21:
   // a stale tab/cache made a whole fix round look like a no-op — bump the tag
   // on audio/asset changes so staleness is diagnosable in one glance)
-  console.info('[BLACKWATER] build 2026-07-21c — audio-truth round (music-bus jingles, bed swap, hot beds)');
+  console.info('[BLACKWATER] build 2026-07-21d — audio diagnostics (decode report + per-sound source logs)');
 
   // ── player ──
   const debug = new DebugPanel(params.has('debug'));
