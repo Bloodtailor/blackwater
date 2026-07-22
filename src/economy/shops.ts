@@ -28,6 +28,9 @@ export interface ShopCtx {
   perks: Perks;
   weapons: Weapons;
   toast: (msg: string) => void;
+  /** Issue clicks (M16.5 — the buy-accept/deny samples were orphaned when
+   *  the points economy died): true = issued, false = refused. */
+  click: (ok: boolean) => void;
   /** Main applies side effects (vitals refresh, HUD icons). */
   onPerkBought: (id: PerkId) => void;
   /** Main grants the consumable (battery / chemlights / reel). */
@@ -303,11 +306,16 @@ export class Shops {
       execute: () => {
         const slot = def.slots.find((s) => s.def.id === id);
         if (slot) {
-          if (!ammoBell.issue(this.ctx.bell())) return;
+          if (!ammoBell.issue(this.ctx.bell())) {
+            this.ctx.click(false);
+            return;
+          }
           def.refill(id);
+          this.ctx.click(true);
           this.ctx.toast(`${slot.def.name} — AMMO ISSUED`);
         } else {
           def.give(id);
+          this.ctx.click(true);
           this.ctx.toast(`${name} — OFF THE RACK`);
         }
       },
@@ -335,12 +343,17 @@ export class Shops {
         return { text: info.name, holdSec: 0, enabled: can, sub: can ? 'ONE PULL PER MAN PER BELL' : 'ISSUED THIS BELL — WAIT FOR THE NEXT' };
       },
       execute: () => {
-        if (!bell.canIssue(this.ctx.bell())) return;
+        if (!bell.canIssue(this.ctx.bell())) {
+          this.ctx.click(false);
+          return;
+        }
         if (!this.ctx.onVendor(v)) {
+          this.ctx.click(false);
           this.ctx.toast('NO ROOM IN THE KIT');
           return;
         }
         bell.issue(this.ctx.bell());
+        this.ctx.click(true);
         this.ctx.toast(`${info.name} — ISSUED`);
       },
     });

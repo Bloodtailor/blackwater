@@ -48,6 +48,9 @@ export interface Special {
   chamberId?: string;
   /** Guardian: post node id (respawn-next-round). */
   postId?: string;
+  /** Guardian: smoothed pure-yaw orientation (the bob rides ON TOP — mixing
+   *  euler writes with quaternion slerps inverted the suits). */
+  smoothQ?: THREE.Quaternion;
   calmT: number;
   lureLight?: THREE.PointLight;
   fade: number;
@@ -76,6 +79,7 @@ export interface SpecialCtx {
 }
 
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
 export interface SpecialHooks {
   toast: (m: string) => void;
@@ -205,20 +209,23 @@ export class SpecialManager {
     const body = this.mat(0x0b1012, { roughness: 0.6, metalness: 0.2 });
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.6, 1.4), body);
     g.add(torso);
+    // the rig faces +Z (faceVel aligns +Z with travel — user report: the
+    // fish swam tail-first; jaw/tail/stalk all flipped 2026-07-21)
     const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.5), body);
-    jaw.position.set(0, -0.24, -0.75);
+    jaw.position.set(0, -0.24, 0.75);
     g.add(jaw);
     const tail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.5), body);
-    tail.position.set(0, 0.05, 0.9);
+    tail.position.set(0, 0.05, -0.9);
     g.add(tail);
-    // the stalk + the lie: a glow that reads EXACTLY like a chemlight
+    // the stalk + the lie: a glow that reads EXACTLY like a chemlight —
+    // hung ahead of the FACE (+Z), where an angler's lure belongs
     const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.9, 5), body);
-    stalk.rotation.x = 0.9;
-    stalk.position.set(0, 0.55, -0.85);
+    stalk.rotation.x = -0.9;
+    stalk.position.set(0, 0.55, 0.85);
     g.add(stalk);
     g.position.set(n.pos[0], n.pos[1], n.pos[2]);
     const s = this.makeSpecial('angler', g, TUNING.specials.angler.hp, g.position.clone());
-    s.lureLight = this.buildLure(g, 0, 0.92, -1.2);
+    s.lureLight = this.buildLure(g, 0, 0.92, 1.2);
     this.register(s);
     s.state = 'patrol'; // M15: the lure walks the Maze
     return s;
@@ -488,6 +495,27 @@ export class SpecialManager {
       } else if (s.kind === 'shade') this.updateShade(s, dt, ctx, dist);
       else this.updateGuardian(s, dt, ctx, dist);
     }
+
+    // ── guardian separation (user 2026-07-21: "they usually walk inside of
+    // each other") — the suits shoulder apart like the Drowned do ──
+    const suits = this.specials.filter((s) => s.kind === 'guardian' && s.state !== 'dead');
+    for (let a = 0; a < suits.length; a++) {
+      for (let b = a + 1; b < suits.length; b++) {
+        this.vTmp.copy(suits[b].pos).sub(suits[a].pos);
+        let d = this.vTmp.length();
+        if (d >= 1.7) continue;
+        if (d < 1e-3) {
+          this.vTmp.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+          d = this.vTmp.length();
+        }
+        this.vTmp.normalize();
+        const push = Math.min(((1.7 - d) / 2) * 2.0 * dt, 2.5 * dt);
+        suits[a].pos.addScaledVector(this.vTmp, -push);
+        suits[b].pos.addScaledVector(this.vTmp, push);
+        resolveCollision(suits[a].pos, 0.7);
+        resolveCollision(suits[b].pos, 0.7);
+      }
+    }
   }
 
   // ── the Angler's legs: polyline follow at a given speed ──
@@ -656,6 +684,9 @@ export class SpecialManager {
   private updateLampMan(s: Special, dt: number, ctx: SpecialCtx, dist: number): boolean {
     const L = TUNING.specials.lampman;
     if (s.lureLight) s.lureLight.intensity = 2.5; // constant — the still light
+    // he is ALWAYS facing you (user 2026-07-21) — no turn is ever witnessed;
+    // whenever you look, he was already looking. Yaw only: true-up stance.
+    s.group.rotation.set(0, Math.atan2(ctx.playerPos.x - s.pos.x, ctx.playerPos.z - s.pos.z), 0);
     // rule 2: too close → the jumpscare, and he is gone before vision settles
     if (dist < L.scareM) {
       this.hooks.onLampScare();
@@ -747,13 +778,29 @@ export class SpecialManager {
     s.pos.addScaledVector(s.vel, dt);
     resolveCollision(s.pos, 0.7);
     this.faceVel(s, dt, s.state === 'aggro' || s.state === 'windup' ? ctx.playerPos : undefined);
-    // the walk: ponderous bob
-    s.group.rotation.z = Math.sin(ctx.time * 2.2 + s.phase) * 0.05;
+    // the walk: ponderous bob — a quaternion on top of the smoothed yaw
+    // (a bare rotation.z write after the slerp flipped suits upside-down)
+    if (s.smoothQ) {
+      this.qTmp.setFromAxisAngle(Z_AXIS, Math.sin(ctx.time * 2.2 + s.phase) * 0.05);
+      s.group.quaternion.copy(s.smoothQ).multiply(this.qTmp);
+    }
   }
 
   private faceVel(s: Special, dt: number, at?: THREE.Vector3): void {
     this.vTmp2.copy(at ? this.vTmp.copy(at).sub(s.pos) : s.vel);
-    this.vTmp2.y *= s.kind === 'guardian' ? 0.2 : 1; // suits stay upright
+    if (s.kind === 'guardian') {
+      // suits are HEAVY: yaw only, boots always down. Two past inverters
+      // (user report 2026-07-21: "often upside down"): setFromUnitVectors
+      // added arbitrary roll, and writing rotation.z after a slerp
+      // recomposed yaw>90° eulers with x=π. The smoothed yaw lives in its
+      // own quaternion now; the walk-bob multiplies on top in updateGuardian.
+      if (this.vTmp2.x * this.vTmp2.x + this.vTmp2.z * this.vTmp2.z < 0.01) return;
+      s.smoothQ ??= s.group.quaternion.clone();
+      this.qTmp.setFromAxisAngle(Y_AXIS, Math.atan2(this.vTmp2.x, this.vTmp2.z));
+      s.smoothQ.slerp(this.qTmp, Math.min(1, dt * 3));
+      s.group.quaternion.copy(s.smoothQ);
+      return;
+    }
     if (this.vTmp2.lengthSq() < 0.01) return;
     this.qTmp.setFromUnitVectors(Z_AXIS, this.vTmp2.normalize());
     s.group.quaternion.slerp(this.qTmp, Math.min(1, dt * 3));

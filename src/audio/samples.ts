@@ -20,22 +20,34 @@ export class SampleBank {
    *  round stingers at all). Computed once at decode. */
   private normGain = new Map<string, number>();
 
-  async init(): Promise<void> {
-    try {
-      const res = await fetch('/audio/manifest.json');
-      if (!res.ok) return;
-      const j = (await res.json()) as { sfx?: Record<string, SfxEntry> };
-      this.manifest = j.sfx ?? null;
-    } catch {
-      this.manifest = null; // no generated assets — synth carries everything
-    }
+  private initPromise: Promise<void> | null = null;
+
+  init(): Promise<void> {
+    this.initPromise ??= (async () => {
+      try {
+        const res = await fetch('/audio/manifest.json');
+        if (!res.ok) return;
+        const j = (await res.json()) as { sfx?: Record<string, SfxEntry> };
+        this.manifest = j.sfx ?? null;
+      } catch {
+        this.manifest = null; // no generated assets — synth carries everything
+      }
+    })();
+    return this.initPromise;
   }
 
   /** Decode everything up front (call once a context exists — ~40 small
-   *  files; first-play misses fall back to synth otherwise). */
+   *  files; first-play misses fall back to synth otherwise). AWAITS the
+   *  manifest fetch: a fast DIVE click used to race it, warm() no-opped, and
+   *  every once-per-run sound (the box tease, the PaP motif) fell back to
+   *  the quiet synth forever — the user's "box and pap make no sound"
+   *  (2026-07-21). */
   warm(ctx: BaseAudioContext): void {
-    if (!this.manifest) return;
-    for (const name of Object.keys(this.manifest)) void this.load(ctx, name);
+    void (async () => {
+      await (this.initPromise ?? this.init());
+      if (!this.manifest) return;
+      for (const name of Object.keys(this.manifest)) void this.load(ctx, name);
+    })();
   }
 
   private async load(ctx: BaseAudioContext, name: string): Promise<void> {

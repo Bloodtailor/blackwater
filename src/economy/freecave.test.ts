@@ -69,6 +69,7 @@ beforeAll(async () => {
     perks,
     weapons,
     toast: (m: string) => toasts.push(m),
+    click: () => {},
     onPerkBought: () => {},
     onVendor: () => true,
     onPowerOn: () => {},

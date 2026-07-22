@@ -91,10 +91,15 @@ export class TapeProps {
   ) {
     for (const tape of TAPES) {
       const n = getNode(tape.nodeId);
-      // rest the brick on the floor: probe straight down from mid-room
+      // rest the brick on the floor AT ITS OWN SPOT — probing at the room
+      // center then placing offset buried T1 under the shore slope (user
+      // 2026-07-21: "the tape is under the ground"). Probe starts above so
+      // sloped dry floors are honored.
+      const tx = n.pos[0] + n.radius * 0.3;
+      const tz = n.pos[2];
       let y = n.pos[1];
-      for (let d = 0; d < n.radius + 2; d += 0.25) {
-        if (sdf(n.pos[0], n.pos[1] - d, n.pos[2]) > -0.3) {
+      for (let d = -1.5; d < n.radius + 2; d += 0.2) {
+        if (sdf(tx, n.pos[1] - d, tz) > -0.3) {
           y = n.pos[1] - d + 0.35;
           break;
         }
@@ -120,7 +125,7 @@ export class TapeProps {
       );
       dot.position.set(0.11, 0.03, 0.105);
       g.add(dot);
-      g.position.set(n.pos[0] + n.radius * 0.3, y, n.pos[2]);
+      g.position.set(tx, y, tz);
       g.rotation.y = Math.random() * Math.PI;
       scene.add(g);
 

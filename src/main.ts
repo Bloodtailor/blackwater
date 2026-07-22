@@ -50,6 +50,7 @@ import { loadImageManifest, toyPhotoDataUrl } from './game/media';
 import { GALLERY } from './game/gallery';
 import { buildPosters } from './game/posters';
 import { Annex } from './game/annex';
+import { buildCamp } from './game/camp';
 import { Hud } from './ui/hud';
 import { Menus } from './ui/menus';
 import { SETTINGS, saveSettings } from './ui/settings';
@@ -249,6 +250,7 @@ function initGame(): void {
     perks,
     weapons,
     toast: (msg) => hud.toast(msg),
+    click: (ok) => audio.buy(ok),
     onHatchToll: hatchToll,
     onPerkBought: (id) => {
       applyPerkEffects();
@@ -483,7 +485,9 @@ function initGame(): void {
     perksOwned: (id) => perks.owned.has(id),
     gunOwned: (id) => weapons.owns(id),
     onParty: (on) => {
-      if (on) MUSIC.play('party', '/music/morale-night.mp3', TUNING.audio.partyGain, { loop: true, name: 'Morale Night' });
+      // no loop (user 2026-07-21): when the record ends, the party ends —
+      // annex.update sees the slot empty and stops the lights itself
+      if (on) MUSIC.play('party', '/music/morale-night.mp3', TUNING.audio.partyGain, { loop: false, name: 'Morale Night' });
       else MUSIC.stop('party');
     },
     onFirstEntry: () => {
@@ -494,6 +498,7 @@ function initGame(): void {
   });
   // ── M8c: posters/labels in-world + the menus ──
   buildPosters(scene, interact, hud);
+  buildCamp(scene); // M16.5: Lowe's shore camp (user: "starting room should look very nice")
   const applyDisplay = (): void => {
     renderer.domElement.style.filter = `brightness(${SETTINGS.brightness})`;
   };
@@ -1864,6 +1869,7 @@ function initGame(): void {
     roster: zombies.roster,
     crew: CREW,
     undertow,
+    samples: SAMPLES,
     hatchToll,
     audio,
     audioVerify: () => import('./audio/verify'),

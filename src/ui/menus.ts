@@ -15,6 +15,7 @@ import { GALLERY } from '../game/gallery';
 import { CONCEPT } from '../game/concept';
 import { MUSIC } from '../audio/music';
 import { TAPES } from '../audio/lines';
+import { uiClick, uiHover } from './uisfx';
 
 type Screen = 'title' | 'jobsheet' | 'pause' | 'settings' | 'howto' | 'concept' | null;
 
@@ -47,6 +48,8 @@ export class Menus {
   private root: HTMLElement;
   private from: 'title' | 'pause' = 'title';
   private jobSheetSeen = false;
+  private lastHover: HTMLElement | null = null;
+  private fadeTimer: number | null = null;
 
   constructor(private hooks: MenuHooks) {
     this.root = document.createElement('div');
@@ -56,6 +59,26 @@ export class Menus {
     // invisible click-eating overlay (user bug 2026-07-20)
     this.root.className = 'hidden';
     document.body.appendChild(this.root);
+    // UI sounds (user 2026-07-21): delegation catches EVERY menu control —
+    // buttons, tape rows, gallery tiles, the job-sheet sign line — including
+    // ones future screens add. Hover ticks only on real buttons.
+    this.root.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('button, .menu-tile, .gallery-tile, input, select')) uiClick();
+    });
+    this.root.addEventListener(
+      'mouseover',
+      (e) => {
+        const t = e.target as HTMLElement | null;
+        const b = t?.closest('button');
+        if (b && b !== this.lastHover) {
+          this.lastHover = b;
+          uiHover();
+        }
+      },
+      true,
+    );
+    this.root.addEventListener('mouseout', () => (this.lastHover = null));
     window.addEventListener('keydown', (e) => {
       if (this.screen === 'jobsheet' && (e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter')) this.dive();
       else if (this.screen === 'settings' || this.screen === 'howto' || this.screen === 'concept') {
@@ -91,18 +114,36 @@ export class Menus {
   // (a paused jukebox evening, Moonlight under the win screen) and starts
   // only when that song ends — MUSIC.onStopped re-syncs us. ──
   private musicEl: HTMLAudioElement | null = null;
+
+  /** The theme never hard-cuts (user 2026-07-21): leaving a menu — RESUME,
+   *  the job-sheet signature — fades it out over ~1.2 s. */
+  private fadeOutTheme(): void {
+    const el = this.musicEl;
+    if (!el || el.paused) return;
+    if (this.fadeTimer !== null) return; // already fading
+    const step = el.volume / 24;
+    this.fadeTimer = window.setInterval(() => {
+      if (el.volume > step) el.volume = Math.max(0, el.volume - step);
+      else {
+        el.pause();
+        if (this.fadeTimer !== null) window.clearInterval(this.fadeTimer);
+        this.fadeTimer = null;
+      }
+    }, 50);
+  }
+
   private syncMusic(): void {
-    if (this.screen === null) {
-      this.musicEl?.pause();
-      return;
-    }
-    if (MUSIC.playing) {
-      this.musicEl?.pause();
+    if (this.screen === null || MUSIC.playing) {
+      this.fadeOutTheme();
       return;
     }
     if (!this.musicEl) {
       this.musicEl = new Audio('/music/menu-theme.mp3');
       this.musicEl.loop = true;
+    }
+    if (this.fadeTimer !== null) {
+      window.clearInterval(this.fadeTimer); // cancel a fade — the menu is back
+      this.fadeTimer = null;
     }
     this.musicEl.volume = Math.min(1, Math.max(0, SETTINGS.volumeMaster * SETTINGS.volumeMusic * 0.8));
     void this.musicEl.play().catch(() => {

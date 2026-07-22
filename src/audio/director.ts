@@ -97,6 +97,35 @@ export class AudioDirector {
     const A = TUNING.audio;
     const p = s.playerPos;
     e.setListener(p.x, p.y, p.z, s.right.x, s.right.y, s.right.z);
+
+    // ── the ending (M12; user 2026-07-21): after the win the world is OVER.
+    // muteWorld() fades the buses, but heartbeat/stingers ride MASTER and
+    // the schedulers kept firing — stop scheduling entirely, kill every
+    // positional loop, and pin the music tone bright like open air (bobbing
+    // at the waterline must never muffle the coda). ──
+    if (s.won) {
+      const noLoop = (): TrackedLoop => {
+        throw new Error('no loops after the win');
+      };
+      e.setHeadAbove(true);
+      e.setMuffle(0);
+      this.syncLoops([], this.anglerLoops, noLoop);
+      this.syncLoops([], this.guardianLoops, noLoop);
+      this.syncLoops([], this.lampLoops, noLoop);
+      if (this.vortexStop) {
+        this.vortexStop();
+        this.vortexStop = null;
+      }
+      if (!this.wonWas) {
+        if (!MUSIC.playing) {
+          sfx.winSting(e.ctx, e.master);
+          this.note('winSting');
+        } else this.note('winSting-skipped-for-song');
+      }
+      this.wonWas = true;
+      return;
+    }
+
     e.setHeadAbove(s.headAbove);
     e.setMuffle(s.siltThickness);
     this.ambience.update(e, p.x, p.y, p.z, !s.headAbove);
@@ -198,15 +227,7 @@ export class AudioDirector {
       this.note('deathSting');
     }
     this.deadWas = s.dead;
-    if (s.won && !this.wonWas) {
-      // M12: when the ending lands inside a song (Moonlight), the sting
-      // stays in its pocket — nothing stomps the coda (DESIGN §14)
-      if (!MUSIC.playing) {
-        sfx.winSting(e.ctx, e.master);
-        this.note('winSting');
-      } else this.note('winSting-skipped-for-song');
-    }
-    this.wonWas = s.won;
+    // (the win path exits early above — the sting fires there)
   }
 
   private syncLoops(

@@ -117,9 +117,72 @@ export class Annex {
       new THREE.CylinderGeometry(1, 1, 0.08, 28),
       new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: 0.15, metalness: 0.35 }),
     );
-    floor.scale.set(this.hx * 0.8, 1, this.hz * 0.82);
+    floor.scale.set(this.hx * 0.86, 1, this.hz * 0.88);
     floor.position.set(cx - 0.8, fy + 0.05, cz);
     this.root.add(floor);
+
+    // ── the ROOM (user 2026-07-21: "an actual room, not a circular cave"):
+    // a paneled wall ring hugging the rock (the pool arc stays open — the
+    // cave shows only where you swam in) and a suspended light coffer. The
+    // rock still owns collision; the panels sit close enough to it that
+    // nothing can walk behind them. ──
+    const plaster = new THREE.MeshStandardMaterial({ color: 0x7d786a, roughness: 0.8 });
+    const plasterAlt = new THREE.MeshStandardMaterial({ color: 0x726d60, roughness: 0.85 });
+    const baseboard = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.7 });
+    const trimBrass = new THREE.MeshStandardMaterial({ color: 0x8f7a3f, metalness: 0.75, roughness: 0.35 });
+    {
+      const SEGS = 22;
+      const wallH = 2.7;
+      // the pool/entrance sits east (+x): leave that arc open
+      for (let i = 0; i < SEGS; i++) {
+        const ang = (i / SEGS) * Math.PI * 2;
+        // opening toward +x (angle 0): skip ±3 segments of arc
+        const a0 = Math.atan2(Math.sin(ang), Math.cos(ang));
+        if (Math.abs(a0) < 0.62) continue;
+        const px = cx + Math.cos(ang) * this.hx * 0.88;
+        const pz = cz + Math.sin(ang) * this.hz * 0.9;
+        const segW = ((Math.PI * 2) / SEGS) * ((this.hx + this.hz) / 2) * 0.94;
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(segW, wallH, 0.07), i % 2 ? plaster : plasterAlt);
+        panel.position.set(px, fy + wallH / 2 + 0.06, pz);
+        panel.rotation.y = -ang + Math.PI / 2;
+        this.root.add(panel);
+        const base = new THREE.Mesh(new THREE.BoxGeometry(segW, 0.18, 0.09), baseboard);
+        base.position.set(px, fy + 0.15, pz);
+        base.rotation.y = -ang + Math.PI / 2;
+        this.root.add(base);
+        const trim = new THREE.Mesh(new THREE.BoxGeometry(segW, 0.05, 0.09), trimBrass);
+        trim.position.set(px, fy + wallH + 0.04, pz);
+        trim.rotation.y = -ang + Math.PI / 2;
+        this.root.add(trim);
+      }
+      // the light coffer: a level rectangular frame with two glowing panels,
+      // hung dead center — the constructed ceiling the cave never had
+      const coffer = new THREE.Group();
+      const beamMat = new THREE.MeshStandardMaterial({ color: 0x35312a, roughness: 0.6, metalness: 0.3 });
+      for (const [w, d, x, z] of [
+        [7.4, 0.16, 0, -2.1] as const,
+        [7.4, 0.16, 0, 2.1] as const,
+        [0.16, 4.36, -3.62, 0] as const,
+        [0.16, 4.36, 3.62, 0] as const,
+      ]) {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(w, 0.14, d), beamMat);
+        beam.position.set(x, 0, z);
+        coffer.add(beam);
+      }
+      const glowMat = new THREE.MeshStandardMaterial({ color: 0xf2e8cc, emissive: 0xcfc09a, emissiveIntensity: 0.9, roughness: 0.4 });
+      for (const zOff of [-1.05, 1.05]) {
+        const pane = new THREE.Mesh(new THREE.BoxGeometry(7.1, 0.06, 1.9), glowMat);
+        pane.position.set(0, 0.02, zOff);
+        coffer.add(pane);
+      }
+      for (const [x, z] of [[-3.4, -2], [3.4, -2], [-3.4, 2], [3.4, 2]]) {
+        const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.1, 6), beamMat);
+        rod.position.set(x, 0.6, z);
+        coffer.add(rod);
+      }
+      coffer.position.set(cx - 0.8, fy + 3.35, cz);
+      this.root.add(coffer);
+    }
 
     // ── museum lighting: warm spots, always on (the room has its own way) ──
     const addSpot = (x: number, z: number, tx: number, tz: number): void => {

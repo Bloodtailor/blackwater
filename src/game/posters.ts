@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { NODES, type CaveNode, type PerkId } from '../cave/data';
 import { orientToWall, wallSpot } from '../economy/shops';
+import { sdf } from '../cave/sdf';
 import type { InteractSystem } from '../economy/interact';
 import type { Hud } from '../ui/hud';
 import { GALLERY } from './gallery';
@@ -41,8 +42,22 @@ export function buildPosters(scene: THREE.Scene, interact: InteractSystem, hud: 
     // nodes that already carry a fixture (the breaker, a locker, a station)
     // put their poster on a DIFFERENT wall — wallSpot is deterministic, so
     // without exclude the sheet lands exactly on the fixture (M8c fix)
-    const fixture = FIXTURE_TAGS.some((t) => n.tags.includes(t)) ? wallSpot(n).inward.clone().negate() : undefined;
-    const spot = wallSpot(n, fixture);
+    // dry rooms and the shore: hang at STANDING height above the local
+    // floor, not at node-center height (user 2026-07-21: G11 floated off a
+    // slope at the camp — the center height meant nothing on dry ground)
+    let mountN = n;
+    if (n.dry || n.tags.includes('surface')) {
+      let fy = n.pos[1];
+      for (let d = -1.5; d < n.radius * 2; d += 0.2) {
+        if (sdf(n.pos[0], n.pos[1] - d, n.pos[2]) > -0.3) {
+          fy = n.pos[1] - d;
+          break;
+        }
+      }
+      mountN = { ...n, pos: [n.pos[0], fy + 1.5, n.pos[2]] };
+    }
+    const fixture = FIXTURE_TAGS.some((t) => n.tags.includes(t)) ? wallSpot(mountN).inward.clone().negate() : undefined;
+    const spot = wallSpot(mountN, fixture);
     const g = new THREE.Group();
     const backing = new THREE.Mesh(
       new THREE.PlaneGeometry(w + 0.05, h + 0.05),
