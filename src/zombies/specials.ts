@@ -602,6 +602,11 @@ export class SpecialManager {
       }
     } else if (s.state === 'frozen') {
       s.vel.multiplyScalar(Math.max(0, 1 - 6 * dt));
+      // dead still — and ALWAYS facing you, exactly like the Lamp Man (user
+      // 2026-07-21): direct yaw, no witnessed turn. From any approach you
+      // get the same silhouette and the same forward-hung lure — the two
+      // still lights stay indistinguishable by construction.
+      s.group.rotation.set(0, Math.atan2(ctx.playerPos.x - s.pos.x, ctx.playerPos.z - s.pos.z), 0);
       if (dist < A.vortexTriggerM) this.beginVortex(s, ctx);
       else if (!this.hasLos(s.pos, ctx.playerPos, A.seeM)) {
         s.unseenT = (s.unseenT ?? 0) + dt;
