@@ -25,7 +25,10 @@ export class SampleBank {
   init(): Promise<void> {
     this.initPromise ??= (async () => {
       try {
-        const res = await fetch('/audio/manifest.json');
+        // no-cache = revalidate: a browser that heuristically cached the old
+        // bytes kept serving REGENERATED sounds stale (user 2026-07-21: "the
+        // old machine sound is still playing"). ETag revalidation is cheap.
+        const res = await fetch('/audio/manifest.json', { cache: 'no-cache' });
         if (!res.ok) return;
         const j = (await res.json()) as { sfx?: Record<string, SfxEntry> };
         this.manifest = j.sfx ?? null;
@@ -56,7 +59,7 @@ export class SampleBank {
     try {
       const url = this.manifest?.[name]?.url;
       if (!url) throw new Error('no entry');
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-cache' }); // revalidate — never serve a stale regeneration
       if (!res.ok) throw new Error(String(res.status));
       const buf = await ctx.decodeAudioData(await res.arrayBuffer());
       this.buffers.set(name, buf);

@@ -568,8 +568,8 @@ export const TUNING = {
     guardianRefDistM: 8, // distance where the presence is at half power (m)
     whumpRefDistM: 12, // a silt-out is a big event — carries far
     geigerRangeM: 14, // crackle radius around the Pile (flavor only)
-    ambienceGain: 0.35, // depth-bed loops (shallow/mid/deep crossfade) level
-    emitterGain: 0.8, // audio-node loops (machinery/airflow behind walls) pre-positional level
+    ambienceGain: 0.55, // depth-bed loops (shallow/mid/deep crossfade) level (user 2026-07-21: mid/deep were too quiet)
+    emitterGain: 1.1, // audio-node loops (machinery/airflow behind walls) pre-positional level
     musicLowpassHz: 1100, // music bus underwater tone (never ducks; open air = full bright)
     lullAfterSec: 240, // this long with NO dialog AND NO music → the lull track may play (M12: true silence, not just no dialog)
     lullCooldownSec: 600, // minimum gap between lull plays

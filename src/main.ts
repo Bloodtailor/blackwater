@@ -172,6 +172,11 @@ function initGame(): void {
     if (played && !vitals.dead && !params.has('playtest')) e.preventDefault();
   });
 
+  // build beacon: which code is this tab actually running? (user 2026-07-21:
+  // a stale tab/cache made a whole fix round look like a no-op — bump the tag
+  // on audio/asset changes so staleness is diagnosable in one glance)
+  console.info('[BLACKWATER] build 2026-07-21c — audio-truth round (music-bus jingles, bed swap, hot beds)');
+
   // ── player ──
   const debug = new DebugPanel(params.has('debug'));
   const player = new PlayerController(camera, renderer.domElement);

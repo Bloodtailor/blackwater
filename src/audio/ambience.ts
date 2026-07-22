@@ -109,7 +109,7 @@ export class Ambience {
     const base = A.ambienceGain * (submerged ? 1 : 0.25);
     // deeper beds run HOTTER (user 2026-07-20: it should sound scarier the
     // deeper you go — the pressure gets louder, not just darker)
-    const tierGain = [1, 1.2, 1.45];
+    const tierGain = [1, 1.35, 1.7];
     [shallow, mid, deep].forEach((w, i) => {
       this.weights[i] = w;
       this.bedGains[i]?.gain.setTargetAtTime(Math.max(0.0001, w * base * tierGain[i]), e.ctx.currentTime, 0.8);

@@ -473,7 +473,7 @@ export function stirsStinger(ctx: BaseAudioContext, out: AudioNode): void {
 /** Perk jingle: four dark music-box notes (short, dark-goofy, §14). */
 export function perkJingle(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
-  if (SAMPLES.play(ctx, out, 'perk-jingle', { gain: v })) return;
+  if (SAMPLES.play(ctx, out, 'perk-jingle', { gain: 1.8 * v })) return;
   const seq = [ST.d4, ST.f4, ST.a4, ST.d5];
   seq.forEach((hz, i) => setTimeout(() => tone(ctx, out, { type: 'triangle', hz, attack: 0.005, hold: 0.05, release: 0.6, gain: 0.2 * v }), i * 190));
   setTimeout(() => tone(ctx, out, { type: 'triangle', hz: ST.c4, attack: 0.005, hold: 0.08, release: 1.0, gain: 0.16 * v }), 4 * 190 + 120);
@@ -482,7 +482,7 @@ export function perkJingle(ctx: BaseAudioContext, out: AudioNode): void {
 /** Requisition Roulette tease: a little cranked music-box turn. */
 export function boxTease(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
-  if (SAMPLES.play(ctx, out, 'box-tease', { gain: 0.9 * v })) return;
+  if (SAMPLES.play(ctx, out, 'box-tease', { gain: 2.0 * v })) return;
   const seq = [ST.a4, ST.f4, ST.e4, ST.f4, ST.a4, ST.d5];
   seq.forEach((hz, i) => setTimeout(() => tone(ctx, out, { type: 'triangle', hz, attack: 0.004, hold: 0.03, release: 0.4, gain: 0.14 * v }), i * 150));
 }
@@ -490,7 +490,7 @@ export function boxTease(ctx: BaseAudioContext, out: AudioNode): void {
 /** PaP motif: a slow choir-ish groan bloom (detuned voices through lowpass). */
 export function papMotif(ctx: BaseAudioContext, out: AudioNode): void {
   const v = TUNING.audio.musicGain;
-  if (SAMPLES.play(ctx, out, 'pap-motif', { gain: v })) return;
+  if (SAMPLES.play(ctx, out, 'pap-motif', { gain: 1.8 * v })) return;
   for (const [hz, det] of [
     [ST.d3, 0],
     [ST.d3, 12],
@@ -504,7 +504,7 @@ export function papMotif(ctx: BaseAudioContext, out: AudioNode): void {
 
 export function dropChime(ctx: BaseAudioContext, out: AudioNode, good: boolean): void {
   const v = TUNING.audio.sfxGain;
-  if (good && SAMPLES.play(ctx, out, 'drop-chime', { gain: 0.7 * v })) return;
+  if (good && SAMPLES.play(ctx, out, 'drop-chime', { gain: 1.3 * v })) return;
   tone(ctx, out, { type: 'triangle', hz: good ? ST.a4 : ST.gs3, attack: 0.005, hold: 0.05, release: 0.5, gain: 0.25 * v });
   setTimeout(() => tone(ctx, out, { type: 'triangle', hz: good ? ST.d5 : ST.d3, attack: 0.005, hold: 0.06, release: 0.7, gain: 0.22 * v }), 130);
 }
@@ -518,7 +518,7 @@ export function doorGrind(ctx: BaseAudioContext, out: AudioNode): void {
 }
 
 export function buyClick(ctx: BaseAudioContext, out: AudioNode, ok: boolean): void {
-  if (SAMPLES.play(ctx, out, ok ? 'buy-accept' : 'buy-deny', { gain: 0.5 * TUNING.audio.sfxGain })) return;
+  if (SAMPLES.play(ctx, out, ok ? 'buy-accept' : 'buy-deny', { gain: 1.1 * TUNING.audio.sfxGain })) return;
   const v = TUNING.audio.sfxGain;
   if (ok) {
     tone(ctx, out, { type: 'square', hz: 660, release: 0.06, gain: 0.08 * v });
