@@ -16,8 +16,9 @@ import { CONCEPT } from '../game/concept';
 import { MUSIC } from '../audio/music';
 import { TAPES } from '../audio/lines';
 import { uiClick, uiHover } from './uisfx';
+import { assetUrl } from '../util/persist';
 
-type Screen = 'title' | 'jobsheet' | 'pause' | 'settings' | 'howto' | 'concept' | null;
+type Screen = 'title' | 'jobsheet' | 'pause' | 'settings' | 'howto' | 'concept' | 'devtools' | null;
 
 export interface MenuHooks {
   /** Click-to-play side effects (pointer lock; fullscreen; audio wake). */
@@ -41,6 +42,29 @@ const HOWTO = [
   'LIGHT is information — yours, and everything else’s. F toggles it.',
   'Nothing is for sale — the site issues FREE, one pull per man per bell. Dynamite, keys, and fuel slugs are FOUND below; they open the way down.',
   'Bring the warm thing back to daylight. Once lifted: ASCEND.',
+];
+
+// The key legend (user 2026-08-02). It used to be a permanent strip across the
+// bottom of the HUD, where it covered the air bar and the weapon readout — it
+// lives in the menus now: on the pause screen, and on HOW TO DIVE so the title
+// screen can reach it too. One list, rendered in both places.
+const CONTROLS: [string, string][] = [
+  ['WASD', 'swim'],
+  ['SPACE / C', 'up · down'],
+  ['SHIFT', 'sprint'],
+  ['Q / E', 'roll the camera'],
+  ['LMB', 'fire'],
+  ['RMB / V', 'knife'],
+  ['R', 'reload'],
+  ['1 / 2 / 3', 'swap weapon'],
+  ['E', 'interact · take'],
+  ['CTRL', 'grab the wall'],
+  ['F', 'lamp'],
+  ['G', 'toss a chemlight'],
+  ['T', 'line: lay / fork — hold to ride'],
+  ['X', 'line: tie / cut — hold to reel in'],
+  ['ESC', 'pause'],
+  ['F1 / `', 'debug panel'],
 ];
 
 export class Menus {
@@ -83,6 +107,8 @@ export class Menus {
       if (this.screen === 'jobsheet' && (e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter')) this.dive();
       else if (this.screen === 'settings' || this.screen === 'howto' || this.screen === 'concept') {
         if (e.code === 'Escape') this.show(this.from === 'title' ? 'title' : 'pause');
+      } else if (this.screen === 'devtools') {
+        if (e.code === 'Escape') this.show('title');
       }
     });
     // concept manifest loads async — refresh an open gallery when it lands
@@ -138,7 +164,7 @@ export class Menus {
       return;
     }
     if (!this.musicEl) {
-      this.musicEl = new Audio('/music/menu-theme.mp3');
+      this.musicEl = new Audio(assetUrl('/music/menu-theme.mp3'));
       this.musicEl.loop = true;
     }
     if (this.fadeTimer !== null) {
@@ -168,6 +194,29 @@ export class Menus {
     }
     this.show(null);
     this.hooks.engage();
+  }
+
+  /** The key legend, as a two-column list. Lives in the menus only. */
+  private appendControls(wrap: HTMLElement): void {
+    const box = document.createElement('div');
+    box.className = 'menu-keys';
+    const head = document.createElement('div');
+    head.className = 'menu-sub mk-head';
+    head.textContent = 'CONTROLS';
+    box.appendChild(head);
+    for (const [key, what] of CONTROLS) {
+      const row = document.createElement('div');
+      row.className = 'mk-row';
+      const k = document.createElement('span');
+      k.className = 'mk-key';
+      k.textContent = key;
+      const w = document.createElement('span');
+      w.className = 'mk-what';
+      w.textContent = what;
+      row.append(k, w);
+      box.appendChild(row);
+    }
+    wrap.appendChild(box);
   }
 
   private render(): void {
@@ -213,10 +262,89 @@ export class Menus {
         this.from = 'title';
         this.show('concept');
       });
+      // The toolkit is a FEATURE of this build, not a back door (web-deploy
+      // §1): the editor and the panels ship public and get a front door.
+      btn('DEVELOPER TOOLS', () => {
+        this.from = 'title';
+        this.show('devtools');
+      });
       btn('SETTINGS', () => {
         this.from = 'title';
         this.show('settings');
       });
+      return;
+    }
+
+    if (this.screen === 'devtools') {
+      const h = document.createElement('div');
+      h.className = 'menu-title small';
+      h.textContent = 'DEVELOPER TOOLS';
+      wrap.appendChild(h);
+      const sub = document.createElement('div');
+      sub.className = 'menu-sub';
+      sub.textContent = 'the tools this game was built with — they ship with it';
+      wrap.appendChild(sub);
+      const body = document.createElement('div');
+      body.className = 'menu-devtools';
+      body.innerHTML = `
+        <p>BLACKWATER's cave is data, not geometry hand-placed in code: a graph of rooms and
+        tunnels in <code>layout.json</code>, carved into rock by a signed-distance field at load.
+        Everything below was built alongside the game to keep that honest — and it is all here,
+        in the public build.</p>
+        <p><b>Level editor</b> — orbit the graph, drag rooms and tunnels, tilt a room so it lies
+        about which way is up, set water levels, then play the unsaved layout instantly. It runs
+        the design rules as you edit (two routes to every zone, air reachable on one breath) and
+        tells you when you have broken one.</p>
+        <p><b>Debug panel</b> — teleport, spawn, give weapons and perks, force a silt-out, freeze
+        the shift clock. Every feature in this game shipped with its own trigger here in the same
+        session; a thing I cannot reach in ten seconds is a thing I never verified.</p>
+        <p><b>Tuning panel</b> — all ~420 gameplay numbers, live, each with the comment from
+        <code>tuning.ts</code> as its description. Change how fast the Drowned swim while they are
+        swimming at you.</p>
+        <p><b>Map viewer</b> — the graph as a labeled wireframe plus top and side projections,
+        with the layout rules checked and reported.</p>`;
+      wrap.appendChild(body);
+      const keys = document.createElement('div');
+      keys.className = 'menu-keys';
+      const kh = document.createElement('div');
+      kh.className = 'menu-sub mk-head';
+      kh.textContent = 'GETTING IN';
+      keys.appendChild(kh);
+      for (const [k, what] of [
+        ['F1 / `', 'debug + tuning panel (any screen)'],
+        ['H', 'hide the debug layer · frees the mouse'],
+        ['N', 'noclip survey — needs the panel open'],
+        ['?edit', 'the level editor'],
+        ['?view=map', 'the map viewer'],
+        ['?debug', 'start with the panel already up'],
+      ] as [string, string][]) {
+        const row = document.createElement('div');
+        row.className = 'mk-row';
+        const kk = document.createElement('span');
+        kk.className = 'mk-key';
+        kk.textContent = k;
+        const w = document.createElement('span');
+        w.className = 'mk-what';
+        w.textContent = what;
+        row.append(kk, w);
+        keys.appendChild(row);
+      }
+      wrap.appendChild(keys);
+      const ed = document.createElement('div');
+      ed.className = 'menu-devtools';
+      ed.innerHTML = `<p><b>In the editor:</b> click a room to select · drag the gizmo to move ·
+        <code>R</code> orient (tilts falseUp and the water with it) · <code>W</code> water level ·
+        shift-click a second room to dig a tunnel · double-click a tunnel to add a waypoint ·
+        <code>DEL</code> delete · <code>F</code> frame · <code>ctrl+Z</code> undo · ▶ TEST plays
+        the unsaved layout · <code>F4</code> brings you back.</p>`;
+      wrap.appendChild(ed);
+      btn('OPEN THE LEVEL EDITOR', () => {
+        location.search = '?edit=1';
+      }, 'primary');
+      btn('OPEN THE MAP VIEWER', () => {
+        location.search = '?view=map';
+      });
+      btn('BACK', () => this.show('title'));
       return;
     }
 
@@ -295,6 +423,7 @@ export class Menus {
         this.show(null);
         this.hooks.engage();
       }, 'primary');
+      this.appendControls(wrap);
       // recovered tapes: the replay list (LORE §5)
       const tapes = this.hooks.collectedTapes();
       const list = document.createElement('div');
@@ -378,6 +507,7 @@ export class Menus {
         ol.appendChild(li);
       }
       wrap.appendChild(ol);
+      this.appendControls(wrap);
       btn('BACK', () => this.show(this.from === 'title' ? 'title' : 'pause'), 'primary');
       return;
     }

@@ -101,7 +101,7 @@ The in-head doctrine opens the category v2 could never have: **lines that play m
 - `client.1` *(idle/late run)* — "The letter said *carried, not rigged.* A man who's never lifted a body knows exactly how this one wants lifting. I charged extra for not asking."
 **The lamp (void #9; after a Lamp Man despawn the player witnessed):**
 - `lamp.1` — "A lamp, standing. Lamps hang or they're held. I looked away first. That's twice in my life."
-**The museum & the party (Annex; light, still in character):**
+**The museum & the party (Annex; light, still in character) — ❌ ROOM CUT 2026-08-02 (user): these lines are written but nothing triggers them anymore:**
 - `museum.1` *(first entry)* — "Somebody kept everything. Dusted, labeled, lit. I recover things for a living and even I find this thorough."
 - `party.1` *(morale button, once)* — "Well. The notice board did say morale was mandatory."
 
@@ -142,7 +142,7 @@ The user asked: cave, or flooded nuclear facility? **Answer: both, deliberately.
 **Intrusion gradient by zone:**
 | Zone | Natural | Site intrusion |
 |---|---|---|
-| Sinkhole | daylight shaft, pool | Lowe's 2008 camp (truck winch, tarp, gear crates) + the 1968 winch head and dive platform, rotted stencils |
+| Sinkhole | daylight shaft, pool | The 1968 winch head and dive platform, rotted stencils, a hung print, the T1 recorder. *(Lowe's 2008 camp props were **cut 2026-08-02 by the user**; the camp stays fiction — see C1 — and is not built in-world.)* |
 | Galleries | ring cave, first darkness | **Berthing & admin**: bunk alcoves, the **rec room** (jukebox), mess, notice boards (posters), and the **Pile room** — the power switch, cherenkov-blue glow when live |
 | Maze | the confusing heart of the cave | **Stores & infirmary**: requisition crates (mystery box), draught dispensary racks (perk stations), specimen labs, cable runs that dive in and out of raw rock |
 | Throat | — | **The bore itself.** The straight-down shaft IS the drill hole, lined with scaffold rings and guide chains. Of course it's vertical: they dug it that way. |
@@ -186,8 +186,8 @@ The user asked: cave, or flooded nuclear facility? **Answer: both, deliberately.
 | Fuel slugs (v3 — the Bench's fee) | `CORMORANT — OUTPUT SLUG` — the Pile's product, whatever it is. The Bench consumes one per weapon bathed. T3's engineer would have had opinions | Dull metal cylinder, warm cherenkov seam, waxed-paper wrap half-peeled; heavier-looking than its size |
 | The shift bell (v3 — void #10) | The site's watch bell at the winch head, still keeping the watch schedule. One ring per shift. The pressure hatch demands five | Heard more than seen: a single unhurried brass toll, honest positional audio from the winch head, faintly audible everywhere |
 | The Lamp Man (v3 — void #9) | See §1.2 #9. A lamp where no lamp is assigned; a stance no drowned man holds. The MISSING notice (G8) is the only paper that brushes against him, and it names a man the crew book never contained | Bolt upright on the tunnel floor, aligned to TRUE up, motionless; the lamp is *pixel-identical in color and size to the Angler's lure* — distance makes them the same object. Never clearly seen: by the time you are close enough, you are too close |
-| The Museum Annex (v3 — celebration room, off the rec room) | A dry chamber the schematic doesn't show, kept like a regimental museum: every recovered thing dusted, labeled, and lit. **No document acknowledges the room exists.** The one wrongness is the room itself — its plaques are in a neat, patient hand nobody ever identifies | The best-lit, best-kept space in the game: poured floor, brass rails, glass cases, museum spots. Exhibits mirror the player's own run (tapes, toys, flasks, weapons, photographs, figures of the things below) |
-| The morale button (v3 — in the Annex) | A guarded red button on a stand, engraved plate: `MORALE NIGHT — AUTHORIZED PERSONNEL` | Big, red, guarded by a flip-cover; pressing it drops a mirror ball, wakes the exhibit figures into a dance, and plays the party record (§6.1). Pressing it again stops everything mid-song, which is somehow worse |
+| ~~The Museum Annex~~ (v3 — **❌ CUT 2026-08-02 by the user; kept here as fiction only, not to be rebuilt**) | A dry chamber the schematic doesn't show, kept like a regimental museum: every recovered thing dusted, labeled, and lit. **No document acknowledges the room exists.** The one wrongness is the room itself — its plaques are in a neat, patient hand nobody ever identifies | The best-lit, best-kept space in the game: poured floor, brass rails, glass cases, museum spots. Exhibits mirror the player's own run (tapes, toys, flasks, weapons, photographs, figures of the things below) |
+| ~~The morale button~~ (v3 — **❌ CUT 2026-08-02 with the Annex**) | A guarded red button on a stand, engraved plate: `MORALE NIGHT — AUTHORIZED PERSONNEL` | Big, red, guarded by a flip-cover; pressing it drops a mirror ball, wakes the exhibit figures into a dance, and plays the party record (§6.1). Pressing it again stops everything mid-song, which is somehow worse |
 
 ## 5. Tapes — full scripts (6; VO at M8; subtitled; 20–40 s each)
 
@@ -273,7 +273,7 @@ Albrecht, forward watch. Ames, galley. Barrow, lamps. Bell, stores. Calloway—
 
 **Jukebox rule (2026-07-21):** the woken jukebox **always plays "Still on Shift" first** — the anthem is the egg's payoff, every run. The rest of the folder shuffles behind it for E-cycling.
 
-### 6.1 "Morale Night" — the party record (v3, for the Annex morale button)
+### 6.1 "Morale Night" — the party record (v3) — ❌ CUT 2026-08-02 (user) with the Annex; the mp3 exists, nothing plays it
 
 Its own song, played only while the zombie party runs. Style: **up-tempo 1963 rock-and-roll dance number** — honking sax, handclaps, twangy guitar, an MC-ish male crooner working a crowd. It is a genuinely fun period dance track with the site's usual single wrongness: the lyrics assume the dance never has permission to end.
 
@@ -352,7 +352,7 @@ Global style suffix: *"digital concept art painting, cinematic, murky underwater
 | C9 | The Guardians | Two Mark V suits at the drill head, hoses severed, posts kept |
 | C10 | The Heart | The apse: warm pulse inside translucent flowstone, water gone amber around it |
 | C11 | The Ascent | The diver rising with the glow clutched to his chest, the dark boiling behind him |
-| C12 | The Annex | The museum room: glass cases, brass rails, a red button on a stand, every light on |
+| ~~C12~~ | ~~The Annex~~ | **❌ dropped from the gallery 2026-08-02 with the room; the PNG stays in `public/images/concept/`, unreferenced** |
 
 Script: `scripts/generate-concept.mjs` (same pattern as generate-images.mjs; writes `public/images/concept/` + manifest section). **Blocked on the same Gemini billing as §7 — probe before every attempt.**
 

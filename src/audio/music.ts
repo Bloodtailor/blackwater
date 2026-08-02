@@ -1,6 +1,6 @@
 // ONE SONG (M12, DESIGN §14): a single global music slot. Every song —
-// jukebox, the lull, Moonlight at the Waterline, the party record, anything
-// future — plays through here, and starting one stops whatever else was
+// jukebox, the lull, Moonlight at the Waterline, anything future — plays
+// through here, and starting one stops whatever else was
 // playing (the user heard the lull and the jukebox collide; never again).
 //
 // The lull is special: it is what silence grows when left alone. It may only
@@ -9,7 +9,7 @@
 // factory is injected (main wires the real Audio → engine.music path; tests
 // wire a stub).
 
-export type MusicSource = 'jukebox' | 'lull' | 'moonlight' | 'party' | 'menu';
+export type MusicSource = 'jukebox' | 'lull' | 'moonlight' | 'menu';
 
 export interface TrackHandle {
   stop(): void;

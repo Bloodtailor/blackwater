@@ -104,13 +104,6 @@ export interface CaveNode {
    */
   teaser?: boolean;
   /**
-   * MUSEUM room (M16, DESIGN §12.1): dry, lit, fully playable — but OFF the
-   * zombie pathing graph entirely (a true safe zone: the Drowned never
-   * enter, never wander here, never chase in). Carved and collided like any
-   * room; only the enemies pretend it doesn't exist.
-   */
-  museum?: boolean;
-  /**
    * AUDIO EMITTER node (user 2026-07-20): no geometry, no cavity — a pure
    * positional sound source, usually placed INSIDE solid rock so machinery /
    * airflow / settling sounds leak through the walls (the SDF occlusion
@@ -174,17 +167,69 @@ interface Layout {
   zoneHubs: Record<Zone, string>;
 }
 
+/** The editor's saved map when there's no dev server to write the file
+ *  (web-deploy §2). Deliberately NOT read in dev: there the editor writes
+ *  layout.json for real, and a stale browser draft shadowing the repo file is
+ *  exactly the kind of staleness that eats a session. */
+const DRAFT_KEY = 'bw-layout-draft';
+
+/** Editor SAVE on a static host. Returns false if the browser refused. */
+export function saveLayoutDraft(json: string): boolean {
+  try {
+    localStorage.setItem(DRAFT_KEY, json);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearLayoutDraft(): void {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // nothing stored — nothing to clear
+  }
+}
+
+export function hasLayoutDraft(): boolean {
+  try {
+    return localStorage.getItem(DRAFT_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeLayout(v: unknown): v is Layout {
+  const l = v as Layout | null;
+  return !!l && Array.isArray(l.nodes) && Array.isArray(l.edges) && l.nodes.length > 0;
+}
+
 // Playtest mode (?playtest=1, editor "TEST" button): the editor stashes its
 // UNSAVED working layout in sessionStorage and the game loads that instead of
-// layout.json — try the edit without committing it.
+// layout.json — try the edit without committing it. In a deployed build the
+// editor's SAVE lands in localStorage and is loaded the same way; `?stock=1`
+// ignores both, so a broken draft can never trap a visitor.
 function loadLayout(): Layout {
   // typeof guards: Vitest imports this module in plain node (no window)
-  if (typeof location !== 'undefined' && typeof sessionStorage !== 'undefined' && new URLSearchParams(location.search).has('playtest')) {
+  if (typeof location === 'undefined' || typeof sessionStorage === 'undefined') return layoutJson as unknown as Layout;
+  const params = new URLSearchParams(location.search);
+  if (params.has('stock')) return layoutJson as unknown as Layout;
+  if (params.has('playtest')) {
     try {
       const raw = sessionStorage.getItem('bw-test-layout');
-      if (raw) return JSON.parse(raw) as Layout;
+      const parsed: unknown = raw ? JSON.parse(raw) : null;
+      if (looksLikeLayout(parsed)) return parsed;
     } catch {
       // fall through to the saved file
+    }
+  }
+  if (!import.meta.env.DEV) {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      const parsed: unknown = raw ? JSON.parse(raw) : null;
+      if (looksLikeLayout(parsed)) return parsed;
+    } catch {
+      // unreadable draft — the shipped map still works
     }
   }
   return layoutJson as unknown as Layout;

@@ -1,0 +1,20 @@
+# Cloudflare static-asset headers (web-deploy §6 + addendum).
+# Lives in public/ so the build copies it to dist/_headers — dist/ is
+# gitignored, so anything written there directly is lost on the next build.
+#
+# Vite fingerprints everything under /assets/: those bytes never change under a
+# given name, so they cache forever. The manifests and the jukebox listing are
+# plain files a redeploy rewrites in place, so they get a short TTL or a
+# returning visitor plays yesterday's build.
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/images/manifest.json
+  Cache-Control: public, max-age=60
+/images/concept/manifest.json
+  Cache-Control: public, max-age=60
+/audio/manifest.json
+  Cache-Control: public, max-age=60
+/music/easteregg/tracks.json
+  Cache-Control: public, max-age=60

@@ -9,6 +9,8 @@
 // shows a procedural FILM UNDEVELOPED frame — the gallery never blocks on
 // generation (the LORE §7 fallback rule, applied to meta art too).
 
+import { assetUrl } from '../util/persist';
+
 export interface ConceptPiece {
   id: string;
   title: string;
@@ -29,7 +31,6 @@ const PIECES: [string, string][] = [
   ['c9', 'The Guardians'],
   ['c10', 'The Heart'],
   ['c11', 'The Ascent'],
-  ['c12', 'The Annex'],
 ];
 
 class ConceptGallery {
@@ -40,7 +41,7 @@ class ConceptGallery {
 
   async init(): Promise<void> {
     try {
-      const res = await fetch('/images/concept/manifest.json');
+      const res = await fetch(assetUrl('/images/concept/manifest.json'));
       if (!res.ok) return;
       const j = (await res.json()) as Record<string, { title?: string; url?: string | null }>;
       for (const p of this.pieces) {
@@ -58,7 +59,7 @@ class ConceptGallery {
 
   /** Display URL for a piece: the painting, or its FILM UNDEVELOPED frame. */
   frameUrl(p: ConceptPiece): string {
-    if (p.url) return p.url;
+    if (p.url) return assetUrl(p.url);
     let f = this.frames.get(p.id);
     if (!f) {
       f = undevelopedFrame(p.title);

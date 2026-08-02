@@ -42,6 +42,13 @@ export class DebugPanel {
     this.hotkey('Backquote', 'Toggle debug panel (alt)', togglePanel);
   }
 
+  /** Is the debug harness actually in use right now? True when the page was
+   *  launched with ?debug, or the panel is on screen (F1). Debug-only
+   *  affordances (noclip) check this so they can't fire in a normal dive. */
+  get debugActive(): boolean {
+    return this.enabled || (this.root !== null && !this.root.classList.contains('hidden'));
+  }
+
   hotkey(code: string, label: string, fn: HotkeyFn): void {
     this.hotkeys.set(code, { label, fn });
     if (this.hotkeyList) {

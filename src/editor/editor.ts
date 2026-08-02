@@ -15,7 +15,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
-import { EDGES, NODES, ZONE_COLORS, ZONE_HUBS, getNode, refreshNodeMap, roomWaterPlane, type CaveEdge, type CaveNode, type Zone } from '../cave/data';
+import { EDGES, NODES, ZONE_COLORS, ZONE_HUBS, clearLayoutDraft, getNode, refreshNodeMap, roomWaterPlane, saveLayoutDraft, type CaveEdge, type CaveNode, type Zone } from '../cave/data';
+import { captureCanvas, devPost, downloadFile, pickTextFile } from '../util/persist';
 import { buildWaterSurfaces } from '../cave/waterViz';
 import { buildPanel, type PanelApi } from './panel';
 import { initSdf } from '../cave/sdf';
@@ -392,21 +393,60 @@ export function initEditor(): void {
     if (dirty) e.preventDefault(); // unsaved layout edits → confirm
   });
 
+  const layoutJson = (pretty = false): string =>
+    JSON.stringify({ nodes: NODES, edges: EDGES, zoneHubs: ZONE_HUBS }, null, pretty ? 2 : undefined);
+
+  // SAVE (web-deploy §2): the dev server writes layout.json when it's there;
+  // on a static host the draft goes to localStorage, which the game loads in
+  // place of the shipped map. Either way the button means "this is kept".
   const save = async (): Promise<void> => {
-    const res = await fetch('/__layout', {
-      method: 'POST',
-      body: JSON.stringify({ nodes: NODES, edges: EDGES, zoneHubs: ZONE_HUBS }),
-    }).catch(() => null);
-    if (res?.ok) dirty = false;
-    panel.toast(res?.ok ? 'SAVED — reload the game tab to play it' : 'SAVE FAILED (dev server only)');
+    if (await devPost('/__layout', layoutJson())) {
+      dirty = false;
+      panel.toast('SAVED to layout.json — reload the game tab to play it');
+      return;
+    }
+    if (saveLayoutDraft(layoutJson())) {
+      dirty = false;
+      panel.toast('SAVED in this browser — reload the game to play it · ⬇ JSON to keep a real file');
+    } else {
+      panel.toast('SAVE FAILED — this browser refused storage. Use ⬇ JSON.');
+    }
   };
 
-  const download = (): void => {
-    const blob = new Blob([JSON.stringify({ nodes: NODES, edges: EDGES, zoneHubs: ZONE_HUBS }, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'layout.json';
-    a.click();
+  const download = (): void => downloadFile('layout.json', layoutJson(true), 'application/json');
+
+  // ⬆ JSON: bring a downloaded map back in. Replaces the live arrays in place
+  // (every system holds references to NODES/EDGES), then a full rebuild.
+  const load = async (): Promise<void> => {
+    const text = await pickTextFile();
+    if (text === null) return;
+    let parsed: { nodes?: unknown; edges?: unknown; zoneHubs?: unknown };
+    try {
+      parsed = JSON.parse(text) as typeof parsed;
+    } catch {
+      panel.toast('LOAD FAILED — not valid JSON');
+      return;
+    }
+    if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges) || !parsed.nodes.length) {
+      panel.toast('LOAD FAILED — no nodes/edges in that file');
+      return;
+    }
+    NODES.length = 0;
+    NODES.push(...(parsed.nodes as typeof NODES));
+    EDGES.length = 0;
+    EDGES.push(...(parsed.edges as typeof EDGES));
+    if (parsed.zoneHubs && typeof parsed.zoneHubs === 'object') {
+      Object.assign(ZONE_HUBS, parsed.zoneHubs as typeof ZONE_HUBS);
+    }
+    selection = null;
+    commit();
+    panel.toast(`LOADED — ${NODES.length} rooms, ${EDGES.length} tunnels · SAVE to keep it`);
+  };
+
+  // Escape hatch: a draft that breaks the game must be discardable from here.
+  const discardDraft = (): void => {
+    clearLayoutDraft();
+    panel.toast('BROWSER DRAFT DISCARDED — reload to get the shipped map back');
   };
 
   // ── selection & gizmo ──
@@ -607,6 +647,8 @@ export function initEditor(): void {
     undo,
     save: () => void save(),
     download,
+    load: () => void load(),
+    discardDraft,
     frame: () => {
       if (selection?.kind === 'node') orbit.target.set(...getNode(selection.id).pos);
       else if (selection?.kind === 'edge') {
@@ -891,8 +933,7 @@ export function initEditor(): void {
     rebuild,
     shot: async (name: string): Promise<string> => {
       renderer.render(scene, camera);
-      const res = await fetch(`/__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: renderer.domElement.toDataURL('image/png') });
-      return `${name}: ${res.status}`;
+      return captureCanvas(renderer.domElement, name);
     },
   };
 }

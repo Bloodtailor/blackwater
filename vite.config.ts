@@ -1,6 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
+
+// tuning.overrides.json is a JSON MODULE the game imports, and it is rewritten
+// at runtime by the panel's SAVE. Vite caches that module's transform, so a
+// saved (or hand-edited) file stayed invisible until the dev server restarted:
+// the user saved zombie HP, reloaded, and got the old number back — then the
+// next save wrote the stale map over the file for real (user bug 2026-08-02).
+// Dropping the module from the graph makes the NEXT page load read the file.
+function invalidateTuningOverrides(server: ViteDevServer): void {
+  for (const [id, mod] of server.moduleGraph.idToModuleMap) {
+    if (id.includes('tuning.overrides.json')) server.moduleGraph.invalidateModule(mod);
+  }
+}
 
 // Dev-only screenshot sink: the game POSTs canvas PNGs to /__shot?name=x and
 // they land in docs/screens/. Lets the harness verify visuals even when the
@@ -89,6 +101,7 @@ function shotPlugin(): Plugin {
             if (typeof map !== 'object' || map === null || Array.isArray(map)) throw new Error('bad map');
             for (const v of Object.values(map)) if (typeof v !== 'number') throw new Error('non-numeric');
             fs.writeFileSync(path.resolve(server.config.root, 'src/tuning.overrides.json'), JSON.stringify(map, null, 2) + '\n');
+            invalidateTuningOverrides(server); // reloads must see what we wrote
             res.end('ok');
           } catch {
             res.statusCode = 400;
@@ -127,17 +140,36 @@ function shotPlugin(): Plugin {
         });
       });
     },
+    // Hand-edit the overrides file and the watcher fires here: drop the stale
+    // module, but return [] so nothing reloads — tuning must never yank the
+    // page out from under a dive or an editor session.
+    handleHotUpdate(ctx) {
+      if (ctx.file.replace(/\\/g, '/').endsWith('src/tuning.overrides.json')) {
+        invalidateTuningOverrides(ctx.server);
+        return [];
+      }
+      return undefined;
+    },
   };
 }
 
+// Deploy base (web-deploy §5): root needs nothing, a subpath needs
+// `BW_BASE=/blackwater/ npm run build`. Every runtime asset url goes through
+// assetUrl() in src/util/persist.ts, so both cases resolve the same way.
+const base = process.env.BW_BASE ?? '/';
+
 export default defineConfig({
+  base,
   plugins: [shotPlugin()],
   server: {
     watch: {
       // The level editor SAVES layout.json while you're standing in it — a
       // watcher reload would wipe editor state on every save. Game/editor
       // tabs pick the file up on their next manual reload instead.
-      ignored: ['**/src/cave/layout.json', '**/src/tuning.overrides.json'],
+      // tuning.overrides.json is NOT ignored: handleHotUpdate above swallows
+      // its reload the same way, but the watcher event is what lets us drop
+      // the cached JSON module so the next load reads the real file.
+      ignored: ['**/src/cave/layout.json'],
     },
   },
 });

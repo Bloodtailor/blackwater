@@ -12,13 +12,17 @@
 import {
   bakeTuningDefaults,
   clearTuningOverrides,
-  diskTuningOverrides,
   getTuningDefault,
   getTuningValue,
   listTuningPaths,
+  mergeTuningForSave,
+  noteDiskTuningSaved,
+  resetTuningToShipped,
+  saveTuningToBrowser,
   setTuningValue,
   tuningOverrideCount,
 } from '../tuning';
+import { devPost, downloadFile, IS_DEV } from '../util/persist';
 import tuningSource from '../tuning.ts?raw';
 
 /** dotted path → the trailing `// comment` on its line in tuning.ts. */
@@ -124,12 +128,19 @@ export function buildTuningUI(parent: HTMLElement): void {
   };
   setCount();
   const saveBtn = document.createElement('button');
-  saveBtn.textContent = '💾 save to disk';
-  saveBtn.title = 'Commit every changed value to src/tuning.overrides.json — they become the stock numbers for all browsers and future sessions (dev server only).';
+  saveBtn.textContent = IS_DEV ? '💾 save to disk' : '💾 save';
+  saveBtn.title = IS_DEV
+    ? 'Commit every changed value to src/tuning.overrides.json — they become the stock numbers for all browsers and future sessions.'
+    : 'Keep every changed value in this browser — they load as the stock numbers next time. ⬇ to take them with you.';
+  const dl = document.createElement('button');
+  dl.textContent = '⬇';
+  dl.title = 'Download these overrides as JSON (drop it in as src/tuning.overrides.json to make them permanent).';
   const reset = document.createElement('button');
-  reset.textContent = 'reset all';
-  reset.title = 'Discard unsaved changes (values saved to disk stay).';
-  head.append(count, saveBtn, reset);
+  reset.textContent = IS_DEV ? 'reset all' : 'reset to shipped';
+  reset.title = IS_DEV
+    ? 'Discard unsaved changes (values saved to disk stay).'
+    : 'Throw away everything this browser kept and go back to the numbers the build shipped with.';
+  head.append(count, saveBtn, dl, reset);
   wrap.appendChild(head);
 
   const groups = new Map<string, HTMLElement>();
@@ -189,24 +200,32 @@ export function buildTuningUI(parent: HTMLElement): void {
 
   saveBtn.addEventListener('click', () => {
     // merged disk layer: everything already committed + this session's diffs
-    const merged = diskTuningOverrides();
-    for (const path of listTuningPaths()) {
-      const v = getTuningValue(path);
-      if (v !== getTuningDefault(path)) merged[path] = v;
-    }
-    void fetch('/__tuning', { method: 'POST', body: JSON.stringify(merged) })
-      .then((res) => {
-        if (!res.ok) throw new Error(String(res.status));
-        bakeTuningDefaults();
-        repaintAll();
-        setCount(`saved ${Object.keys(merged).length} value(s) to disk ✓`);
-      })
-      .catch(() => setCount('SAVE FAILED (dev server only)'));
+    const merged = mergeTuningForSave();
+    const n = Object.keys(merged).length;
+    void devPost('/__tuning', JSON.stringify(merged)).then((wroteFile) => {
+      // the file now holds `merged` — remember it, or the NEXT save in this
+      // tab would rebuild from the stale page-load map and drop these values
+      if (wroteFile) noteDiskTuningSaved(merged);
+      else if (!saveTuningToBrowser(merged)) {
+        setCount('SAVE FAILED — this browser refused storage. Use ⬇.');
+        return;
+      }
+      bakeTuningDefaults();
+      repaintAll();
+      setCount(`saved ${n} value(s) ${wroteFile ? 'to disk' : 'in this browser'} ✓`);
+    });
+  });
+
+  dl.addEventListener('click', () => {
+    const merged = mergeTuningForSave();
+    downloadFile('tuning.overrides.json', JSON.stringify(merged, null, 2) + '\n');
+    setCount(`downloaded ${Object.keys(merged).length} value(s)`);
   });
 
   reset.addEventListener('click', () => {
-    clearTuningOverrides();
+    if (IS_DEV) clearTuningOverrides();
+    else resetTuningToShipped();
     repaintAll();
-    setCount();
+    setCount(IS_DEV ? undefined : 'back to the shipped numbers');
   });
 }

@@ -22,6 +22,7 @@ import { SETTINGS } from '../ui/settings';
 import type { AudioEngine } from './engine';
 import { estimateSpeechSec, LOWE_LINES, type VoCategory, type VoLine } from './lines';
 import { radioSquelch } from './sfx';
+import { assetUrl } from '../util/persist';
 
 const CAT_PRIORITY = { tapeReact: 0, event: 1, ambient: 2 } as const;
 
@@ -98,7 +99,7 @@ export interface VoManifest {
 
 export async function loadManifest(): Promise<VoManifest | null> {
   try {
-    const res = await fetch('/audio/manifest.json');
+    const res = await fetch(assetUrl('/audio/manifest.json'));
     if (!res.ok) return null;
     return (await res.json()) as VoManifest;
   } catch {
@@ -130,7 +131,7 @@ export class VoicePlayer {
     const url = this.manifest()?.vo[line.id];
     if (url && e && e.running && typeof (e.ctx as AudioContext).createMediaElementSource === 'function') {
       this.stop();
-      const el = new Audio(url);
+      const el = new Audio(assetUrl(url));
       el.volume = 1;
       const src = (e.ctx as AudioContext).createMediaElementSource(el);
       const g = (e.ctx as AudioContext).createGain();

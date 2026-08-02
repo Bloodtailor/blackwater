@@ -49,12 +49,12 @@ import { Toys } from './game/toys';
 import { loadImageManifest, toyPhotoDataUrl } from './game/media';
 import { GALLERY } from './game/gallery';
 import { buildPosters } from './game/posters';
-import { Annex } from './game/annex';
-import { buildCamp } from './game/camp';
 import { Hud } from './ui/hud';
 import { Menus } from './ui/menus';
 import { SETTINGS, saveSettings } from './ui/settings';
 import { TUNING } from './tuning';
+import { assetUrl, captureCanvas, devPost } from './util/persist';
+import { canPlay, showDesktopGate } from './ui/gate';
 
 const params = new URLSearchParams(location.search);
 
@@ -62,6 +62,10 @@ if (params.get('view') === 'map') {
   void import('./viewer/map').then((m) => m.initMapViewer());
 } else if (params.has('edit')) {
   void import('./editor/editor').then((m) => m.initEditor());
+} else if (!canPlay()) {
+  // web-deploy §3: pointer-lock + WASD is desktop-only, and portfolio traffic
+  // skews mobile. Say so in the site's voice instead of shipping a dead canvas.
+  void loadImageManifest().then(() => showDesktopGate());
 } else {
   initGame();
 }
@@ -175,7 +179,7 @@ function initGame(): void {
   // build beacon: which code is this tab actually running? (user 2026-07-21:
   // a stale tab/cache made a whole fix round look like a no-op — bump the tag
   // on audio/asset changes so staleness is diagnosable in one glance)
-  console.info('[BLACKWATER] build 2026-07-21d — audio diagnostics (decode report + per-sound source logs)');
+  console.info('[BLACKWATER] build 2026-08-02a — removal round (Annex gone, shore bare: print + tape only)');
 
   // ── player ──
   const debug = new DebugPanel(params.has('debug'));
@@ -482,28 +486,8 @@ function initGame(): void {
     voice.request(tape.reactionId); // queued; plays while he's still surfaced
   };
   const toys = new Toys(scene, interact, () => audio.engine);
-  // ── M16: the Museum Annex (DESIGN §12.1) — exhibits mirror the run;
-  // the morale button rides the ONE music slot like everything else ──
-  const annex = new Annex(scene, interact, {
-    tapesCollected: () => [...deck.collected],
-    toysWound: () => toys.wound,
-    perksOwned: (id) => perks.owned.has(id),
-    gunOwned: (id) => weapons.owns(id),
-    onParty: (on) => {
-      // no loop (user 2026-07-21): when the record ends, the party ends —
-      // annex.update sees the slot empty and stops the lights itself
-      if (on) MUSIC.play('party', '/music/morale-night.mp3', TUNING.audio.partyGain, { loop: false, name: 'Morale Night' });
-      else MUSIC.stop('party');
-    },
-    onFirstEntry: () => {
-      voice.request('museum.1');
-      remora.request('rem.museum.1'); // she'll say it next time he's under
-    },
-    toast: (m) => hud.toast(m),
-  });
   // ── M8c: posters/labels in-world + the menus ──
   buildPosters(scene, interact, hud);
-  buildCamp(scene); // M16.5: Lowe's shore camp (user: "starting room should look very nice")
   const applyDisplay = (): void => {
     renderer.domElement.style.filter = `brightness(${SETTINGS.brightness})`;
   };
@@ -800,9 +784,17 @@ function initGame(): void {
     const p = camera.position;
     if (chems.toss([p.x, p.y - 0.15, p.z], [dir.x, dir.y, dir.z])) hud.toast(`CHEMLIGHT AWAY · ${chems.count} LEFT`);
   });
-  debug.hotkey('KeyN', 'Noclip survey (debug)', () => {
-    player.mode = player.mode === 'noclip' ? 'swim' : 'noclip';
-    if (player.mode === 'noclip') vitals.god = true; // user: noclip implies god
+  // Noclip is DEBUG ONLY (user 2026-08-02): entering needs the harness live
+  // (?debug, or the panel on screen via F1). Leaving always works, so nobody
+  // can be stranded flying when the panel goes away.
+  debug.hotkey('KeyN', 'Noclip survey (debug only)', () => {
+    if (player.mode === 'noclip') {
+      player.mode = 'swim';
+      return;
+    }
+    if (!debug.debugActive) return;
+    player.mode = 'noclip';
+    vitals.god = true; // user: noclip implies god
   });
   // R = reload (the shooter set; line moved to T/X, user 2026-07-19 round
   // 12). When dead OR won it restarts the dive instead.
@@ -834,7 +826,7 @@ function initGame(): void {
     } catch {
       // storage full/unavailable — server sink still gets it
     }
-    fetch('/__probe', { method: 'POST', body: JSON.stringify(entry) }).catch(() => {});
+    void devPost('/__probe', JSON.stringify(entry)); // no request at all in prod
   };
   debug.hotkey('KeyP', 'Probe ghost wall (logs spot)', () => {
     const dir = new THREE.Vector3();
@@ -1128,12 +1120,9 @@ function initGame(): void {
           : `armed — next surge in ${undertow.waitT.toFixed(0)}s`,
     ),
   );
-  // M16: the Annex
-  const annexSec = debug.section('The Annex (M16)');
-  debug.toggle(annexSec, 'Unlock all exhibits', () => annex.unlockAll, (v) => (annex.unlockAll = v));
-  debug.button(annexSec, 'Party toggle', () => annex.setParty(!annex.partyOn));
-  debug.button(annexSec, 'Teleport to the Annex', () => teleport('annex'));
-  debug.button(annexSec, 'Gallery: fill with placeholders', () => {
+  // the pause-menu photographs (posters/prints the run has actually looked at)
+  const photoSec = debug.section('Photographs');
+  debug.button(photoSec, 'Gallery: fill with placeholders', () => {
     for (let i = 0; i < 9; i++) {
       GALLERY.unlock({ id: `debug-${i}`, title: `PLACEHOLDER ${i + 1}`, url: toyPhotoDataUrl(i % 3), caption: 'debug print' });
     }
@@ -1218,7 +1207,7 @@ function initGame(): void {
     const e = audio.ensure();
     void import('./audio/sfx').then((s) => s.bellSequence(e.ctx, e.master));
   });
-  debug.button(audSec, 'Moonlight now', () => MUSIC.play('moonlight', '/music/easteregg/moonlight-at-the-waterline.mp3', TUNING.audio.moonlightGain, { name: 'Moonlight at the Waterline' }));
+  debug.button(audSec, 'Moonlight now', () => MUSIC.play('moonlight', assetUrl('/music/easteregg/moonlight-at-the-waterline.mp3'), TUNING.audio.moonlightGain, { name: 'Moonlight at the Waterline' }));
   debug.button(audSec, 'Stop music', () => MUSIC.stop());
   debug.button(audSec, 'Offer a swim musing', () => voice.request(['swim.1', 'swim.2', 'swim.3', 'swim.4', 'swim.5'].filter((id) => !voice.played.has(id))[0] ?? 'swim.1'));
   debug.button(audSec, 'Speech/music state', () =>
@@ -1590,7 +1579,6 @@ function initGame(): void {
       onHit: takeSpecialHit,
     });
     heart.update(dt, time);
-    annex.update(dt, time, p, MUSIC.current?.id === 'party');
     // ── M15.5 the Undertow: the cave inhales (position-only — the pull
     // rides the shared current sampler; bubbles and the gauge stay honest) ──
     const ut = undertow.update(dt, heart.ascentActive && !combatFrozen);
@@ -1781,14 +1769,14 @@ function initGame(): void {
     // collide with the jukebox; never again) ──
     const dialogActive = deck.playing !== null || voice.current !== null || remora.current !== null;
     MUSIC.update(dt, dialogActive);
-    if (!vitals.dead && !heart.won) MUSIC.tryLull('/music/lull.mp3', TUNING.audio.lullGain, TUNING.audio.lullAfterSec, TUNING.audio.lullCooldownSec);
+    if (!vitals.dead && !heart.won) MUSIC.tryLull(assetUrl('/music/lull.mp3'), TUNING.audio.lullGain, TUNING.audio.lullAfterSec, TUNING.audio.lullCooldownSec);
 
     // ── "Moonlight at the Waterline" — the ascent finale (user 2026-07-21):
     // carrying the Heart shallower than 50 m with no song playing starts it;
     // winning while it plays holds the ending inside the song ──
     if (heart.ascentActive && !heart.won && depth < TUNING.voice.moonlightDepthM && !MUSIC.playing && !ctl.moonlightStarted && !vitals.dead) {
       ctl.moonlightStarted = true;
-      MUSIC.play('moonlight', '/music/easteregg/moonlight-at-the-waterline.mp3', TUNING.audio.moonlightGain, { name: 'Moonlight at the Waterline' });
+      MUSIC.play('moonlight', assetUrl('/music/easteregg/moonlight-at-the-waterline.mp3'), TUNING.audio.moonlightGain, { name: 'Moonlight at the Waterline' });
     }
 
     // ── audio (M8a): state edges + the per-tick snapshot ──
@@ -1916,9 +1904,7 @@ function initGame(): void {
     look: (yawDeg: number, pitchDeg: number): void => player.look(yawDeg, pitchDeg),
     shot: async (name: string): Promise<string> => {
       renderer.render(scene, camera);
-      const data = renderer.domElement.toDataURL('image/png');
-      const res = await fetch(`/__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: data });
-      return `${name}: ${res.status}`;
+      return captureCanvas(renderer.domElement, name);
     },
     bench: (frames = 120): number => {
       renderer.render(scene, camera); // warm-up

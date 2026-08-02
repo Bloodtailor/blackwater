@@ -15,10 +15,10 @@
 | The Listing Room (30° falseUp bell) | ✅ | Wrongness — §4: crew chalk reads `LEVEL` with an arrow that doesn't point up; never explained |
 | Teaser mouths/rooms (unreachable openings) | ✅ | Unexplained-by-design — passages above you, out of reach; pure dread dressing |
 | Sky shaft / cenote daylight | ✅ | Explained — the sinkhole is open air; Lowe's world upstairs |
-| Lowe's 2008 camp (shore) | ✅ | Explained — §3: nylon/plastic/LED so his gear reads as from another world |
+| Lowe's 2008 camp (shore) | ❌ CUT 2026-08-02 (user) | The physical props (table/ledger, cot, crates, work lamp, kit) are deleted; the shore is bare rock. Only the hung print and the T1 tape recorder remain there. Lowe's camp survives in the fiction (§3) and in C1, not in the world — **do not re-dress the shore** |
 | Audio-emitter nodes (Pile machinery, Listing Room airflow, abyss groan) | ✅ | Unexplained-by-design — §1.1 "the site works": it is audibly still doing something, and no text finds that strange |
-| The Museum Annex (✅ M16: dry bell off gal-rec, poured floor, brass rails, glass cases, museum spots; exhibits mirror THIS run — tapes/toys/flasks/guns/photograph wall fill as gathered; figures of the deep ones on plinths with plaques reusing only existing canon phrases (`THE COMPLEMENT — FULL`, `THE LIGHT`, `THE OTHER LIGHT`, `RETURNED — EMPTY`, `THERMAL-1 — REPLICA`); a TRUE safe zone — the site does not follow you in, and no one remarks on that either) | ✅ | Wrongness — §4 v3: a kept, lit museum on no schematic, plaques in a hand nobody identifies. The room's existence is its own wrongness. museum.1/rem.museum.1 fire on first entry |
-| The morale button + "Morale Night" (✅ M16: guarded red button, mirror ball, saturated party light, dancing exhibit figures, the generated party record through the ONE music slot; press again = stops mid-song, somehow worse) | ✅ | Explained (the ritual: `MORALE NIGHT — AUTHORIZED PERSONNEL`) + Wrongness (§6.1: the lyrics assume the dance never has permission to end — "Nobody goes home—" cut clean) |
+| ~~The Museum Annex~~ | ❌ CUT 2026-08-02 (user) | Room, exhibits, photograph wall, and the whole safe-zone flag are deleted. There is no safe room in the cave — **do not rebuild it** |
+| ~~The morale button + "Morale Night"~~ | ❌ CUT 2026-08-02 (user) | Removed with the Annex; the mp3 stays on disk, wired to nothing |
 
 ## 2. Enemies
 
@@ -55,7 +55,7 @@
 | Chemlights, batteries, reels | ✅ | Explained — Lowe's 2008 kit vs site dry-cells in wax paper |
 | Tapes ×6 (reel-to-reel props) | ✅ | Explained — waterproof log recorders, crew personal effects. Scripts: LORE §5, one wrongness each |
 | Toy divers ×3 + jukebox | ✅ | Wrongness — T2's toys nobody ordered; the jukebox is morale gear, dead until they wake it |
-| The morale button + zombie party | 🔜 M16 | Meta with a fig leaf — `MORALE NIGHT — AUTHORIZED PERSONNEL`. Celebration, by user request; the fiction only shrugs |
+| ~~The morale button + zombie party~~ | ❌ CUT 2026-08-02 (user) | Built at M16, removed with the Annex |
 | Drops (Max Ammo etc.) | ✅ | Pure gameplay — no diegetic identity claimed; murk keeps them abstract |
 | Points/ledger | ✅ (vanity ✅ M13a) | Explained — Lowe's compulsive tally (§2); after M13 it is ONLY that |
 | Wind-up toy in the cold box crate | ✅ | Wrongness — the toy motif recurring where no toy should be |
@@ -128,7 +128,7 @@
 | "Still on Shift" (jukebox anthem) | ✅ | The crew's own song — knows the count is wrong, doesn't know why either. ALWAYS first on jukebox wake (2026-07-21) |
 | "Moonlight at the Waterline" / "The Cormorant Twist" / "Forty-One, Forty-Two" (jukebox) | ✅ | Period rec-room stock, one quiet wrongness each; ✅ M12: Moonlight auto-scores the Ascent above 50 m and the win holds inside the song |
 | Menu theme, the lull | ✅ | Mood only; the lull is demoted to silence-grown ambience at M12 |
-| "Morale Night" (party record) | 🔜 M16 | The Annex party track (LORE §6.1) — fun with one wrongness: the dance has no permission to end |
+| ~~"Morale Night" (party record)~~ | ❌ CUT 2026-08-02 (user) | Generated at M16, orphaned with the Annex — the file survives, nothing plays it |
 | Depth-ambience beds ×3 | ✅ | The water itself, pressure made audible; honest (rides the real depth bands) |
 | The 40+ SFX bank | ✅ | Craft layer — wetness generated into the source; moans are honest per DESIGN §13 (no fake far moans) |
 | Round stinger → the shift bell | bell generated + debug-triggerable ✅ M12; becomes THE shift sound at M14, the hatch rings five at M13 | Void #10 — the watch bell replaces the horn |

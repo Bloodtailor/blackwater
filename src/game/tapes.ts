@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { getNode } from '../cave/data';
 import { sdf } from '../cave/sdf';
 import { SETTINGS } from '../ui/settings';
+import { assetUrl } from '../util/persist';
 import type { AudioEngine } from '../audio/engine';
 import { estimateSpeechSec, TAPES, type TapeScript } from '../audio/lines';
 import type { VoManifest } from '../audio/voice';
@@ -157,7 +158,7 @@ export class TapeProps {
     const url = this.manifest()?.tapes[tape.id];
     // no asset / no engine / offline verification ctx → the subtitle clock carries it
     if (!url || !e || !e.running || typeof (e.ctx as AudioContext).createMediaElementSource !== 'function') return;
-    const el = new Audio(url);
+    const el = new Audio(assetUrl(url));
     const ctx = e.ctx as AudioContext;
     const src = ctx.createMediaElementSource(el);
     const g = ctx.createGain();

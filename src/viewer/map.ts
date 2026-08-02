@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { EDGES, getNode, NODES, ZONE_COLORS, type CaveEdge } from '../cave/data';
 import { runChecks } from '../cave/validate';
 import { Freefly } from '../debug/freefly';
+import { captureCanvas } from '../util/persist';
 
 const BP_W = 1700;
 const BP_H = 1100;
@@ -165,11 +166,7 @@ function drawBlueprint(canvas: HTMLCanvasElement, mode: 'top' | 'side'): void {
 }
 
 async function postCanvas(canvas: HTMLCanvasElement, name: string): Promise<string> {
-  const res = await fetch(`/__shot?name=${encodeURIComponent(name)}`, {
-    method: 'POST',
-    body: canvas.toDataURL('image/png'),
-  });
-  return `${name}: ${res.status}`;
+  return captureCanvas(canvas, name); // dev-server sink in dev, download in prod
 }
 
 function makeLabelSprite(text: string): THREE.Sprite {
@@ -187,8 +184,6 @@ function makeLabelSprite(text: string): THREE.Sprite {
 }
 
 export function initMapViewer(): void {
-  document.getElementById('hint')?.classList.add('hidden');
-
   // ── 3D wireframe ──
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));

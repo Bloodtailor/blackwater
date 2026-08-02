@@ -5,6 +5,7 @@
 import { EDGES, NODES, ZONE_HUBS, getNode, type CaveEdge, type CaveNode, type NodeTag, type Zone } from '../cave/data';
 import { runChecks } from '../cave/validate';
 import { buildTuningUI } from '../debug/tuningPanel';
+import { IS_DEV } from '../util/persist';
 import type { Selection } from './editor';
 
 export interface PanelApi {
@@ -33,6 +34,10 @@ export interface PanelApi {
   toggleWater(): void;
   waypointToRoom(): void;
   playtest(): void;
+  /** ⬆ JSON — read a downloaded layout back in (web-deploy §2). */
+  load(): void;
+  /** Drop the browser-saved draft so the shipped map loads again. */
+  discardDraft(): void;
 }
 
 export interface Panel {
@@ -83,7 +88,13 @@ export function buildPanel(api: PanelApi): Panel {
   btn('⛰ ROCK', () => api.previewRock());
   btn('⛰ off', () => api.hideRock());
   btn('↩ UNDO', () => api.undo());
-  btn('⬇ JSON', () => api.download());
+  // Static build: SAVE keeps the map in this browser, so there has to be a way
+  // to throw that away and get the shipped cave back (web-deploy §2).
+  if (!IS_DEV) {
+    btn('🗑 draft', () => api.discardDraft()).title = 'Discard the map saved in this browser and go back to the shipped one';
+  }
+  btn('⬇ JSON', () => api.download()).title = 'Download this layout as a real layout.json file';
+  btn('⬆ JSON', () => api.load()).title = 'Load a layout.json file back in (a downloaded map, or the shipped one)';
   btn('🏷', () => api.toggleLabels());
   btn('🧭', () => api.toggleMarkers());
   const ghostBtn = btn('👻', () => {

@@ -11,12 +11,13 @@
 // `node scripts/generate-images.mjs` and every spot upgrades, zero code.
 
 import { photographDataUrl } from './heart';
+import { assetUrl } from '../util/persist';
 
 let manifest: Record<string, string> | null = null;
 
 export async function loadImageManifest(): Promise<void> {
   try {
-    const res = await fetch('/images/manifest.json');
+    const res = await fetch(assetUrl('/images/manifest.json'));
     if (res.ok) manifest = (await res.json()) as Record<string, string>;
   } catch {
     manifest = null;
@@ -28,7 +29,7 @@ const cache = new Map<string, string>();
 /** URL or data-URL for a manifest image id (g1, g3…, g9-<perkId>, g12-sign). */
 export function imageUrl(id: string): string {
   const gen = manifest?.[id];
-  if (gen) return gen;
+  if (gen) return assetUrl(gen); // manifest urls are site-absolute; base-aware here
   let url = cache.get(id);
   if (!url) {
     url = fallback(id);

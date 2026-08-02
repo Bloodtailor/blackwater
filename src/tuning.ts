@@ -557,7 +557,6 @@ export const TUNING = {
     occlusionGain: 0.35, // …and quieter (§13 honest sound)
     sfxGain: 0.8, // weapons/impacts/interactions family volume
     musicGain: 0.7, // stingers/jingles/motifs family volume
-    partyGain: 0.55, // Morale Night in the Annex (M16 — dry room, open air)
     breathGain: 0.9, // the regulator cycle
     moanGain: 0.5, // per-moan pre-positional level
     anglerGain: 0.16, // the lure hum is deliberately FAINT
@@ -606,6 +605,10 @@ export const TUNING = {
 import FILE_OVERRIDES_JSON from './tuning.overrides.json';
 
 const OVERRIDE_KEY = 'bw-tuning-overrides';
+/** The static-host stand-in for tuning.overrides.json (web-deploy §2): what
+ *  SAVE keeps when there is no dev server to write the file. Applied like the
+ *  file layer — before defaults are captured, so saved numbers read as stock. */
+const SAVED_KEY = 'bw-tuning-saved';
 
 type AnyObj = Record<string, unknown>;
 
@@ -628,8 +631,13 @@ function loadOverrides(): Record<string, number> {
   }
 }
 
-/** The pristine DESIGN values, captured before overrides apply. */
+/** Stock: what a saved value is measured against (file/browser layers folded
+ *  in — those ARE stock). Captured before the localStorage scratch layer. */
 const DEFAULTS: Record<string, number> = {};
+
+/** The numbers as literally written in this file, before ANY override layer —
+ *  what "reset to defaults" means on a deployed build. */
+const SHIPPED_DEFAULTS: Record<string, number> = {};
 
 /** Every numeric knob as a dotted path, in declaration order. */
 export function listTuningPaths(): string[] {
@@ -689,9 +697,64 @@ export function tuningOverrideCount(): number {
   return Object.keys(loadOverrides()).length;
 }
 
+// The committed disk layer, live. It starts as the imported JSON, but a SAVE
+// rewrites the file mid-session and the static import NEVER updates — so the
+// panel tells us what it wrote (noteDiskTuningSaved) and we track it here.
+// (User bug 2026-08-02: baseHp=100 was saved, then a later save in the same
+// tab silently wrote the page-load map back over it, reporting "saved ✓".)
+let FILE_OVERRIDES: Record<string, number> = { ...(FILE_OVERRIDES_JSON as Record<string, number>) };
+
 /** The committed disk layer (panel SAVE merges into this). */
 export function diskTuningOverrides(): Record<string, number> {
-  return { ...(FILE_OVERRIDES_JSON as Record<string, number>) };
+  return { ...FILE_OVERRIDES };
+}
+
+/** Call after the dev server confirms a write: this map IS the file now. */
+export function noteDiskTuningSaved(map: Record<string, number>): void {
+  FILE_OVERRIDES = { ...map };
+}
+
+/** SAVE with no dev server: keep the map in this browser instead of the file.
+ *  Same semantics — it becomes the stock layer on every later load here. */
+export function saveTuningToBrowser(map: Record<string, number>): boolean {
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify(map));
+  } catch {
+    return false;
+  }
+  noteDiskTuningSaved(map);
+  return true;
+}
+
+/** Forget everything this browser kept AND every live override: back to the
+ *  numbers the build shipped with. Callers repaint; a reload is not needed. */
+export function resetTuningToShipped(): void {
+  clearTuningOverrides();
+  try {
+    localStorage.removeItem(SAVED_KEY);
+  } catch {
+    // nothing kept
+  }
+  const shipped = { ...(FILE_OVERRIDES_JSON as Record<string, number>) };
+  for (const p of listTuningPaths()) {
+    const l = leafAt(p);
+    if (!l) continue;
+    const v = shipped[p] ?? SHIPPED_DEFAULTS[p];
+    if (typeof v === 'number') l.obj[l.key] = v;
+  }
+  FILE_OVERRIDES = shipped;
+  for (const p of listTuningPaths()) DEFAULTS[p] = getTuningValue(p);
+}
+
+/** Exactly what a SAVE should write: the committed disk layer plus every knob
+ *  that currently differs from stock. Pure, so the regression is testable. */
+export function mergeTuningForSave(): Record<string, number> {
+  const merged = diskTuningOverrides();
+  for (const path of listTuningPaths()) {
+    const v = getTuningValue(path);
+    if (v !== getTuningDefault(path)) merged[path] = v;
+  }
+  return merged;
 }
 
 /** After a successful SAVE: current values become the new stock — rows read
@@ -705,18 +768,31 @@ export function bakeTuningDefaults(): void {
   }
 }
 
-// disk overrides first (they are stock), THEN capture defaults, THEN the
-// localStorage scratch layer on top
-for (const [p, v] of Object.entries(FILE_OVERRIDES_JSON as Record<string, number>)) {
-  if (typeof v === 'number') {
+// The layers, in order:
+//   0. the numbers written in this file            → SHIPPED_DEFAULTS
+//   1. tuning.overrides.json (committed)           ┐ both count as STOCK
+//   2. this browser's SAVE (static hosts, §2)      ┘ (captured into DEFAULTS)
+//   3. the localStorage scratch layer (live edits, editor ⇄ playtest)
+const applyLayer = (map: Record<string, number>): void => {
+  for (const [p, v] of Object.entries(map)) {
+    if (typeof v !== 'number') continue;
     const l = leafAt(p);
     if (l && typeof l.obj[l.key] === 'number') l.obj[l.key] = v;
+  }
+};
+for (const p of listTuningPaths()) SHIPPED_DEFAULTS[p] = getTuningValue(p);
+applyLayer(FILE_OVERRIDES);
+{
+  let saved: Record<string, number> = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(SAVED_KEY) ?? '{}') as Record<string, number>;
+  } catch {
+    saved = {};
+  }
+  if (Object.keys(saved).length) {
+    applyLayer(saved);
+    FILE_OVERRIDES = { ...FILE_OVERRIDES, ...saved }; // the panel merges onto this
   }
 }
 for (const p of listTuningPaths()) DEFAULTS[p] = getTuningValue(p);
-for (const [p, v] of Object.entries(loadOverrides())) {
-  if (typeof v === 'number') {
-    const l = leafAt(p);
-    if (l && typeof l.obj[l.key] === 'number') l.obj[l.key] = v;
-  }
-}
+applyLayer(loadOverrides());

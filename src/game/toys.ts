@@ -15,6 +15,7 @@ import { sdf } from '../cave/sdf';
 import type { AudioEngine, PositionalHandle } from '../audio/engine';
 import { MUSIC } from '../audio/music';
 import { toyShimmer, toyWind, type StopFn } from '../audio/sfx';
+import { assetUrl } from '../util/persist';
 import type { InteractSystem } from '../economy/interact';
 import { GALLERY } from './gallery';
 import { TOY_CAPTIONS, toyPhotoDataUrl } from './media';
@@ -185,7 +186,7 @@ export class Toys {
     if (!e || !e.running) return;
     if (!this.tracks) {
       try {
-        const res = await fetch('/music/easteregg/tracks.json');
+        const res = await fetch(assetUrl('/music/easteregg/tracks.json'));
         if (res.ok) this.tracks = (await res.json()) as string[];
       } catch {
         // no listing — the jukebox hums to itself
@@ -210,7 +211,7 @@ export class Toys {
     // stops whatever else is on (the lull, even Moonlight if the player
     // insists). The factory (main) owns the element/engine plumbing and
     // returns false in offline harness contexts — lastTrack still registers.
-    MUSIC.play('jukebox', `/music/easteregg/${encodeURIComponent(pick)}`, TUNING.voice.jukeboxGain, { name: pick.replace(/\.[a-z0-9]+$/i, '') });
+    MUSIC.play('jukebox', assetUrl(`/music/easteregg/${encodeURIComponent(pick)}`), TUNING.voice.jukeboxGain, { name: pick.replace(/\.[a-z0-9]+$/i, '') });
   }
 
   /** Debug/win-screen: stop the song. */

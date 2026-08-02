@@ -1,0 +1,16 @@
+{
+  // BLACKWATER deploys as a Cloudflare Worker serving static assets — the same
+  // setup as Bloodtailor/blog, not a Pages project (docs/web-deploy-addendum.md).
+  // There is no Worker script: `assets.directory` alone serves dist/ and the
+  // headers in dist/_headers (copied there from public/ at build time).
+  //
+  //   npm run build && npx wrangler deploy
+  //
+  // Served at the root of play.aaronorelup.com, so Vite's `base` stays '/'.
+  // A subpath deploy would need BW_BASE=/sub/ at build time (vite.config.ts).
+  "name": "blackwater",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
